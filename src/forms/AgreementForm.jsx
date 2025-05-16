@@ -1,6 +1,8 @@
 
 
 import React, { useState } from "react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 const AgreementForm = () => {
   const [entityType, setEntityType] = useState("single");
@@ -10,6 +12,8 @@ const AgreementForm = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [uploadedStatus, setUploadedStatus] = useState({}); // Track uploads
+  const [startDate, setStartDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(new Date());
 
   function initialClauses() {
     return [
@@ -112,6 +116,13 @@ const AgreementForm = () => {
     setUploadedStatus((prev) => ({ ...prev, [key]: true }));
   };
 
+  const handleDateChange1 = (date) => {
+    setStartDate(date)
+  }
+  const handleDateChange2 = (date) => {
+    setEndDate(date)
+  }
+
   return (
     <div className="relative max-w-7xl mx-auto p-6 bg-white rounded shadow">
       <h1 className="text-2xl font-bold mb-6 text-gray-800">Agreement Form</h1>
@@ -122,9 +133,26 @@ const AgreementForm = () => {
           className="grid grid-cols-8 gap-4 items-start mb-6 p-4 border border-gray-300 rounded-lg bg-gray-50"
         >
           <div className="col-span-1 font-semibold text-gray-700 pt-2">{type}</div>
-          <input type="text" placeholder="From" className="col-span-1 border border-gray-300 p-2 rounded text-sm" />
-          <input type="text" placeholder="To" className="col-span-1 border border-gray-300 p-2 rounded text-sm" />
-          <input type="text" placeholder="NA" className="col-span-1 border border-gray-300 p-2 rounded text-sm" />
+          {/* <input type="dateP" placeholder="From" className="col-span-1 border border-gray-300 p-2 rounded text-sm" />
+          <input type="text" placeholder="To" className="col-span-1 border border-gray-300 p-2 rounded text-sm" /> */}
+          {/* <input type="text" placeholder="NA" className="col-span-1 border border-gray-300 p-2 rounded text-sm" /> */}
+<div className="">
+          <DatePicker
+          className="col-span-1 border border-gray-300 p-2 rounded text-sm w-32"
+  selected={startDate}
+  
+  onChange={handleDateChange1} //only when value has changed
+/>
+</div>
+<div>
+<DatePicker
+          className="col-span-1 border border-gray-300 p-2 rounded text-sm w-32"
+  selected={endDate}
+  
+  onChange={handleDateChange2} 
+  />
+
+</div>
           <label
             className={`inline-block ${
               uploadedStatus[`agreement-${index}`] ? "bg-green-600" : "bg-blue-600"
@@ -146,7 +174,8 @@ const AgreementForm = () => {
             />
           </div>
         </div>
-      ))}
+  ))
+}
 
       <div className="mt-10">
         <h2 className="text-xl font-semibold mb-4 text-gray-800">Entity Type</h2>
@@ -165,23 +194,29 @@ const AgreementForm = () => {
             </label>
           ))}
           {entityType === "group" && (
-            <>
-              {underList.map((input, key) => (
-                <input
-                  key={key}
-                  type={input.type}
-                  placeholder={input.placeholder}
-                  className={input.className}
-                />
-              ))}
-              <button
-                className="inline-block bg-blue-600 text-white px-4 py-2 rounded cursor-pointer hover:bg-blue-700"
-                onClick={duplicateElement}
-              >
-                +
-              </button>
-            </>
-          )}
+  <div className="flex flex-col gap-2 relative w-full max-w-md">
+    {/* Button at top-right */}
+    <div className="flex justify-end">
+      <button
+        className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+        onClick={duplicateElement}
+      >
+        +
+      </button>
+    </div>
+
+    {/* Input fields */}
+    {underList.map((input, key) => (
+      <input
+        key={key}
+        type={input.type}
+        placeholder={input.placeholder}
+        className={input.className}
+      />
+    ))}
+  </div>
+)}
+
         </div>
       </div>
 
@@ -204,7 +239,7 @@ const AgreementForm = () => {
               placeholder={clause.placeholder}
               className="border border-gray-300 p-2 rounded text-sm w-full"
             />
-            {(clause.title === "SLA" || clause.title === "Indemnity" || clause.title === "Insurance") && (
+            {(clause.title === "SLA" || clause.title === "Indemnity" || clause.title === "Insurance"||clause.title==="Enter clause") && (
               <label
                 className={`inline-block ${
                   uploadedStatus[`clause-${index}`] ? "bg-green-600" : "bg-blue-600"
@@ -223,6 +258,7 @@ const AgreementForm = () => {
         <button onClick={handleAddClause} className="text-blue-600 hover:underline text-sm mt-2">
           + Add Clause
         </button>
+        
       </div>
 
       <div className="mt-10">
@@ -253,15 +289,17 @@ const AgreementForm = () => {
         </button>
       </div>
 
-      {isSubmitted && (
-        <div className="fixed top-5 right-5 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded shadow-lg z-50">
-          <div className="flex items-center justify-between">
-            <span>Submitted successfully!</span>
-            <button onClick={closePopup} className="ml-4 text-green-700 font-bold hover:text-green-900">×</button>
-          </div>
-        </div>
-      )}
+{
+  isSubmitted && (
+    <div className="fixed top-5 right-5 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded shadow-lg z-50">
+      <div className="flex items-center justify-between">
+        <span>Submitted successfully!</span>
+        <button onClick={closePopup} className="ml-4 text-green-700 font-bold hover:text-green-900">×</button>
+      </div>
     </div>
+  )
+}
+    </div >
   );
 };
 

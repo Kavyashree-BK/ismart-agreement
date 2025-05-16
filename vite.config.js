@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 
 export default defineConfig({
+    base: '/ismart-agreement/',
   plugins: [
     tailwindcss(),
   ],
@@ -13,4 +14,5 @@ export default defineConfig({
     },
   },
 });
+
 
