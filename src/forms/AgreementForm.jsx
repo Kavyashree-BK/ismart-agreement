@@ -5,6 +5,8 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
 const AgreementForm = () => {
+
+
   const [entityType, setEntityType] = useState("single");
   const [clauses, setClauses] = useState(initialClauses());
   const [underList, setUnderList] = useState(initialUnderList());
@@ -14,6 +16,8 @@ const AgreementForm = () => {
   const [uploadedStatus, setUploadedStatus] = useState({}); // Track uploads
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
+  const [escalationError, setEscalationError] = useState("");
+
 
   function initialClauses() {
     return [
@@ -82,26 +86,43 @@ const AgreementForm = () => {
 
   const handleSubmit = () => {
     const errs = validateForm();
-    if (Object.keys(errs).length === 0) {
-      console.log("Form data submitted:", {
-        form,
-        clauses,
-        underList,
-        entityType,
-      });
+    const requiredSections = ["Agreement", "WO", "PO", "LOI"];
+    const missingUploads = requiredSections
+      .map((type, index) => {
+        const key = `agreement-${index}`;
+        return !uploadedStatus[key] ? type : null;
+      })
+      .filter(Boolean); // Remove nulls
 
-      setIsSubmitted(true);
-      setForm(initialFormData());
-      setClauses(initialClauses());
-      setUnderList(initialUnderList());
-      setEntityType("single");
-      setErrors({});
-      setUploadedStatus({});
-
-      setTimeout(() => setIsSubmitted(false), 3000);
-    } else {
-      setErrors(errs);
+    if (missingUploads.length > 0) {
+      setEscalationError(`Escalation: Missing uploads for section(s): ${missingUploads.join(", ")}`);
+      return;
     }
+    setEscalationError(null)
+    if (Object.keys(errs).length > 0) {
+
+      setErrors(errs);
+      return;
+    }
+
+
+    console.log("Form data submitted:", {
+      form,
+      clauses,
+      underList,
+      entityType,
+    });
+
+    setIsSubmitted(true);
+    setForm(initialFormData());
+    setClauses(initialClauses());
+    setUnderList(initialUnderList());
+    setEntityType("single");
+    setErrors({});
+    setUploadedStatus({});
+
+    setTimeout(() => setIsSubmitted(false), 3000);
+
   };
 
   const handleChange = (e) => {
@@ -126,6 +147,33 @@ const AgreementForm = () => {
   return (
     <div className="relative max-w-7xl mx-auto p-6 bg-white rounded shadow">
       <h1 className="text-2xl font-bold mb-6 text-gray-800">Agreement Form</h1>
+      <div className="space-y-4">
+
+        {/* User information */}
+        <h2 className="text-xl font-bold">User Information</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block font-medium">User Role</label>
+            <select className="w-full border rounded p-2">
+              <option>Maker</option>
+              <option>Checker</option>
+              <option>Approver</option>
+            </select>
+          </div>
+          <div>
+            <label className="block font-medium">Client Name</label>
+            <input type="text" className="w-full border rounded p-2" />
+          </div>
+          <div>
+            <label className="block font-medium">Client Site</label>
+            <select className="w-full border rounded p-2">
+              <option>Single</option>
+              <option>Multiple</option>
+              <option>Select All</option>
+            </select>
+          </div>
+        </div>
+      </div>
 
       {["Agreement", "WO", "PO", "LOI"].map((type, index) => (
         <div
@@ -136,27 +184,26 @@ const AgreementForm = () => {
           {/* <input type="dateP" placeholder="From" className="col-span-1 border border-gray-300 p-2 rounded text-sm" />
           <input type="text" placeholder="To" className="col-span-1 border border-gray-300 p-2 rounded text-sm" /> */}
           {/* <input type="text" placeholder="NA" className="col-span-1 border border-gray-300 p-2 rounded text-sm" /> */}
-<div className="">
-          <DatePicker
-          className="col-span-1 border border-gray-300 p-2 rounded text-sm w-32"
-  selected={startDate}
-  
-  onChange={handleDateChange1} //only when value has changed
-/>
-</div>
-<div>
-<DatePicker
-          className="col-span-1 border border-gray-300 p-2 rounded text-sm w-32"
-  selected={endDate}
-  
-  onChange={handleDateChange2} 
-  />
+          <div className="">
+            <DatePicker
+              className="col-span-1 border border-gray-300 p-2 rounded text-sm w-32"
+              selected={startDate}
 
-</div>
+              onChange={handleDateChange1} //only when value has changed
+            />
+          </div>
+          <div>
+            <DatePicker
+              className="col-span-1 border border-gray-300 p-2 rounded text-sm w-32"
+              selected={endDate}
+
+              onChange={handleDateChange2}
+            />
+
+          </div>
           <label
-            className={`inline-block ${
-              uploadedStatus[`agreement-${index}`] ? "bg-green-600" : "bg-blue-600"
-            } text-white px-4 py-2 rounded cursor-pointer hover:opacity-90`}
+            className={`inline-block ${uploadedStatus[`agreement-${index}`] ? "bg-green-600" : "bg-blue-600"
+              } text-white px-4 py-2 rounded cursor-pointer hover:opacity-90`}
           >
             {uploadedStatus[`agreement-${index}`] ? "Uploaded" : "Upload"}
             <input
@@ -174,8 +221,8 @@ const AgreementForm = () => {
             />
           </div>
         </div>
-  ))
-}
+      ))
+      }
 
       <div className="mt-10">
         <h2 className="text-xl font-semibold mb-4 text-gray-800">Entity Type</h2>
@@ -194,28 +241,28 @@ const AgreementForm = () => {
             </label>
           ))}
           {entityType === "group" && (
-  <div className="flex flex-col gap-2 relative w-full max-w-md">
-    {/* Button at top-right */}
-    <div className="flex justify-end">
-      <button
-        className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-        onClick={duplicateElement}
-      >
-        +
-      </button>
-    </div>
+            <div className="flex flex-col gap-2 relative w-full max-w-md">
+              {/* Button at top-right */}
+              <div className="flex justify-end">
+                <button
+                  className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                  onClick={duplicateElement}
+                >
+                  +
+                </button>
+              </div>
 
-    {/* Input fields */}
-    {underList.map((input, key) => (
-      <input
-        key={key}
-        type={input.type}
-        placeholder={input.placeholder}
-        className={input.className}
-      />
-    ))}
-  </div>
-)}
+              {/* Input fields */}
+              {underList.map((input, key) => (
+                <input
+                  key={key}
+                  type={input.type}
+                  placeholder={input.placeholder}
+                  className={input.className}
+                />
+              ))}
+            </div>
+          )}
 
         </div>
       </div>
@@ -239,11 +286,10 @@ const AgreementForm = () => {
               placeholder={clause.placeholder}
               className="border border-gray-300 p-2 rounded text-sm w-full"
             />
-            {(clause.title === "SLA" || clause.title === "Indemnity" || clause.title === "Insurance"||clause.title==="Enter clause") && (
+            {(clause.title === "Term and termination (Duration)" || clause.title === "Payment Terms" || clause.title === "Penalty" || clause.title === "Minimum Wages" || clause.title === "Costing - Salary Breakup" || clause.title === "SLA" || clause.title === "Indemnity" || clause.title === "Insurance" || clause.title === "Enter clause") && (
               <label
-                className={`inline-block ${
-                  uploadedStatus[`clause-${index}`] ? "bg-green-600" : "bg-blue-600"
-                } text-white px-4 py-2 rounded cursor-pointer hover:opacity-90`}
+                className={`inline-block ${uploadedStatus[`clause-${index}`] ? "bg-green-600" : "bg-blue-600"
+                  } text-white px-4 py-2 rounded cursor-pointer hover:opacity-90`}
               >
                 {uploadedStatus[`clause-${index}`] ? "Uploaded" : "Upload"}
                 <input
@@ -258,7 +304,7 @@ const AgreementForm = () => {
         <button onClick={handleAddClause} className="text-blue-600 hover:underline text-sm mt-2">
           + Add Clause
         </button>
-        
+
       </div>
 
       <div className="mt-10">
@@ -282,23 +328,29 @@ const AgreementForm = () => {
           </div>
         </div>
       </div>
+      {escalationError && (
+          <div className="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded text-sm">
+            {escalationError}
+          </div>
+        )}
 
       <div className="mt-10 text-right">
+      
         <button onClick={handleSubmit} className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 text-sm">
           Submit
         </button>
       </div>
 
-{
-  isSubmitted && (
-    <div className="fixed top-5 right-5 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded shadow-lg z-50">
-      <div className="flex items-center justify-between">
-        <span>Submitted successfully!</span>
-        <button onClick={closePopup} className="ml-4 text-green-700 font-bold hover:text-green-900">×</button>
-      </div>
-    </div>
-  )
-}
+      {
+        isSubmitted && (
+          <div className="fixed top-5 right-5 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded shadow-lg z-50">
+            <div className="flex items-center justify-between">
+              <span>Submitted successfully!</span>
+              <button onClick={closePopup} className="ml-4 text-green-700 font-bold hover:text-green-900">×</button>
+            </div>
+          </div>
+        )
+      }
     </div >
   );
 };
