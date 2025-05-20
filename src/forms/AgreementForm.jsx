@@ -223,49 +223,55 @@ const AgreementForm = () => {
         </div>
       ))
       }
+<div className="mt-10">
+  <h2 className="text-xl font-semibold mb-4 text-gray-800">Entity Type</h2>
 
-      <div className="mt-10">
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">Entity Type</h2>
-        <div className="flex flex-wrap gap-4">
-          {["single", "group"].map((type) => (
-            <label key={type} className="flex items-center gap-2">
+  <div className="flex gap-6 flex-wrap">
+    {["single", "group"].map((type) => (
+      <div key={type} className="flex flex-col">
+        <label className="flex items-center gap-2">
+          <input
+            type="radio"
+            name="entityType"
+            value={type}
+            className="accent-blue-600"
+            checked={entityType === type}
+            onChange={(e) => setEntityType(e.target.value)}
+          />
+          {type === "single"
+            ? "Single Entity"
+            : "Single Entity with Group Companies"}
+        </label>
+
+        {/* Show underList inputs below group radio */}
+        {type === "group" && entityType === "group" && (
+          <div className="mt-3 flex flex-col gap-2 max-w-md">
+          
+            {underList.map((input, key) => (
               <input
-                type="radio"
-                name="entityType"
-                value={type}
-                className="accent-blue-600"
-                checked={entityType === type}
-                onChange={(e) => setEntityType(e.target.value)}
+                key={key}
+                type={input.type}
+                placeholder={input.placeholder}
+                className={input.className}
               />
-              {type === "single" ? "Single Entity" : "Single Entity with Group Companies"}
-            </label>
-          ))}
-          {entityType === "group" && (
-            <div className="flex flex-col gap-2 relative w-full max-w-md">
-              {/* Button at top-right */}
-              <div className="flex justify-end">
-                <button
-                  className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                  onClick={duplicateElement}
-                >
-                  +
-                </button>
-              </div>
+            ))}
 
-              {/* Input fields */}
-              {underList.map((input, key) => (
-                <input
-                  key={key}
-                  type={input.type}
-                  placeholder={input.placeholder}
-                  className={input.className}
-                />
-              ))}
+<div className="">
+              <button
+                className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 "
+                onClick={duplicateElement}
+              >
+                +
+              </button>
             </div>
-          )}
-
-        </div>
+          </div>
+        )}
       </div>
+    ))}
+  </div>
+</div>
+
+
 
       <div className="mt-10">
         <h2 className="text-xl font-semibold mb-4 text-gray-800">Important Clauses</h2>
