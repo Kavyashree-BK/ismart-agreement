@@ -17,6 +17,9 @@ const AgreementForm = () => {
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
   const [escalationError, setEscalationError] = useState("");
+  const [userRole, setUserRole] = useState("");
+const [clientSite, setClientSite] = useState("");
+
 
 
   function initialClauses() {
@@ -94,23 +97,35 @@ const AgreementForm = () => {
       })
       .filter(Boolean); // Remove nulls
 
-    if (missingUploads.length > 0) {
-      setEscalationError(`Escalation: Missing uploads for section(s): ${missingUploads.join(", ")}`);
-      return;
-    }
-    setEscalationError(null)
-    if (Object.keys(errs).length > 0) {
+      // Check missing user info fields
+  const missingUserFields = [];
+  if (!userRole) missingUserFields.push("User Role");
+  if (!form.clientName) missingUserFields.push("Client Name");
+  if (!clientSite) missingUserFields.push("Client Site");
 
-      setErrors(errs);
-      return;
-    }
+  const allMissing = [...missingUploads, ...missingUserFields];
 
+  if (allMissing.length > 0) {
+    setEscalationError(
+      `Escalation: Missing uploads for section(s): ${allMissing.join(", ")}`
+    );
+    return;
+  }
+
+  setEscalationError(null);
+
+  if (Object.keys(errs).length > 0) {
+    setErrors(errs);
+    return;
+  }
 
     console.log("Form data submitted:", {
       form,
       clauses,
       underList,
       entityType,
+      userRole,
+      clientSite,
     });
 
     setIsSubmitted(true);
@@ -120,7 +135,9 @@ const AgreementForm = () => {
     setEntityType("single");
     setErrors({});
     setUploadedStatus({});
-
+    setUserRole("");
+    setClientSite("");
+  
     setTimeout(() => setIsSubmitted(false), 3000);
 
   };
@@ -154,12 +171,16 @@ const AgreementForm = () => {
 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
   <div>
     <label className="block font-medium">User Role</label>
-    <select className="w-full border rounded p-2" defaultValue="" required>
-      <option value="" disabled hidden>Select</option>
-      <option value="Maker">Maker</option>
-      <option value="Checker">Checker</option>
-      <option value="Approver">Approver</option>
-    </select>
+    <select
+  className="w-full border rounded p-2"
+  value={userRole}
+  onChange={(e) => setUserRole(e.target.value)}
+>
+  <option value="" disabled hidden>Select</option>
+  <option value="Maker">Maker</option>
+  <option value="Checker">Checker</option>
+  <option value="Approver">Approver</option>
+</select>
   </div>
   <div>
     <label className="block font-medium">Client Name</label>
@@ -167,12 +188,16 @@ const AgreementForm = () => {
   </div>
   <div>
     <label className="block font-medium">Client Site</label>
-    <select className="w-full border rounded p-2" defaultValue="" required>
-      <option value="" disabled hidden>Select</option>
-      <option value="Single">Single</option>
-      <option value="Multiple">Multiple</option>
-      <option value="SelectAll">Select All</option>
-    </select>
+    <select
+  className="w-full border rounded p-2"
+  value={clientSite}
+  onChange={(e) => setClientSite(e.target.value)}
+>
+  <option value="" disabled hidden>Select</option>
+  <option value="Single">Single</option>
+  <option value="Multiple">Multiple</option>
+  <option value="SelectAll">Select All</option>
+</select>
   </div>
 </div>
 
