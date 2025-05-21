@@ -151,28 +151,31 @@ const AgreementForm = () => {
 
         {/* User information */}
         <h2 className="text-xl font-bold">User Information</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block font-medium">User Role</label>
-            <select className="w-full border rounded p-2">
-              <option>Maker</option>
-              <option>Checker</option>
-              <option>Approver</option>
-            </select>
-          </div>
-          <div>
-            <label className="block font-medium">Client Name</label>
-            <input type="text" className="w-full border rounded p-2" />
-          </div>
-          <div>
-            <label className="block font-medium">Client Site</label>
-            <select className="w-full border rounded p-2">
-              <option>Single</option>
-              <option>Multiple</option>
-              <option>Select All</option>
-            </select>
-          </div>
-        </div>
+<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <div>
+    <label className="block font-medium">User Role</label>
+    <select className="w-full border rounded p-2" defaultValue="" required>
+      <option value="" disabled hidden>Select</option>
+      <option value="Maker">Maker</option>
+      <option value="Checker">Checker</option>
+      <option value="Approver">Approver</option>
+    </select>
+  </div>
+  <div>
+    <label className="block font-medium">Client Name</label>
+    <input type="text" className="w-full border rounded p-2" />
+  </div>
+  <div>
+    <label className="block font-medium">Client Site</label>
+    <select className="w-full border rounded p-2" defaultValue="" required>
+      <option value="" disabled hidden>Select</option>
+      <option value="Single">Single</option>
+      <option value="Multiple">Multiple</option>
+      <option value="SelectAll">Select All</option>
+    </select>
+  </div>
+</div>
+
       </div>
 
       {["Agreement", "WO", "PO", "LOI"].map((type, index) => (
