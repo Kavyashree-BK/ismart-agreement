@@ -5,8 +5,6 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
 const AgreementForm = () => {
-
-
   const [entityType, setEntityType] = useState("single");
   const [clauses, setClauses] = useState(initialClauses());
   const [underList, setUnderList] = useState(initialUnderList());
