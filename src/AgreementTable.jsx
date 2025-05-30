@@ -13,7 +13,7 @@ const AgreementTable = () => {
       {
         srNo: 1,
         clientName: "ABC Ltd",
-        location: "Andheri",
+        location: "Andheri", 
         city: "Mumbai",
         state: "Maharashtra",
         wo: "WO / PO / LOI If any",
@@ -177,16 +177,8 @@ const AgreementTable = () => {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Agreements");
     XLSX.writeFile(workbook, "Agreement_Status.xlsx");
   };
-
   return (
     <div className="p-4">
-      <button
-        onClick={exportToExcel}
-        className="mb-4 px-4 py-2 bg-green-600 text-white rounded"
-      >
-        Export to Excel
-      </button>
-
       <div className="flex gap-4 mb-4">
         {["clientName", "city", "state"].map((key) => {
           const uniqueOptions = Array.from(new Set(data.map((d) => d[key])));
@@ -195,9 +187,7 @@ const AgreementTable = () => {
               <label className="block text-sm font-medium capitalize">{key}</label>
               <select
                 className="border px-2 py-1"
-                value={
-                  columnFilters.find((f) => f.id === key)?.value || ""
-                }
+                value={columnFilters.find((f) => f.id === key)?.value || ""}
                 onChange={(e) =>
                   setColumnFilters((old) =>
                     e.target.value
@@ -217,7 +207,7 @@ const AgreementTable = () => {
           );
         })}
       </div>
-
+  
       <table className="table-auto border border-collapse w-full text-sm">
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -245,8 +235,18 @@ const AgreementTable = () => {
           ))}
         </tbody>
       </table>
+  
+      <div className="flex justify-end mt-4">
+        <button
+          onClick={exportToExcel}
+          className="px-4 py-2 bg-green-600 text-white rounded"
+        >
+          Export to Excel
+        </button>
+      </div>
     </div>
   );
+  
 };
 
 export default AgreementTable;
