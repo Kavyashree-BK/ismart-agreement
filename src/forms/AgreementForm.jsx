@@ -1,5 +1,3 @@
-
-
 import React, { useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -11,25 +9,31 @@ const AgreementForm = () => {
   const [form, setForm] = useState(initialFormData());
   const [errors, setErrors] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [uploadedStatus, setUploadedStatus] = useState({}); // Track uploads
+  const [uploadedStatus, setUploadedStatus] = useState({});
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
   const [escalationError, setEscalationError] = useState("");
   const [userRole, setUserRole] = useState("");
-const [clientSite, setClientSite] = useState("");
-
-
+  const [clientSite, setClientSite] = useState("");
+  const [userInfoErrors, setUserInfoErrors] = useState({});
+  const [uploadStatuses, setUploadStatuses] = useState({
+    LOI: { uploaded: false, status: "", remarks: "" },
+    WO: { uploaded: false, status: "", remarks: "" },
+    PO: { uploaded: false, status: "", remarks: "" },
+    Email: { uploaded: false, status: "", remarks: "" },
+    Agreement: { uploaded: false, status: "", remarks: "" }
+  });
 
   function initialClauses() {
     return [
-      { title: "Term and termination (Duration)", placeholder: "30 days" },
-      { title: "Payment Terms", placeholder: "15" },
-      { title: "Penalty", placeholder: "500/-" },
-      { title: "Minimum Wages", placeholder: "Yearly / Not Allowed / At Actual" },
-      { title: "Costing - Salary Breakup", placeholder: "Yes / No" },
-      { title: "SLA", placeholder: "Specific Page/Clause" },
-      { title: "Indemnity", placeholder: "Specific Page/Clause" },
-      { title: "Insurance", placeholder: "Specific Page/Clause" },
+      { title: "Term and termination (Duration)", placeholder: "30 days", isInitial: true },
+      { title: "Payment Terms", placeholder: "15", isInitial: true },
+      { title: "Penalty", placeholder: "500/-", isInitial: true },
+      { title: "Minimum Wages", placeholder: "Yearly / Not Allowed / At Actual", isInitial: true },
+      { title: "Costing - Salary Breakup", placeholder: "Yes / No", isInitial: true },
+      { title: "SLA", placeholder: "Specific Page/Clause", isInitial: true },
+      { title: "Indemnity", placeholder: "Specific Page/Clause", isInitial: true },
+      { title: "Insurance", placeholder: "Specific Page/Clause", isInitial: true },
     ];
   }
 
@@ -55,7 +59,12 @@ const [clientSite, setClientSite] = useState("");
   }
 
   const handleAddClause = () => {
-    setClauses([...clauses, { title: "Enter clause", placeholder: "Enter clause details" }]);
+    setClauses([...clauses, { title: "Enter clause", placeholder: "Enter clause details", isInitial: false }]);
+  };
+
+  const handleRemoveClause = (index) => {
+    const updatedClauses = clauses.filter((_, i) => i !== index);
+    setClauses(updatedClauses);
   };
 
   const duplicateElement = () => {
@@ -148,8 +157,30 @@ const [clientSite, setClientSite] = useState("");
     setIsSubmitted(false);
   };
 
-  const handleUploadChange = (key) => {
-    setUploadedStatus((prev) => ({ ...prev, [key]: true }));
+  const handleUploadChange = (type, file) => {
+    setUploadStatuses(prev => ({
+      ...prev,
+      [type]: { ...prev[type], uploaded: true }
+    }));
+  };
+
+  const handleStatusChange = (type, value) => {
+    setUploadStatuses(prev => ({
+      ...prev,
+      [type]: { ...prev[type], status: value }
+    }));
+  };
+
+  const handleRemarksChange = (type, value) => {
+    setUploadStatuses(prev => ({
+      ...prev,
+      [type]: { ...prev[type], remarks: value }
+    }));
+  };
+
+  const canUploadAgreement = () => {
+    const initialUploads = ['LOI', 'WO', 'PO', 'Email'];
+    return initialUploads.some(type => uploadStatuses[type].uploaded);
   };
 
   const handleDateChange1 = (date) => {
@@ -159,184 +190,333 @@ const [clientSite, setClientSite] = useState("");
     setEndDate(date)
   }
 
+  const validateUserInfo = () => {
+    const newErrors = {};
+    if (!userRole) newErrors.userRole = "User role is required";
+    if (!form.clientName) newErrors.clientName = "Client name is required";
+    if (!clientSite) newErrors.clientSite = "Client site is required";
+    setUserInfoErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleUserInfoChange = (field, value) => {
+    switch (field) {
+      case 'userRole':
+        setUserRole(value);
+        break;
+      case 'clientName':
+        setForm(prev => ({ ...prev, clientName: value }));
+        break;
+      case 'clientSite':
+        setClientSite(value);
+        break;
+      default:
+        break;
+    }
+    if (userInfoErrors[field]) {
+      setUserInfoErrors(prev => ({ ...prev, [field]: null }));
+    }
+  };
+
   return (
     <div className="relative max-w-7xl mx-auto p-6 bg-white rounded shadow">
       <h1 className="text-2xl font-bold mb-6 text-gray-800">Agreement Form</h1>
       <div className="space-y-4">
 
         {/* User information */}
-        <h2 className="text-xl font-bold">User Information</h2>
-<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-  <div>
-    <label className="block font-medium">User Role</label>
-    <select
-  className="w-full border rounded p-2"
-  value={userRole}
-  onChange={(e) => setUserRole(e.target.value)}
->
-  <option value="" disabled hidden>Select</option>
-  <option value="Maker">Maker</option>
-  <option value="Checker">Checker</option>
-  <option value="Approver">Approver</option>
-</select>
-  </div>
-  <div>
-    <label className="block font-medium">Client Name</label>
-    <input type="text" className="w-full border rounded p-2" />
-  </div>
-  <div>
-    <label className="block font-medium">Client Site</label>
-    <select
-  className="w-full border rounded p-2"
-  value={clientSite}
-  onChange={(e) => setClientSite(e.target.value)}
->
-  <option value="" disabled hidden>Select</option>
-  <option value="Single">Single</option>
-  <option value="Multiple">Multiple</option>
-  <option value="SelectAll">Select All</option>
-</select>
-  </div>
-</div>
-
-      </div>
-
-      {["Agreement", "WO", "PO", "LOI"].map((type, index) => (
-        <div
-          key={type}
-          className="grid grid-cols-8 gap-4 items-start mb-6 p-4 border border-gray-300 rounded-lg bg-gray-50"
-        >
-          <div className="col-span-1 font-semibold text-gray-700 pt-2">{type}</div>
-          {/* <input type="dateP" placeholder="From" className="col-span-1 border border-gray-300 p-2 rounded text-sm" />
-          <input type="text" placeholder="To" className="col-span-1 border border-gray-300 p-2 rounded text-sm" /> */}
-          {/* <input type="text" placeholder="NA" className="col-span-1 border border-gray-300 p-2 rounded text-sm" /> */}
-          <div className="">
-            <DatePicker
-              className="col-span-1 border border-gray-300 p-2 rounded text-sm w-32"
-              selected={startDate}
-
-              onChange={handleDateChange1} //only when value has changed
-            />
-          </div>
-          <div>
-            <DatePicker
-              className="col-span-1 border border-gray-300 p-2 rounded text-sm w-32"
-              selected={endDate}
-
-              onChange={handleDateChange2}
-            />
-
-          </div>
-          <label
-            className={`inline-block ${uploadedStatus[`agreement-${index}`] ? "bg-green-600" : "bg-blue-600"
-              } text-white px-4 py-2 rounded cursor-pointer hover:opacity-90`}
-          >
-            {uploadedStatus[`agreement-${index}`] ? "Uploaded" : "Upload"}
-            <input
-              type="file"
-              className="hidden"
-              onChange={() => handleUploadChange(`agreement-${index}`)}
-            />
-          </label>
-          <div className="col-span-2 text-sm">
-            <label className="block text-sm font-medium text-gray-700">Status:</label>
-            <input
-              type="text"
-              placeholder="Enter status"
-              className="border border-gray-300 p-1 rounded w-full text-sm"
-            />
-          </div>
-        </div>
-      ))
-      }
-<div className="mt-10">
-  <h2 className="text-xl font-semibold mb-4 text-gray-800">Entity Type</h2>
-
-  <div className="flex gap-6 flex-wrap">
-    {["single", "group"].map((type) => (
-      <div key={type} className="flex flex-col">
-        <label className="flex items-center gap-2">
-          <input
-            type="radio"
-            name="entityType"
-            value={type}
-            className="accent-blue-600"
-            checked={entityType === type}
-            onChange={(e) => setEntityType(e.target.value)}
-          />
-          {type === "single"
-            ? "Single Entity"
-            : "Single Entity with Group Companies"}
-        </label>
-
-        {/* Show underList inputs below group radio */}
-        {type === "group" && entityType === "group" && (
-          <div className="mt-3 flex flex-col gap-2 max-w-md">
-          
-            {underList.map((input, key) => (
-              <input
-                key={key}
-                type={input.type}
-                placeholder={input.placeholder}
-                className={input.className}
-              />
-            ))}
-
-<div className="">
-              <button
-                className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 "
-                onClick={duplicateElement}
+        <div className="mb-8 bg-gray-50 p-6 rounded-lg border border-gray-200">
+          <h2 className="text-xl font-bold mb-4 text-gray-800">User Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <label className="block font-medium text-gray-700">User Role</label>
+              <select
+                className={`w-full border rounded-md p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  userInfoErrors.userRole ? 'border-red-500' : 'border-gray-300'
+                }`}
+                value={userRole}
+                onChange={(e) => handleUserInfoChange('userRole', e.target.value)}
               >
-                +
-              </button>
+                <option value="" disabled>Select Role</option>
+                <option value="Checker">Checker</option>
+                <option value="Approver">Approver</option>
+              </select>
+              {userInfoErrors.userRole && (
+                <p className="text-red-500 text-xs mt-1">{userInfoErrors.userRole}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="block font-medium text-gray-700">Client Name</label>
+              <input
+                type="text"
+                name="clientName"
+                value={form.clientName}
+                onChange={(e) => handleUserInfoChange('clientName', e.target.value)}
+                className={`w-full border rounded-md p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  userInfoErrors.clientName ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="Enter client name"
+              />
+              {userInfoErrors.clientName && (
+                <p className="text-red-500 text-xs mt-1">{userInfoErrors.clientName}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <label className="block font-medium text-gray-700">Client Site</label>
+              <select
+                className={`w-full border rounded-md p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  userInfoErrors.clientSite ? 'border-red-500' : 'border-gray-300'
+                }`}
+                value={clientSite}
+                onChange={(e) => handleUserInfoChange('clientSite', e.target.value)}
+              >
+                <option value="" disabled>Select Site</option>
+                <option value="Single">Single</option>
+                <option value="Multiple">Multiple</option>
+                <option value="SelectAll">Select All</option>
+              </select>
+              {userInfoErrors.clientSite && (
+                <p className="text-red-500 text-xs mt-1">{userInfoErrors.clientSite}</p>
+              )}
             </div>
           </div>
-        )}
+        </div>
+
       </div>
-    ))}
-  </div>
-</div>
 
+      {/* Upload Section */}
+      {userRole && (
+        <div className="mb-8">
+          <h2 className="text-xl font-bold mb-4 text-gray-800">
+            {userRole === "Checker" ? "Initial Approvals" : "Execution Stage"}
+          </h2>
+          
+          {/* Initial Uploads (Checker) */}
+          {userRole === "Checker" && (
+            <div className="space-y-4">
+              {["LOI", "WO", "PO", "Email"].map((type) => (
+                <div key={type} className="grid grid-cols-8 gap-4 items-center p-4 border border-gray-300 rounded-lg bg-gray-50">
+                  <div className="col-span-1 font-semibold text-gray-700">{type}</div>
+                  <div className="col-span-2">
+                    <DatePicker
+                      className="w-full border border-gray-300 p-2 rounded text-sm"
+                      selected={startDate}
+                      onChange={handleDateChange1}
+                      placeholderText="From Date"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <DatePicker
+                      className="w-full border border-gray-300 p-2 rounded text-sm"
+                      selected={endDate}
+                      onChange={handleDateChange2}
+                      placeholderText="To Date"
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <label className={`inline-block ${
+                      uploadStatuses[type].uploaded ? "bg-green-600" : "bg-blue-600"
+                    } text-white px-4 py-2 rounded cursor-pointer hover:opacity-90`}>
+                      {uploadStatuses[type].uploaded ? "Uploaded" : "Upload"}
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => handleUploadChange(type, e.target.files[0])}
+                      />
+                    </label>
+                  </div>
+                  <div className="col-span-2">
+                    <input
+                      type="text"
+                      placeholder="Enter remarks"
+                      value={uploadStatuses[type].remarks}
+                      onChange={(e) => handleRemarksChange(type, e.target.value)}
+                      className="w-full border border-gray-300 p-2 rounded text-sm"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
+          {/* Agreement Upload (Approver) */}
+          {userRole === "Approver" && (
+            <div className={`space-y-4 ${!canUploadAgreement() ? 'opacity-50' : ''}`}>
+              <div className="grid grid-cols-8 gap-4 items-center p-4 border border-gray-300 rounded-lg bg-gray-50">
+                <div className="col-span-1 font-semibold text-gray-700">Agreement</div>
+                <div className="col-span-2">
+                  <DatePicker
+                    className="w-full border border-gray-300 p-2 rounded text-sm"
+                    selected={startDate}
+                    onChange={handleDateChange1}
+                    placeholderText="From Date"
+                    disabled={!canUploadAgreement()}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <DatePicker
+                    className="w-full border border-gray-300 p-2 rounded text-sm"
+                    selected={endDate}
+                    onChange={handleDateChange2}
+                    placeholderText="To Date"
+                    disabled={!canUploadAgreement()}
+                  />
+                </div>
+                <div className="col-span-1">
+                  <label className={`inline-block ${
+                    uploadStatuses.Agreement.uploaded ? "bg-green-600" : "bg-blue-600"
+                  } text-white px-4 py-2 rounded cursor-pointer hover:opacity-90 ${
+                    !canUploadAgreement() ? 'cursor-not-allowed opacity-50' : ''
+                  }`}>
+                    {uploadStatuses.Agreement.uploaded ? "Uploaded" : "Upload"}
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => handleUploadChange('Agreement', e.target.files[0])}
+                      disabled={!canUploadAgreement()}
+                    />
+                  </label>
+                </div>
+                <div className="col-span-2">
+                  <input
+                    type="text"
+                    placeholder="Enter remarks"
+                    value={uploadStatuses.Agreement.remarks}
+                    onChange={(e) => handleRemarksChange('Agreement', e.target.value)}
+                    className="w-full border border-gray-300 p-2 rounded text-sm"
+                    disabled={!canUploadAgreement()}
+                  />
+                </div>
+              </div>
+              {!canUploadAgreement() && (
+                <p className="text-yellow-600 text-sm">
+                  Initial approvals must be uploaded before proceeding with Agreement upload
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
+      {/* Entity Type Section */}
+      <div className="mt-10">
+        <h2 className="text-xl font-semibold mb-4 text-gray-800">Entity Type</h2>
+        <div className="flex gap-6 flex-wrap">
+          {["single", "group"].map((type) => (
+            <div key={type} className="flex flex-col">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="entityType"
+                  value={type}
+                  className="accent-blue-600"
+                  checked={entityType === type}
+                  onChange={(e) => setEntityType(e.target.value)}
+                />
+                {type === "single"
+                  ? "Single Entity"
+                  : "Single Entity with Group Companies"}
+              </label>
+
+              {/* Show underList inputs below group radio */}
+              {type === "group" && entityType === "group" && (
+                <div className="mt-3 flex flex-col gap-2 max-w-md">
+                  {underList.map((input, key) => (
+                    <input
+                      key={key}
+                      type={input.type}
+                      placeholder={input.placeholder}
+                      className={input.className}
+                    />
+                  ))}
+                  <div className="">
+                    <button
+                      className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                      onClick={duplicateElement}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Important Clauses Section */}
       <div className="mt-10">
         <h2 className="text-xl font-semibold mb-4 text-gray-800">Important Clauses</h2>
         {clauses.map((clause, index) => (
-          <div key={index} className="grid grid-cols-3 gap-4 mb-4 items-center">
-            <input
-              type="text"
-              value={clause.title}
-              onChange={(e) => {
-                const updated = [...clauses];
-                updated[index].title = e.target.value;
-                setClauses(updated);
-              }}
-              className="border border-gray-300 p-2 rounded text-sm w-full"
-            />
-            <input
-              type="text"
-              placeholder={clause.placeholder}
-              className="border border-gray-300 p-2 rounded text-sm w-full"
-            />
-            {(clause.title === "Term and termination (Duration)" || clause.title === "Payment Terms" || clause.title === "Penalty" || clause.title === "Minimum Wages" || clause.title === "Costing - Salary Breakup" || clause.title === "SLA" || clause.title === "Indemnity" || clause.title === "Insurance" || clause.title === "Enter clause") && (
-              <label
-                className={`inline-block ${uploadedStatus[`clause-${index}`] ? "bg-green-600" : "bg-blue-600"
+          <div key={index} className="flex items-center gap-4 mb-4">
+            <div className="flex-1">
+              <input
+                type="text"
+                value={clause.title}
+                onChange={(e) => {
+                  const updated = [...clauses];
+                  updated[index].title = e.target.value;
+                  setClauses(updated);
+                }}
+                className="border border-gray-300 p-2 rounded text-sm w-full"
+              />
+            </div>
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder={clause.placeholder}
+                className="border border-gray-300 p-2 rounded text-sm w-full"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              {(clause.title === "Term and termination (Duration)" || 
+                clause.title === "Payment Terms" || 
+                clause.title === "Penalty" || 
+                clause.title === "Minimum Wages" || 
+                clause.title === "Costing - Salary Breakup" || 
+                clause.title === "SLA" || 
+                clause.title === "Indemnity" || 
+                clause.title === "Insurance" || 
+                clause.title === "Enter clause") && (
+                <label
+                  className={`inline-block ${
+                    uploadStatuses[`clause-${index}`] ? "bg-green-600" : "bg-blue-600"
                   } text-white px-4 py-2 rounded cursor-pointer hover:opacity-90`}
-              >
-                {uploadedStatus[`clause-${index}`] ? "Uploaded" : "Upload"}
-                <input
-                  type="file"
-                  className="hidden"
-                  onChange={() => handleUploadChange(`clause-${index}`)}
-                />
-              </label>
-            )}
+                >
+                  {uploadStatuses[`clause-${index}`] ? "Uploaded" : "Upload"}
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={() => handleUploadChange(`clause-${index}`)}
+                  />
+                </label>
+              )}
+              {!clause.isInitial && (
+                <button
+                  onClick={() => handleRemoveClause(index)}
+                  className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100"
+                  title="Remove clause"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
         ))}
-        <button onClick={handleAddClause} className="text-blue-600 hover:underline text-sm mt-2">
-          + Add Clause
-        </button>
-
+        <div className="flex gap-4 items-center">
+          <button 
+            onClick={handleAddClause} 
+            className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+            </svg>
+            Add Clause
+          </button>
+        </div>
       </div>
 
       <div className="mt-10">
