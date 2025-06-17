@@ -8,66 +8,54 @@ import {
 import * as XLSX from "xlsx";
 
 const AgreementTable = () => {
-  const rawData = useMemo(
-    () => [
-      {
-        srNo: 1,
-        clientName: "ABC Ltd",
-        location: "Andheri", 
-        city: "Mumbai",
-        state: "Maharashtra",
-        wo: "WO / PO / LOI If any",
-        executionPending: "Remark...",
-        executed: "Sent To Client Mr. Jayesh Poojari",
-        underProcess: "",
-        completed: "",
-        uploads: ["upload", "upload", "upload", "upload"],
-      },
-      {
-        srNo: 2,
-        clientName: "XYX",
-        location: "Andheri",
-        city: "Panji",
-        state: "Goa",
-        wo: "WO received from Client",
-        executionPending: "Draft Send for Client Approval",
-        executed: "",
-        underProcess: "",
-        completed: "",
-        uploads: ["upload", "upload", "upload", "upload"],
-      },
-      {
-        srNo: 3,
-        clientName: "RRR Ltd",
-        location: "Andheri",
-        city: "Jaipur",
-        state: "Rajasthan",
-        wo: "WO / PO / LOI If any",
-        executionPending: "",
-        executed: "",
-        underProcess: "With Mr. Ramesh",
-        completed: "",
-        uploads: ["upload", "upload", "upload", "upload"],
-      },
-      {
-        srNo: 4,
-        clientName: "CC LTd",
-        location: "Andheri",
-        city: "Lucknow",
-        state: "Uttar Pradesh",
-        wo: "WO / PO / LOI If any",
-        executionPending: "",
-        executed: "",
-        underProcess: "",
-        completed: "Both Side Sign",
-        uploads: ["upload", "upload", "upload", "upload"],
-      },
-    ],
-    []
-  );
+  const [data, setData] = useState([
+    {
+      srNo: 1,
+      clientName: "ABC Ltd",
+      location: "Andheri",
+      city: "Mumbai",
+      state: "Maharashtra",
+      wo: "WO / PO / LOI If any",
+      progress: "",
+    },
+    {
+      srNo: 2,
+      clientName: "XYX",
+      location: "Andheri",
+      city: "Panji",
+      state: "Goa",
+      wo: "WO received from Client",
+      progress: "",
+    },
+    {
+      srNo: 3,
+      clientName: "RRR Ltd",
+      location: "Andheri",
+      city: "Jaipur",
+      state: "Rajasthan",
+      wo: "WO / PO / LOI If any",
+      progress: "",
+    },
+    {
+      srNo: 4,
+      clientName: "CC LTd",
+      location: "Andheri",
+      city: "Lucknow",
+      state: "Uttar Pradesh",
+      wo: "WO / PO / LOI If any",
+      progress: "",
+    },
+  ]);
 
-  const [data, setData] = useState(rawData);
   const [columnFilters, setColumnFilters] = useState([]);
+
+  const handleProgressChange = (rowIndex, value) => {
+    setData((prevData) => {
+      const newData = [...prevData];
+      newData[rowIndex] = { ...newData[rowIndex], progress: value };
+      return newData;
+    });
+  };
 
   const columns = useMemo(
     () => [
@@ -100,47 +88,15 @@ const AgreementTable = () => {
         accessorKey: "wo",
       },
       {
-        header: "Execution Pending",
-        accessorKey: "executionPending",
+        header: "Progress",
+        accessorKey: "progress",
         cell: ({ row }) => (
-          <div>
-            <div>Execution Pending</div>
-            <div>{row.original.executionPending || "Remark..."}</div>
-            <div>{row.original.uploads[0]}</div>
-          </div>
-        ),
-      },
-      {
-        header: "Executed",
-        accessorKey: "executed",
-        cell: ({ row }) => (
-          <div>
-            <div>Executed</div>
-            <div>{row.original.executed || "Remark..."}</div>
-            <div>{row.original.uploads[1]}</div>
-          </div>
-        ),
-      },
-      {
-        header: "Underprocess with Client",
-        accessorKey: "underProcess",
-        cell: ({ row }) => (
-          <div>
-            <div>Underprocess with Client</div>
-            <div>{row.original.underProcess || "Remark..."}</div>
-            <div>{row.original.uploads[2]}</div>
-          </div>
-        ),
-      },
-      {
-        header: "Completed",
-        accessorKey: "completed",
-        cell: ({ row }) => (
-          <div>
-            <div>Completed</div>
-            <div>{row.original.completed || "Remark..."}</div>
-            <div>{row.original.uploads[3]}</div>
-          </div>
+          <textarea
+            className="w-full border border-gray-300 px-2 py-1 rounded resize-y min-h-[60px] focus:outline-none focus:ring-2 focus:ring-blue-400"
+            value={row.original.progress}
+            onChange={(e) => handleProgressChange(row.index, e.target.value)}
+            placeholder="Type progress"
+          />
         ),
       },
     ],
@@ -166,10 +122,7 @@ const AgreementTable = () => {
       City: row.city,
       State: row.state,
       "WO / PO / LOI": row.wo,
-      "Execution Pending": row.executionPending,
-      Executed: row.executed,
-      "Underprocess with Client": row.underProcess,
-      Completed: row.completed,
+      Progress: row.progress,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
@@ -177,6 +130,7 @@ const AgreementTable = () => {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Agreements");
     XLSX.writeFile(workbook, "Agreement_Status.xlsx");
   };
+
   return (
     <div className="p-4">
       <div className="flex gap-4 mb-4">
@@ -207,7 +161,7 @@ const AgreementTable = () => {
           );
         })}
       </div>
-  
+
       <table className="table-auto border border-collapse w-full text-sm">
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -235,7 +189,7 @@ const AgreementTable = () => {
           ))}
         </tbody>
       </table>
-  
+
       <div className="flex justify-end mt-4">
         <button
           onClick={exportToExcel}
@@ -246,7 +200,6 @@ const AgreementTable = () => {
       </div>
     </div>
   );
-  
 };
 
 export default AgreementTable;
