@@ -23,6 +23,8 @@ const AgreementForm = () => {
     Email: { uploaded: false, status: "", remarks: "" },
     Agreement: { uploaded: false, status: "", remarks: "" }
   });
+  const [stage, setStage] = useState("checker"); // checker or approver
+  const [isContinueClicked, setIsContinueClicked] = useState(false);
 
   function initialClauses() {
     return [
@@ -96,7 +98,7 @@ const AgreementForm = () => {
 
   const handleSubmit = () => {
     const errs = validateForm();
-    const requiredSections = ["Agreement", "WO", "PO", "LOI"];
+    const requiredSections = [ "WO", "PO", "LOI","Email","Agreement"];
     const missingUploads = requiredSections
       .map((type, index) => {
         const key = `agreement-${index}`;
@@ -110,8 +112,7 @@ const AgreementForm = () => {
   if (!form.clientName) missingUserFields.push("Client Name");
   if (!clientSite) missingUserFields.push("Client Site");
 
-  const allMissing = [...missingUploads, ...missingUserFields];
-
+  const allMissing = [...missingUploads, ...missingUserFields]; 
   if (allMissing.length > 0) {
     setEscalationError(
       `Escalation: Missing uploads for section(s): ${allMissing.join(", ")}`
@@ -218,6 +219,23 @@ const AgreementForm = () => {
     }
   };
 
+  // Helper to check if all required uploads are done (for checker)
+  const isCheckerUploadsComplete = () => {
+    return ["LOI", "WO", "PO", "Email"].every(type => uploadStatuses[type].uploaded);
+  };
+
+  // Helper to check if all required user info fields are filled (for checker)
+  const isCheckerUserInfoComplete = () => {
+    return userRole && form.clientName && clientSite;
+  };
+
+  // Handler for Continue (checkpoint, not stage change)
+  const handleContinue = () => {
+    setIsContinueClicked(true);
+    setUserRole("Approver");
+    setStage("approver");
+  };
+
   return (
     <div className="relative max-w-7xl mx-auto p-6 bg-white rounded shadow">
       <h1 className="text-2xl font-bold mb-6 text-gray-800">Agreement Form</h1>
@@ -234,7 +252,11 @@ const AgreementForm = () => {
                   userInfoErrors.userRole ? 'border-red-500' : 'border-gray-300'
                 }`}
                 value={userRole}
-                onChange={(e) => handleUserInfoChange('userRole', e.target.value)}
+                onChange={(e) => {
+                  if (stage === "approver") return; // prevent changing role in approver stage
+                  handleUserInfoChange('userRole', e.target.value);
+                }}
+                disabled={stage === "approver"}
               >
                 <option value="" disabled>Select Role</option>
                 <option value="Checker">Checker</option>
@@ -293,7 +315,7 @@ const AgreementForm = () => {
           </h2>
           
           {/* Initial Uploads (Checker) */}
-          {userRole === "Checker" && (
+          {userRole === "Checker" && stage === "checker" && (
             <div className="space-y-4">
               {["LOI", "WO", "PO", "Email"].map((type) => (
                 <div key={type} className="grid grid-cols-8 gap-4 items-center p-4 border border-gray-300 rounded-lg bg-gray-50">
@@ -337,12 +359,28 @@ const AgreementForm = () => {
                   </div>
                 </div>
               ))}
+              {/* Continue button below uploads, left-aligned */}
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={handleContinue}
+                  className={`px-6 py-2 rounded text-white text-sm font-semibold focus:outline-none transition-colors duration-200 ${
+                    isContinueClicked
+                      ? 'bg-green-600 cursor-not-allowed'
+                      : (isCheckerUploadsComplete() && isCheckerUserInfoComplete())
+                        ? 'bg-blue-600 hover:bg-blue-700'
+                        : 'bg-blue-300 cursor-not-allowed'
+                  }`}
+                  disabled={isContinueClicked || !(isCheckerUploadsComplete() && isCheckerUserInfoComplete())}
+                >
+                  {isContinueClicked ? 'Continue ✓' : 'Continue'}
+                </button>
+              </div>
             </div>
           )}
 
           {/* Agreement Upload (Approver) */}
           {userRole === "Approver" && (
-            <div className={`space-y-4 ${!canUploadAgreement() ? 'opacity-50' : ''}`}>
+            <div className={`space-y-4`}>
               <div className="grid grid-cols-8 gap-4 items-center p-4 border border-gray-300 rounded-lg bg-gray-50">
                 <div className="col-span-1 font-semibold text-gray-700">Agreement</div>
                 <div className="col-span-2">
@@ -351,7 +389,6 @@ const AgreementForm = () => {
                     selected={startDate}
                     onChange={handleDateChange1}
                     placeholderText="From Date"
-                    disabled={!canUploadAgreement()}
                   />
                 </div>
                 <div className="col-span-2">
@@ -360,21 +397,17 @@ const AgreementForm = () => {
                     selected={endDate}
                     onChange={handleDateChange2}
                     placeholderText="To Date"
-                    disabled={!canUploadAgreement()}
                   />
                 </div>
                 <div className="col-span-1">
                   <label className={`inline-block ${
                     uploadStatuses.Agreement.uploaded ? "bg-green-600" : "bg-blue-600"
-                  } text-white px-4 py-2 rounded cursor-pointer hover:opacity-90 ${
-                    !canUploadAgreement() ? 'cursor-not-allowed opacity-50' : ''
-                  }`}>
+                  } text-white px-4 py-2 rounded cursor-pointer hover:opacity-90`}>
                     {uploadStatuses.Agreement.uploaded ? "Uploaded" : "Upload"}
                     <input
                       type="file"
                       className="hidden"
                       onChange={(e) => handleUploadChange('Agreement', e.target.files[0])}
-                      disabled={!canUploadAgreement()}
                     />
                   </label>
                 </div>
@@ -385,15 +418,9 @@ const AgreementForm = () => {
                     value={uploadStatuses.Agreement.remarks}
                     onChange={(e) => handleRemarksChange('Agreement', e.target.value)}
                     className="w-full border border-gray-300 p-2 rounded text-sm"
-                    disabled={!canUploadAgreement()}
                   />
                 </div>
               </div>
-              {!canUploadAgreement() && (
-                <p className="text-yellow-600 text-sm">
-                  Initial approvals must be uploaded before proceeding with Agreement upload
-                </p>
-              )}
             </div>
           )}
         </div>
@@ -547,7 +574,6 @@ const AgreementForm = () => {
         )}
 
       <div className="mt-10 text-right">
-      
         <button onClick={handleSubmit} className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 text-sm">
           Submit
         </button>
