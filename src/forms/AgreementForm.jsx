@@ -21,7 +21,8 @@ const AgreementForm = () => {
     WO: { uploaded: false, status: "", remarks: "" },
     PO: { uploaded: false, status: "", remarks: "" },
     Email: { uploaded: false, status: "", remarks: "" },
-    Agreement: { uploaded: false, status: "", remarks: "" }
+    Agreement: { uploaded: false, status: "", remarks: "" },
+    // Clause uploads will be added dynamically as clause-0, clause-1, ...
   });
   const [stage, setStage] = useState("checker"); // checker or approver
   const [isContinueClicked, setIsContinueClicked] = useState(false);
@@ -61,7 +62,15 @@ const AgreementForm = () => {
   }
 
   const handleAddClause = () => {
-    setClauses([...clauses, { title: "Enter clause", placeholder: "Enter clause details", isInitial: false }]);
+    setClauses(prevClauses => {
+      const newClauses = [...prevClauses, { title: "Enter clause", placeholder: "Enter clause details", isInitial: false }];
+      // Initialize uploadStatuses for the new clause
+      setUploadStatuses(prevStatuses => ({
+        ...prevStatuses,
+        [`clause-${newClauses.length - 1}`]: { uploaded: false, file: undefined }
+      }));
+      return newClauses;
+    });
   };
 
   const handleRemoveClause = (index) => {
@@ -161,7 +170,14 @@ const AgreementForm = () => {
   const handleUploadChange = (type, file) => {
     setUploadStatuses(prev => ({
       ...prev,
-      [type]: { ...prev[type], uploaded: true }
+      [type]: { ...prev[type], uploaded: true, file }
+    }));
+  };
+
+  const handleRemoveUpload = (type) => {
+    setUploadStatuses(prev => ({
+      ...prev,
+      [type]: { ...prev[type], uploaded: false, file: undefined }
     }));
   };
 
@@ -506,18 +522,45 @@ const AgreementForm = () => {
                 clause.title === "Indemnity" || 
                 clause.title === "Insurance" || 
                 clause.title === "Enter clause") && (
-                <label
-                  className={`inline-block ${
-                    uploadStatuses[`clause-${index}`] ? "bg-green-600" : "bg-blue-600"
-                  } text-white px-4 py-2 rounded cursor-pointer hover:opacity-90`}
-                >
-                  {uploadStatuses[`clause-${index}`] ? "Uploaded" : "Upload"}
-                  <input
-                    type="file"
-                    className="hidden"
-                    onChange={() => handleUploadChange(`clause-${index}`)}
-                  />
-                </label>
+                <>
+                  <label
+                    className={`inline-block ${
+                      uploadStatuses[`clause-${index}`]?.uploaded ? "bg-green-600" : "bg-blue-600"
+                    } text-white px-4 py-2 rounded cursor-pointer hover:opacity-90`}
+                  >
+                    {uploadStatuses[`clause-${index}`]?.uploaded ? "Uploaded" : "Upload"}
+                    <input
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => handleUploadChange(`clause-${index}`, e.target.files[0])}
+                    />
+                  </label>
+                  {uploadStatuses[`clause-${index}`]?.uploaded && (
+                    <>
+                      <button
+                        type="button"
+                        className="text-blue-600 underline text-xs ml-2"
+                        onClick={() => {
+                          const file = uploadStatuses[`clause-${index}`]?.file;
+                          if (file) {
+                            const url = URL.createObjectURL(file);
+                            window.open(url, '_blank');
+                          }
+                        }}
+                      >
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        className="text-red-600 text-xs ml-2"
+                        onClick={() => handleRemoveUpload(`clause-${index}`)}
+                        title="Remove uploaded file"
+                      >
+                        Remove
+                      </button>
+                    </>
+                  )}
+                </>
               )}
               {!clause.isInitial && (
                 <button

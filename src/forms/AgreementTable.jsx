@@ -8,7 +8,7 @@ import {
 import * as XLSX from "xlsx";
 
 const AgreementTable = () => {
-  const [data, setData] = useState([
+  const initialData = [
     {
       srNo: 1,
       clientName: "ABC Ltd",
@@ -16,7 +16,12 @@ const AgreementTable = () => {
       city: "Mumbai",
       state: "Maharashtra",
       wo: "WO / PO / LOI If any",
-      progress: "",
+      stages: {
+        executionPending: { current: "", date: "", history: [] },
+        executed: { current: "", date: "", history: [] },
+        underProcess: { current: "", date: "", history: [] },
+        completed: { current: "", date: "", history: [] },
+      },
     },
     {
       srNo: 2,
@@ -25,7 +30,12 @@ const AgreementTable = () => {
       city: "Panji",
       state: "Goa",
       wo: "WO received from Client",
-      progress: "",
+      stages: {
+        executionPending: { current: "", date: "", history: [] },
+        executed: { current: "", date: "", history: [] },
+        underProcess: { current: "", date: "", history: [] },
+        completed: { current: "", date: "", history: [] },
+      },
     },
     {
       srNo: 3,
@@ -34,35 +44,116 @@ const AgreementTable = () => {
       city: "Jaipur",
       state: "Rajasthan",
       wo: "WO / PO / LOI If any",
-      progress: "",
+      stages: {
+        executionPending: { current: "", date: "", history: [] },
+        executed: { current: "", date: "", history: [] },
+        underProcess: { current: "", date: "", history: [] },
+        completed: { current: "", date: "", history: [] },
+      },
     },
     {
       srNo: 4,
-      clientName: "CC LTd",
+      clientName: "CC Ltd",
       location: "Andheri",
       city: "Lucknow",
       state: "Uttar Pradesh",
       wo: "WO / PO / LOI If any",
-      progress: "",
+      stages: {
+        executionPending: { current: "", date: "", history: [] },
+        executed: { current: "", date: "", history: [] },
+        underProcess: { current: "", date: "", history: [] },
+        completed: { current: "", date: "", history: [] },
+      },
     },
-  ]);
+  ];
 
+  const [data, setData] = useState(initialData);
   const [columnFilters, setColumnFilters] = useState([]);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [exported, setExported] = useState(false);
 
-  const handleProgressChange = (rowIndex, value) => {
-    setData((prevData) => {
-      const newData = [...prevData];
-      newData[rowIndex] = { ...newData[rowIndex], progress: value };
-      return newData;
+  const updateStatus = (rowIndex, stageKey, newValue, newDate, pushToHistory = false) => {
+    setData((prev) => {
+      const updated = [...prev];
+      const row = { ...updated[rowIndex] }; // clone the row
+      const stages = { ...row.stages }; // clone the stages
+      const stage = { ...stages[stageKey] };
+
+      // Ensure history is always an array
+      let newHistory = Array.isArray(stage.history) ? stage.history : [];
+      if (
+        pushToHistory &&
+        (stage.current !== newValue || stage.date !== newDate)
+      ) {
+        newHistory = [...newHistory, { value: stage.current, date: stage.date }];
+      }
+
+      const newStage = {
+        ...stage,
+        current: newValue,
+        date: newDate,
+        history: newHistory,
+      };
+
+      stages[stageKey] = newStage;
+      row.stages = stages;
+      updated[rowIndex] = row;
+
+      // Debug: log the updated history
+      console.log('Updated history for', stageKey, 'row', rowIndex, newHistory);
+
+      return updated;
     });
+  };
+
+  const renderStageCell = (rowIndex, stageKey, stageData) => {
+    return (
+      <div className="space-y-1">
+        <textarea
+          className="border p-1 w-full resize-y min-h-[60px] focus:ring-2 focus:ring-blue-400"
+          value={stageData.current}
+          onChange={(e) =>
+            updateStatus(rowIndex, stageKey, e.target.value, stageData.date, false)
+          }
+          onBlur={(e) =>
+            updateStatus(rowIndex, stageKey, e.target.value, stageData.date, true)
+          }
+          placeholder="Enter progress"
+        />
+        <input
+          type="date"
+          className="border p-1 w-full"
+          value={stageData.date}
+          onChange={(e) =>
+            updateStatus(rowIndex, stageKey, stageData.current, e.target.value, false)
+          }
+          onBlur={(e) =>
+            updateStatus(rowIndex, stageKey, stageData.current, e.target.value, true)
+          }
+        />
+        <details>
+          <summary className="cursor-pointer text-sm text-blue-600">
+            View History
+          </summary>
+          <ul className="text-xs pl-2 list-disc">
+            {Array.isArray(stageData.history) && stageData.history.length > 0 ? (
+              stageData.history.map((entry, i) => (
+                <li key={i}>
+                  {entry.value} ({entry.date})
+                </li>
+              ))
+            ) : (
+              <li className="text-gray-400">No history yet</li>
+            )}
+          </ul>
+        </details>
+      </div>
+    );
   };
 
   const columns = useMemo(
     () => [
-      {
-        header: "Sr. No",
-        accessorKey: "srNo",
-      },
+      { header: "Sr. No", accessorKey: "srNo" },
       {
         header: "Client Name",
         accessorKey: "clientName",
@@ -88,16 +179,24 @@ const AgreementTable = () => {
         accessorKey: "wo",
       },
       {
-        header: "Progress",
-        accessorKey: "progress",
-        cell: ({ row }) => (
-          <textarea
-            className="w-full border border-gray-300 px-2 py-1 rounded resize-y min-h-[60px] focus:outline-none focus:ring-2 focus:ring-blue-400"
-            value={row.original.progress}
-            onChange={(e) => handleProgressChange(row.index, e.target.value)}
-            placeholder="Type progress"
-          />
-        ),
+        header: "Execution Pending",
+        cell: ({ row }) =>
+          renderStageCell(row.index, "executionPending", row.original.stages.executionPending),
+      },
+      {
+        header: "Executed",
+        cell: ({ row }) =>
+          renderStageCell(row.index, "executed", row.original.stages.executed),
+      },
+      {
+        header: "Underprocess with Client",
+        cell: ({ row }) =>
+          renderStageCell(row.index, "underProcess", row.original.stages.underProcess),
+      },
+      {
+        header: "Completed",
+        cell: ({ row }) =>
+          renderStageCell(row.index, "completed", row.original.stages.completed),
       },
     ],
     []
@@ -106,9 +205,7 @@ const AgreementTable = () => {
   const table = useReactTable({
     data,
     columns,
-    state: {
-      columnFilters,
-    },
+    state: { columnFilters },
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -122,13 +219,45 @@ const AgreementTable = () => {
       City: row.city,
       State: row.state,
       "WO / PO / LOI": row.wo,
-      Progress: row.progress,
+      "Execution Pending": `${row.stages.executionPending.current} (${row.stages.executionPending.date})`,
+      Executed: `${row.stages.executed.current} (${row.stages.executed.date})`,
+      "Underprocess with Client": `${row.stages.underProcess.current} (${row.stages.underProcess.date})`,
+      Completed: `${row.stages.completed.current} (${row.stages.completed.date})`,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Agreements");
     XLSX.writeFile(workbook, "Agreement_Status.xlsx");
+    setExported(true);
+    setTimeout(() => setExported(false), 2000);
+  };
+
+  const handleSave = () => {
+    setData((prevData) => {
+      const updatedData = prevData.map((row) => {
+        const newStages = { ...row.stages };
+        Object.keys(newStages).forEach((stageKey) => {
+          const stage = newStages[stageKey];
+          // Ensure history is always an array
+          let history = Array.isArray(stage.history) ? stage.history : [];
+          // Only add to history if current value/date is different from last history entry
+          const lastEntry = history.length > 0 ? history[history.length - 1] : null;
+          if (
+            !lastEntry ||
+            lastEntry.value !== stage.current ||
+            lastEntry.date !== stage.date
+          ) {
+            history = [...history, { value: stage.current, date: stage.date }];
+          }
+          newStages[stageKey] = { ...stage, history };
+        });
+        return { ...row, stages: newStages };
+      });
+      return updatedData;
+    });
+    setShowSaveSuccess(true);
+    setTimeout(() => setShowSaveSuccess(false), 2000);
   };
 
   return (
@@ -190,14 +319,26 @@ const AgreementTable = () => {
         </tbody>
       </table>
 
-      <div className="flex justify-end mt-4">
+      <div className="flex justify-end gap-4 mt-4">
+        <button
+          onClick={handleSave}
+          className="px-4 py-2 bg-blue-600 text-white rounded"
+        >
+          Save
+        </button>
         <button
           onClick={exportToExcel}
-          className="px-4 py-2 bg-green-600 text-white rounded"
+          className={`px-4 py-2 ${exported ? 'bg-green-600' : 'bg-blue-600'} text-white rounded`}
         >
           Export to Excel
         </button>
       </div>
+
+      {showSaveSuccess && (
+        <div className="fixed bottom-8 right-8 bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded shadow-lg z-50">
+          Changes saved!
+        </div>
+      )}
     </div>
   );
 };
