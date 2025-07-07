@@ -27,6 +27,12 @@ const AgreementForm = () => {
   const [stage, setStage] = useState("checker"); // checker or approver
   const [isContinueClicked, setIsContinueClicked] = useState(false);
 
+  // Check if agreement is expiring within 30 days
+  const today = new Date();
+  const timeDiff = endDate.getTime() - today.getTime();
+  const daysToExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24));
+  const isExpiringSoon = daysToExpiry > 0 && daysToExpiry <= 30;
+
   function initialClauses() {
     return [
       { title: "Term and termination (Duration)", placeholder: "30 days", isInitial: true },
@@ -80,6 +86,10 @@ const AgreementForm = () => {
 
   const duplicateElement = () => {
     setUnderList([...underList, ...initialUnderList()]);
+  };
+
+  const handleRemoveUnderList = (index) => {
+    setUnderList(prev => prev.filter((_, i) => i !== index));
   };
 
   const validateForm = () => {
@@ -330,6 +340,13 @@ const AgreementForm = () => {
             {userRole === "Checker" ? "Initial Approvals" : "Execution Stage"}
           </h2>
           
+          {/* Expiry alert for agreement */}
+          {isExpiringSoon && (
+            <div className="mb-4 bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-2 rounded text-sm font-semibold">
+              Escalation: This agreement will expire in {daysToExpiry} day{daysToExpiry !== 1 ? 's' : ''}!
+            </div>
+          )}
+
           {/* Initial Uploads (Checker) */}
           {userRole === "Checker" && stage === "checker" && (
             <div className="space-y-4">
@@ -466,12 +483,25 @@ const AgreementForm = () => {
               {type === "group" && entityType === "group" && (
                 <div className="mt-3 flex flex-col gap-2 max-w-md">
                   {underList.map((input, key) => (
-                    <input
-                      key={key}
-                      type={input.type}
-                      placeholder={input.placeholder}
-                      className={input.className}
-                    />
+                    <div key={key} className="flex items-center gap-2">
+                      <input
+                        type={input.type}
+                        placeholder={input.placeholder}
+                        className={input.className}
+                      />
+                      {underList.length > 1 && (
+                        <button
+                          type="button"
+                          className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-100"
+                          title="Remove"
+                          onClick={() => handleRemoveUnderList(key)}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M6 6a1 1 0 011-1h6a1 1 0 011 1v8a1 1 0 01-1 1H7a1 1 0 01-1-1V6zm2 2a1 1 0 012 0v4a1 1 0 11-2 0V8z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   ))}
                   <div className="">
                     <button
