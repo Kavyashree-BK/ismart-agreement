@@ -2,7 +2,23 @@ import React, { useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
-const AgreementForm = () => {
+// Hardcoded clients and their sites
+const clientsData = [
+  {
+    name: "Client A",
+    sites: ["Site A1", "Site A2", "Site A3"]
+  },
+  {
+    name: "Client B",
+    sites: ["Site B1", "Site B2"]
+  },
+  {
+    name: "Client C",
+    sites: ["Site C1", "Site C2", "Site C3", "Site C4"]
+  }
+];
+
+const AgreementForm = (props) => {
   const [entityType, setEntityType] = useState("single");
   const [clauses, setClauses] = useState(initialClauses());
   const [underList, setUnderList] = useState(initialUnderList());
@@ -14,7 +30,9 @@ const AgreementForm = () => {
   const [endDate, setEndDate] = useState(new Date());
   const [escalationError, setEscalationError] = useState("");
   const [userRole, setUserRole] = useState("");
-  const [clientSite, setClientSite] = useState("");
+  const [selectedClient, setSelectedClient] = useState("");
+  const [availableSites, setAvailableSites] = useState([]);
+  const [selectedSites, setSelectedSites] = useState([]);
   const [userInfoErrors, setUserInfoErrors] = useState({});
   const [uploadStatuses, setUploadStatuses] = useState({
     LOI: { uploaded: false, status: "", remarks: "" },
@@ -26,6 +44,7 @@ const AgreementForm = () => {
   });
   const [stage, setStage] = useState("checker"); // checker or approver
   const [isContinueClicked, setIsContinueClicked] = useState(false);
+  const [uploadError, setUploadError] = useState({}); // { [type]: errorMsg }
 
   // Check if agreement is expiring within 30 days
   const today = new Date();
@@ -128,8 +147,8 @@ const AgreementForm = () => {
       // Check missing user info fields
   const missingUserFields = [];
   if (!userRole) missingUserFields.push("User Role");
-  if (!form.clientName) missingUserFields.push("Client Name");
-  if (!clientSite) missingUserFields.push("Client Site");
+  if (!selectedClient) missingUserFields.push("Client Name");
+  if (!selectedSites.length) missingUserFields.push("Client Site(s)");
 
   const allMissing = [...missingUploads, ...missingUserFields]; 
   if (allMissing.length > 0) {
@@ -152,7 +171,8 @@ const AgreementForm = () => {
       underList,
       entityType,
       userRole,
-      clientSite,
+      selectedClient,
+      selectedSites,
     });
 
     setIsSubmitted(true);
@@ -163,7 +183,9 @@ const AgreementForm = () => {
     setErrors({});
     setUploadedStatus({});
     setUserRole("");
-    setClientSite("");
+    setSelectedClient("");
+    setAvailableSites([]);
+    setSelectedSites([]);
   
     setTimeout(() => setIsSubmitted(false), 3000);
 
@@ -178,6 +200,30 @@ const AgreementForm = () => {
   };
 
   const handleUploadChange = (type, file) => {
+    // Allowed types and max size
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'image/jpeg',
+      'image/png',
+      'image/jpg',
+    ];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    let error = '';
+    if (file) {
+      if (!allowedTypes.includes(file.type)) {
+        error = 'Invalid file type. Only PDF, DOCX, JPG, JPEG, PNG allowed.';
+      } else if (file.size > maxSize) {
+        error = 'File size exceeds 10MB.';
+      }
+    }
+    if (error) {
+      setUploadError(prev => ({ ...prev, [type]: error }));
+      // Do not update uploadStatuses
+      return;
+    } else {
+      setUploadError(prev => ({ ...prev, [type]: undefined }));
+    }
     setUploadStatuses(prev => ({
       ...prev,
       [type]: { ...prev[type], uploaded: true, file }
@@ -220,8 +266,8 @@ const AgreementForm = () => {
   const validateUserInfo = () => {
     const newErrors = {};
     if (!userRole) newErrors.userRole = "User role is required";
-    if (!form.clientName) newErrors.clientName = "Client name is required";
-    if (!clientSite) newErrors.clientSite = "Client site is required";
+    if (!selectedClient) newErrors.clientName = "Client name is required";
+    if (!selectedSites.length) newErrors.clientSite = "At least one site is required";
     setUserInfoErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -232,10 +278,15 @@ const AgreementForm = () => {
         setUserRole(value);
         break;
       case 'clientName':
+        setSelectedClient(value);
         setForm(prev => ({ ...prev, clientName: value }));
+        // Update available sites and reset selected sites
+        const clientObj = clientsData.find(c => c.name === value);
+        setAvailableSites(clientObj ? clientObj.sites : []);
+        setSelectedSites([]);
         break;
       case 'clientSite':
-        setClientSite(value);
+        setSelectedSites(value); // value is array
         break;
       default:
         break;
@@ -252,7 +303,7 @@ const AgreementForm = () => {
 
   // Helper to check if all required user info fields are filled (for checker)
   const isCheckerUserInfoComplete = () => {
-    return userRole && form.clientName && clientSite;
+    return userRole && selectedClient && selectedSites.length > 0;
   };
 
   // Handler for Continue (checkpoint, not stage change)
@@ -281,6 +332,9 @@ const AgreementForm = () => {
                 onChange={(e) => {
                   if (stage === "approver") return; // prevent changing role in approver stage
                   handleUserInfoChange('userRole', e.target.value);
+                  if (typeof props.setUserRole === "function") {
+                    props.setUserRole(e.target.value);
+                  }
                 }}
                 disabled={stage === "approver"}
               >
@@ -293,37 +347,45 @@ const AgreementForm = () => {
               )}
             </div>
 
+            {/* Client Name Dropdown */}
             <div className="space-y-2">
               <label className="block font-medium text-gray-700">Client Name</label>
-              <input
-                type="text"
-                name="clientName"
-                value={form.clientName}
-                onChange={(e) => handleUserInfoChange('clientName', e.target.value)}
+              <select
                 className={`w-full border rounded-md p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                   userInfoErrors.clientName ? 'border-red-500' : 'border-gray-300'
                 }`}
-                placeholder="Enter client name"
-              />
+                value={selectedClient}
+                onChange={e => handleUserInfoChange('clientName', e.target.value)}
+              >
+                <option value="" disabled>Select Client</option>
+                {clientsData.map(client => (
+                  <option key={client.name} value={client.name}>{client.name}</option>
+                ))}
+              </select>
               {userInfoErrors.clientName && (
                 <p className="text-red-500 text-xs mt-1">{userInfoErrors.clientName}</p>
               )}
             </div>
 
+            {/* Multi-select Site Dropdown */}
             <div className="space-y-2">
-              <label className="block font-medium text-gray-700">Client Site</label>
-              <select
-                className={`w-full border rounded-md p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  userInfoErrors.clientSite ? 'border-red-500' : 'border-gray-300'
-                }`}
-                value={clientSite}
-                onChange={(e) => handleUserInfoChange('clientSite', e.target.value)}
-              >
-                <option value="" disabled>Select Site</option>
-                <option value="Single">Single</option>
-                <option value="Multiple">Multiple</option>
-                <option value="SelectAll">Select All</option>
-              </select>
+              <label className="block font-medium text-gray-700">Client Site(s)</label>
+              <div className={`w-full border rounded-md p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${userInfoErrors.clientSite ? 'border-red-500' : 'border-gray-300'}`}>
+                <select
+                  multiple
+                  value={selectedSites}
+                  onChange={e => {
+                    const options = Array.from(e.target.selectedOptions, option => option.value);
+                    handleUserInfoChange('clientSite', options);
+                  }}
+                  className="w-full h-24 bg-transparent outline-none"
+                  disabled={!selectedClient}
+                >
+                  {availableSites.map(site => (
+                    <option key={site} value={site}>{site}</option>
+                  ))}
+                </select>
+              </div>
               {userInfoErrors.clientSite && (
                 <p className="text-red-500 text-xs mt-1">{userInfoErrors.clientSite}</p>
               )}
@@ -377,9 +439,11 @@ const AgreementForm = () => {
                       <input
                         type="file"
                         className="hidden"
+                        accept=".pdf,.docx,.jpg,.jpeg,.png"
                         onChange={(e) => handleUploadChange(type, e.target.files[0])}
                       />
                     </label>
+                    {uploadError[type] && <p className="text-red-500 text-xs mt-1">{uploadError[type]}</p>}
                   </div>
                   <div className="col-span-2">
                     <input
@@ -440,9 +504,11 @@ const AgreementForm = () => {
                     <input
                       type="file"
                       className="hidden"
+                      accept=".pdf,.docx,.jpg,.jpeg,.png"
                       onChange={(e) => handleUploadChange('Agreement', e.target.files[0])}
                     />
                   </label>
+                  {uploadError.Agreement && <p className="text-red-500 text-xs mt-1">{uploadError.Agreement}</p>}
                 </div>
                 <div className="col-span-2">
                   <input
@@ -562,9 +628,11 @@ const AgreementForm = () => {
                     <input
                       type="file"
                       className="hidden"
+                      accept=".pdf,.docx,.jpg,.jpeg,.png"
                       onChange={(e) => handleUploadChange(`clause-${index}`, e.target.files[0])}
                     />
                   </label>
+                  {uploadError[`clause-${index}`] && <p className="text-red-500 text-xs mt-1">{uploadError[`clause-${index}`]}</p>}
                   {uploadStatuses[`clause-${index}`]?.uploaded && (
                     <>
                       <button
