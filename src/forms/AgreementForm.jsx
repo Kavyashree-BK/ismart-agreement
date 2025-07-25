@@ -5,16 +5,24 @@ import "react-datepicker/dist/react-datepicker.css";
 // Hardcoded clients and their sites
 const clientsData = [
   {
-    name: "Client A",
-    sites: ["Site A1", "Site A2", "Site A3"]
+    name: "ABC Corp",
+    sites: ["Mumbai Office", "Pune Office", "Delhi Branch"]
   },
   {
-    name: "Client B",
-    sites: ["Site B1", "Site B2"]
+    name: "XYZ Ltd",
+    sites: ["Chennai Branch", "Hyderabad Site"]
   },
   {
-    name: "Client C",
-    sites: ["Site C1", "Site C2", "Site C3", "Site C4"]
+    name: "Tech Solutions",
+    sites: ["Bangalore HQ", "Kolkata Center"]
+  },
+  {
+    name: "CC Ltd",
+    sites: ["Lucknow", "Kanpur"]
+  },
+  {
+    name: "Delta Inc",
+    sites: ["Ahmedabad", "Surat", "Vadodara"]
   }
 ];
 
@@ -29,7 +37,7 @@ const AgreementForm = (props) => {
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
   const [escalationError, setEscalationError] = useState("");
-  const [userRole, setUserRole] = useState("");
+  const [userRole, setUserRole] = useState("checker");
   const [selectedClient, setSelectedClient] = useState("");
   const [availableSites, setAvailableSites] = useState([]);
   const [selectedSites, setSelectedSites] = useState([]);
@@ -45,6 +53,11 @@ const AgreementForm = (props) => {
   const [stage, setStage] = useState("checker"); // checker or approver
   const [isContinueClicked, setIsContinueClicked] = useState(false);
   const [uploadError, setUploadError] = useState({}); // { [type]: errorMsg }
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [draft, setDraft] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorModalMessage, setErrorModalMessage] = useState("");
 
   // Check if agreement is expiring within 30 days
   const today = new Date();
@@ -113,57 +126,75 @@ const AgreementForm = (props) => {
 
   const validateForm = () => {
     const errs = {};
-    const emailRegex = /^[a-z][a-z0-9._%+-]*@[a-z0-9.-]+\.[a-z]{2,}$/;
+    // Email: lowercase, numbers, . _ % + - before @, . - in domain, no uppercase, no special chars at start/end
+    const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
+    // Phone: exactly 10 digits, no spaces or special chars
+    const phoneRegex = /^\d{10}$/;
 
-    if (!form.iSmartContact.match(/^\d{10}$/)) {
-      errs.iSmartContact = "Invalid contact number";
+    if (!phoneRegex.test(form.iSmartContact)) {
+      errs.iSmartContact = "Phone number must be exactly 10 digits, no spaces or special characters.";
     }
 
-    if (!form.clientContact.match(/^\d{10}$/)) {
-      errs.clientContact = "Invalid contact number";
+    if (!phoneRegex.test(form.clientContact)) {
+      errs.clientContact = "Phone number must be exactly 10 digits, no spaces or special characters.";
     }
 
     if (!emailRegex.test(form.iSmartEmail)) {
-      errs.iSmartEmail = "Invalid email address";
+      errs.iSmartEmail = "Invalid email address. Only lowercase letters, numbers, and . _ % + - allowed before @. No uppercase or other special characters.";
     }
 
     if (!emailRegex.test(form.clientEmail)) {
-      errs.clientEmail = "Invalid email address";
+      errs.clientEmail = "Invalid email address. Only lowercase letters, numbers, and . _ % + - allowed before @. No uppercase or other special characters.";
     }
 
     return errs;
   };
 
   const handleSubmit = () => {
+    console.log("Submit clicked");
     const errs = validateForm();
-    const requiredSections = [ "WO", "PO", "LOI","Email","Agreement"];
+    // Only require LOI, WO, PO, Email uploads (not Agreement)
+    const requiredSections = ["WO", "PO", "LOI", "Email"];
     const missingUploads = requiredSections
-      .map((type, index) => {
-        const key = `agreement-${index}`;
-        return !uploadedStatus[key] ? type : null;
+      .map(type => {
+        return !uploadStatuses[type]?.uploaded ? type : null;
       })
-      .filter(Boolean); // Remove nulls
+      .filter(Boolean);
 
-      // Check missing user info fields
-  const missingUserFields = [];
-  if (!userRole) missingUserFields.push("User Role");
-  if (!selectedClient) missingUserFields.push("Client Name");
-  if (!selectedSites.length) missingUserFields.push("Client Site(s)");
+    // Check missing user info fields
+    const missingUserFields = [];
+    if (!selectedClient) missingUserFields.push("Client Name");
+    if (!selectedSites.length) missingUserFields.push("Client Site(s)");
+    if (!userRole) missingUserFields.push("User Role");
 
-  const allMissing = [...missingUploads, ...missingUserFields]; 
-  if (allMissing.length > 0) {
-    setEscalationError(
-      `Escalation: Missing uploads for section(s): ${allMissing.join(", ")}`
-    );
-    return;
-  }
+    // Show error messages for missing client name/site
+    if (!selectedClient || !selectedSites.length) {
+      setUserInfoErrors(prev => ({
+        ...prev,
+        clientName: !selectedClient ? "Client name is required" : undefined,
+        clientSite: !selectedSites.length ? "At least one site is required" : undefined,
+      }));
+    }
 
-  setEscalationError(null);
+    const allMissing = [...missingUploads, ...missingUserFields];
+    if (allMissing.length > 0) {
+      const msg = `Escalation: Missing uploads for section(s): ${allMissing.join(", ")}`;
+      setEscalationError(msg);
+      setErrorModalMessage(msg);
+      setShowErrorModal(true);
+      console.log("Submission blocked:", msg);
+      return;
+    }
 
-  if (Object.keys(errs).length > 0) {
-    setErrors(errs);
-    return;
-  }
+    setEscalationError(null);
+
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      setErrorModalMessage("Please fix the highlighted errors in the form.");
+      setShowErrorModal(true);
+      console.log("Submission blocked: field errors", errs);
+      return;
+    }
 
     console.log("Form data submitted:", {
       form,
@@ -176,6 +207,7 @@ const AgreementForm = (props) => {
     });
 
     setIsSubmitted(true);
+    setShowSuccessModal(true);
     setForm(initialFormData());
     setClauses(initialClauses());
     setUnderList(initialUnderList());
@@ -186,13 +218,31 @@ const AgreementForm = (props) => {
     setSelectedClient("");
     setAvailableSites([]);
     setSelectedSites([]);
-  
     setTimeout(() => setIsSubmitted(false), 3000);
-
   };
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm({ ...form, [name]: value });
+
+    // Real-time validation for phone and email fields
+    let errorMsg = undefined;
+    // Email: lowercase, numbers, . _ % + - before @, . - in domain, no uppercase, no special chars at start/end
+    const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
+    // Phone: exactly 10 digits, no spaces or special chars
+    const phoneRegex = /^\d{10}$/;
+
+    if (name === "iSmartContact" || name === "clientContact") {
+      if (!phoneRegex.test(value)) {
+        errorMsg = "Phone number must be exactly 10 digits, no spaces or special characters.";
+      }
+    }
+    if (name === "iSmartEmail" || name === "clientEmail") {
+      if (!emailRegex.test(value)) {
+        errorMsg = "Invalid email address. Only lowercase letters, numbers, and . _ % + - allowed before @. No uppercase or other special characters.";
+      }
+    }
+    setErrors(prev => ({ ...prev, [name]: errorMsg }));
   };
 
   const closePopup = () => {
@@ -308,54 +358,52 @@ const AgreementForm = (props) => {
 
   // Handler for Continue (checkpoint, not stage change)
   const handleContinue = () => {
+    // Prevent continue if client name or site is missing
+    if (!selectedClient || !selectedSites.length) {
+      setUserInfoErrors(prev => ({
+        ...prev,
+        clientName: !selectedClient ? "Client name is required" : undefined,
+        clientSite: !selectedSites.length ? "At least one site is required" : undefined,
+      }));
+      return;
+    }
     setIsContinueClicked(true);
     setUserRole("Approver");
     setStage("approver");
   };
 
   return (
-    <div className="relative max-w-7xl mx-auto p-6 bg-white rounded shadow">
-      <h1 className="text-2xl font-bold mb-6 text-gray-800">Agreement Form</h1>
-      <div className="space-y-4">
-
-        {/* User information */}
-        <div className="mb-8 bg-gray-50 p-6 rounded-lg border border-gray-200">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">User Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <label className="block font-medium text-gray-700">User Role</label>
-              <select
-                className={`w-full border rounded-md p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  userInfoErrors.userRole ? 'border-red-500' : 'border-gray-300'
-                }`}
-                value={userRole}
-                onChange={(e) => {
-                  if (stage === "approver") return; // prevent changing role in approver stage
-                  handleUserInfoChange('userRole', e.target.value);
-                  if (typeof props.setUserRole === "function") {
-                    props.setUserRole(e.target.value);
-                  }
-                }}
-                disabled={stage === "approver"}
-              >
-                <option value="" disabled>Select Role</option>
-                <option value="Checker">Checker</option>
-                <option value="Approver">Approver</option>
-              </select>
-              {userInfoErrors.userRole && (
-                <p className="text-red-500 text-xs mt-1">{userInfoErrors.userRole}</p>
-              )}
+    <div className="relative max-w-5xl mx-auto p-0 bg-transparent mt-8 mb-12">
+      <div className="bg-white border-b px-8 pt-8 pb-4 rounded-t-2xl">
+        <h1 className="text-2xl font-bold flex items-center gap-2 mb-1">
+          <span role="img" aria-label="doc">📄</span> Legal Agreement ERP
+        </h1>
+        <div className="flex gap-3 mt-2">
+          <span className="font-semibold text-blue-600">Dashboard</span>
+          <span className="text-gray-400">|</span>
+          <span className="font-semibold text-green-600">New Agreement</span>
+        </div>
+      </div>
+      <form className="bg-white px-8 py-10 rounded-b-2xl shadow-xl border-t-0">
+        {/* User Information */}
+        <section className="mb-10">
+          <h2 className="text-xl font-bold mb-1 text-gray-900">User Information</h2>
+          <p className="text-gray-500 mb-6">Basic information about the agreement</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">User Role</label>
+              <input className="w-full border rounded-md p-2.5 text-sm bg-gray-100 text-gray-700" value={userRole || 'checker'} disabled readOnly />
             </div>
-
-            {/* Client Name Dropdown */}
-            <div className="space-y-2">
-              <label className="block font-medium text-gray-700">Client Name</label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Client Name *</label>
               <select
-                className={`w-full border rounded-md p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  userInfoErrors.clientName ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full border rounded-md p-2.5 text-sm bg-white text-gray-700"
                 value={selectedClient}
-                onChange={e => handleUserInfoChange('clientName', e.target.value)}
+                onChange={e => {
+                  setSelectedClient(e.target.value);
+                  setAvailableSites(clientsData.find(c => c.name === e.target.value)?.sites || []);
+                  setSelectedSites([]);
+                }}
               >
                 <option value="" disabled>Select Client</option>
                 {clientsData.map(client => (
@@ -363,197 +411,170 @@ const AgreementForm = (props) => {
                 ))}
               </select>
               {userInfoErrors.clientName && (
-                <p className="text-red-500 text-xs mt-1">{userInfoErrors.clientName}</p>
-              )}
-            </div>
-
-            {/* Multi-select Site Dropdown */}
-            <div className="space-y-2">
-              <label className="block font-medium text-gray-700">Client Site(s)</label>
-              <div className={`w-full border rounded-md p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${userInfoErrors.clientSite ? 'border-red-500' : 'border-gray-300'}`}>
-                <select
-                  multiple
-                  value={selectedSites}
-                  onChange={e => {
-                    const options = Array.from(e.target.selectedOptions, option => option.value);
-                    handleUserInfoChange('clientSite', options);
-                  }}
-                  className="w-full h-24 bg-transparent outline-none"
-                  disabled={!selectedClient}
-                >
-                  {availableSites.map(site => (
-                    <option key={site} value={site}>{site}</option>
-                  ))}
-                </select>
-              </div>
-              {userInfoErrors.clientSite && (
-                <p className="text-red-500 text-xs mt-1">{userInfoErrors.clientSite}</p>
+                <div className="text-red-600 text-xs mt-1">{userInfoErrors.clientName}</div>
               )}
             </div>
           </div>
-        </div>
-
-      </div>
-
-      {/* Upload Section */}
-      {userRole && (
-        <div className="mb-8">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">
-            {userRole === "Checker" ? "Initial Approvals" : "Execution Stage"}
-          </h2>
-          
-          {/* Expiry alert for agreement */}
-          {isExpiringSoon && (
-            <div className="mb-4 bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-2 rounded text-sm font-semibold">
-              Escalation: This agreement will expire in {daysToExpiry} day{daysToExpiry !== 1 ? 's' : ''}!
+          <div className="flex gap-8 mt-6">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Client Site(s) *</label>
+            <div className="flex flex-wrap gap-6">
+              {(availableSites || []).map(site => (
+                <label key={site} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    value={site}
+                    checked={selectedSites.includes(site)}
+                    onChange={e => {
+                      if (e.target.checked) {
+                        setSelectedSites([...selectedSites, site]);
+                      } else {
+                        setSelectedSites(selectedSites.filter(s => s !== site));
+                      }
+                    }}
+                    disabled={!selectedClient}
+                  />
+                  {site}
+                </label>
+              ))}
             </div>
-          )}
+            {userInfoErrors.clientSite && (
+              <div className="text-red-600 text-xs mt-1">{userInfoErrors.clientSite}</div>
+            )}
+          </div>
+        </section>
 
-          {/* Initial Uploads (Checker) */}
-          {userRole === "Checker" && stage === "checker" && (
-            <div className="space-y-4">
-              {["LOI", "WO", "PO", "Email"].map((type) => (
-                <div key={type} className="grid grid-cols-8 gap-4 items-center p-4 border border-gray-300 rounded-lg bg-gray-50">
-                  <div className="col-span-1 font-semibold text-gray-700">{type}</div>
-                  <div className="col-span-2">
-                    <DatePicker
-                      className="w-full border border-gray-300 p-2 rounded text-sm"
-                      selected={startDate}
-                      onChange={handleDateChange1}
-                      placeholderText="From Date"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <DatePicker
-                      className="w-full border border-gray-300 p-2 rounded text-sm"
-                      selected={endDate}
-                      onChange={handleDateChange2}
-                      placeholderText="To Date"
-                    />
-                  </div>
-                  <div className="col-span-1">
-                    <label className={`inline-block ${
-                      uploadStatuses[type].uploaded ? "bg-green-600" : "bg-blue-600"
-                    } text-white px-4 py-2 rounded cursor-pointer hover:opacity-90`}>
-                      {uploadStatuses[type].uploaded ? "Uploaded" : "Upload"}
+        {/* Document Uploads */}
+        {isExpiringSoon && (
+          <div className="mb-4 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 rounded">
+            <strong>Alert:</strong> This agreement is expiring in {daysToExpiry} day{daysToExpiry !== 1 ? 's' : ''}. Please ensure all required documents (WO, LOI, Email, PO) are uploaded for renewal/escalation.
+            {(["WO", "LOI", "Email", "PO"].some(type => !uploadStatuses[type]?.uploaded)) && (
+              <div className="mt-2 text-red-700">
+                <strong>Escalation:</strong> Missing uploads for: {
+                  ["WO", "LOI", "Email", "PO"].filter(type => !uploadStatuses[type]?.uploaded).join(", ")
+                }
+              </div>
+            )}
+          </div>
+        )}
+        <section className="mb-10">
+          <h2 className="text-xl font-bold mb-1 text-gray-900">Document Uploads</h2>
+          <p className="text-gray-500 mb-6">Upload required documents (LOI, WO, PO, Email)</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">From Date *</label>
+              <DatePicker
+                className="w-full border rounded-md p-2.5 text-sm"
+                selected={startDate}
+                onChange={date => setStartDate(date)}
+                dateFormat="dd-MM-yyyy"
+                placeholderText="dd-mm-yyyy"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">To Date *</label>
+              <DatePicker
+                className="w-full border rounded-md p-2.5 text-sm"
+                selected={endDate}
+                onChange={date => setEndDate(date)}
+                dateFormat="dd-MM-yyyy"
+                placeholderText="dd-mm-yyyy"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
+            {["LOI (Letter of Intent)", "WO (Work Order)", "PO (Purchase Order)", "Email"].map((label, idx) => {
+              const type = label.split(" ")[0];
+              const upload = uploadStatuses[type] || {};
+              return (
+                <div key={label} className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{label} *</label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50">
+                    <span className="text-4xl mb-2" role="img" aria-label="upload">⬆️</span>
+                    <label className="bg-white border px-4 py-2 rounded mb-2 font-medium cursor-pointer">
+                      Choose File
                       <input
                         type="file"
                         className="hidden"
                         accept=".pdf,.docx,.jpg,.jpeg,.png"
-                        onChange={(e) => handleUploadChange(type, e.target.files[0])}
+                        onChange={e => handleUploadChange(type, e.target.files[0])}
                       />
                     </label>
-                    {uploadError[type] && <p className="text-red-500 text-xs mt-1">{uploadError[type]}</p>}
+                    {upload.uploaded && upload.file && (
+                      <div className="flex flex-col items-center gap-2 mt-2">
+                        <span className="text-xs text-gray-700">{upload.file.name}</span>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            className="text-blue-600 underline text-xs"
+                            onClick={() => {
+                              const url = URL.createObjectURL(upload.file);
+                              window.open(url, '_blank');
+                            }}
+                          >
+                            View
+                          </button>
+                          <button
+                            type="button"
+                            className="text-red-600 text-xs"
+                            onClick={() => handleRemoveUpload(type)}
+                            title="Remove uploaded file"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <span className="text-gray-400 text-sm mb-2">or drag and drop your file here</span>
+                    <span className="text-xs text-gray-400">Max size: 10MB • Allowed: .pdf, .docx, .jpg, .jpeg, .png</span>
                   </div>
-                  <div className="col-span-2">
-                    <input
-                      type="text"
-                      placeholder="Enter remarks"
-                      value={uploadStatuses[type].remarks}
-                      onChange={(e) => handleRemarksChange(type, e.target.value)}
-                      className="w-full border border-gray-300 p-2 rounded text-sm"
-                    />
-                  </div>
                 </div>
-              ))}
-              {/* Continue button below uploads, left-aligned */}
-              <div className="flex justify-end mt-4">
-                <button
-                  onClick={handleContinue}
-                  className={`px-6 py-2 rounded text-white text-sm font-semibold focus:outline-none transition-colors duration-200 ${
-                    isContinueClicked
-                      ? 'bg-green-600 cursor-not-allowed'
-                      : (isCheckerUploadsComplete() && isCheckerUserInfoComplete())
-                        ? 'bg-blue-600 hover:bg-blue-700'
-                        : 'bg-blue-300 cursor-not-allowed'
-                  }`}
-                  disabled={isContinueClicked || !(isCheckerUploadsComplete() && isCheckerUserInfoComplete())}
-                >
-                  {isContinueClicked ? 'Continue ✓' : 'Continue'}
-                </button>
-              </div>
-            </div>
-          )}
+              );
+            })}
+          </div>
+        </section>
 
-          {/* Agreement Upload (Approver) */}
-          {userRole === "Approver" && (
-            <div className={`space-y-4`}>
-              <div className="grid grid-cols-8 gap-4 items-center p-4 border border-gray-300 rounded-lg bg-gray-50">
-                <div className="col-span-1 font-semibold text-gray-700">Agreement</div>
-                <div className="col-span-2">
-                  <DatePicker
-                    className="w-full border border-gray-300 p-2 rounded text-sm"
-                    selected={startDate}
-                    onChange={handleDateChange1}
-                    placeholderText="From Date"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <DatePicker
-                    className="w-full border border-gray-300 p-2 rounded text-sm"
-                    selected={endDate}
-                    onChange={handleDateChange2}
-                    placeholderText="To Date"
-                  />
-                </div>
-                <div className="col-span-1">
-                  <label className={`inline-block ${
-                    uploadStatuses.Agreement.uploaded ? "bg-green-600" : "bg-blue-600"
-                  } text-white px-4 py-2 rounded cursor-pointer hover:opacity-90`}>
-                    {uploadStatuses.Agreement.uploaded ? "Uploaded" : "Upload"}
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept=".pdf,.docx,.jpg,.jpeg,.png"
-                      onChange={(e) => handleUploadChange('Agreement', e.target.files[0])}
-                    />
-                  </label>
-                  {uploadError.Agreement && <p className="text-red-500 text-xs mt-1">{uploadError.Agreement}</p>}
-                </div>
-                <div className="col-span-2">
-                  <input
-                    type="text"
-                    placeholder="Enter remarks"
-                    value={uploadStatuses.Agreement.remarks}
-                    onChange={(e) => handleRemarksChange('Agreement', e.target.value)}
-                    className="w-full border border-gray-300 p-2 rounded text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+        {/* Remarks */}
+        <section className="mb-10">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Remarks</label>
+          <textarea className="w-full border rounded-md p-2.5 text-sm min-h-[80px]" placeholder="Add any additional remarks..." />
+        </section>
 
-      {/* Entity Type Section */}
-      <div className="mt-10">
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">Entity Type</h2>
-        <div className="flex gap-6 flex-wrap">
-          {["single", "group"].map((type) => (
-            <div key={type} className="flex flex-col">
+        {/* Entity Type */}
+        <section className="mb-10">
+          <h2 className="text-xl font-bold mb-1 text-gray-900">Entity Type</h2>
+          <p className="text-gray-500 mb-6">Specify if this is a single entity or group agreement</p>
+          <div className="flex gap-8 mb-4 items-start">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                checked={entityType === "single"}
+                onChange={() => setEntityType("single")}
+              />
+              Single Entity
+            </label>
+            <div className="flex flex-col">
               <label className="flex items-center gap-2">
                 <input
                   type="radio"
-                  name="entityType"
-                  value={type}
-                  className="accent-blue-600"
-                  checked={entityType === type}
-                  onChange={(e) => setEntityType(e.target.value)}
+                  checked={entityType === "group"}
+                  onChange={() => setEntityType("group")}
                 />
-                {type === "single"
-                  ? "Single Entity"
-                  : "Single Entity with Group Companies"}
+                Single Entity with Group Companies
               </label>
-
-              {/* Show underList inputs below group radio */}
-              {type === "group" && entityType === "group" && (
-                <div className="mt-3 flex flex-col gap-2 max-w-md">
+              {entityType === "group" && (
+                <div className="flex flex-col gap-2 max-w-md mt-2 ml-6">
                   {underList.map((input, key) => (
                     <div key={key} className="flex items-center gap-2">
                       <input
                         type={input.type}
                         placeholder={input.placeholder}
                         className={input.className}
+                        value={input.value || ""}
+                        onChange={e => {
+                          const updated = [...underList];
+                          updated[key].value = e.target.value;
+                          setUnderList(updated);
+                        }}
                       />
                       {underList.length > 1 && (
                         <button
@@ -562,16 +583,15 @@ const AgreementForm = (props) => {
                           title="Remove"
                           onClick={() => handleRemoveUnderList(key)}
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M6 6a1 1 0 011-1h6a1 1 0 011 1v8a1 1 0 01-1 1H7a1 1 0 01-1-1V6zm2 2a1 1 0 012 0v4a1 1 0 11-2 0V8z" clipRule="evenodd" />
-                          </svg>
+                          <span className="text-lg font-bold">&#10060;</span>
                         </button>
                       )}
                     </div>
                   ))}
                   <div className="">
                     <button
-                      className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                      type="button"
+                      className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 mt-2"
                       onClick={duplicateElement}
                     >
                       +
@@ -580,157 +600,272 @@ const AgreementForm = (props) => {
                 </div>
               )}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+        </section>
 
-      {/* Important Clauses Section */}
-      <div className="mt-10">
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">Important Clauses</h2>
-        {clauses.map((clause, index) => (
-          <div key={index} className="flex items-center gap-4 mb-4">
-            <div className="flex-1">
-              <input
-                type="text"
-                value={clause.title}
-                onChange={(e) => {
-                  const updated = [...clauses];
-                  updated[index].title = e.target.value;
-                  setClauses(updated);
-                }}
-                className="border border-gray-300 p-2 rounded text-sm w-full"
-              />
-            </div>
-            <div className="flex-1">
-              <input
-                type="text"
-                placeholder={clause.placeholder}
-                className="border border-gray-300 p-2 rounded text-sm w-full"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              {(clause.title === "Term and termination (Duration)" || 
-                clause.title === "Payment Terms" || 
-                clause.title === "Penalty" || 
-                clause.title === "Minimum Wages" || 
-                clause.title === "Costing - Salary Breakup" || 
-                clause.title === "SLA" || 
-                clause.title === "Indemnity" || 
-                clause.title === "Insurance" || 
-                clause.title === "Enter clause") && (
-                <>
-                  <label
-                    className={`inline-block ${
-                      uploadStatuses[`clause-${index}`]?.uploaded ? "bg-green-600" : "bg-blue-600"
-                    } text-white px-4 py-2 rounded cursor-pointer hover:opacity-90`}
-                  >
-                    {uploadStatuses[`clause-${index}`]?.uploaded ? "Uploaded" : "Upload"}
+        {/* Important Clauses */}
+        <section className="mb-10">
+          <h2 className="text-xl font-bold mb-1 text-gray-900">Important Clauses</h2>
+          <p className="text-gray-500 mb-6">Add important clauses and supporting documents</p>
+          <div className="mb-6">
+            {clauses.map((clause, idx) => (
+              <div className="mb-4" key={idx}>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Clause {idx + 1}</label>
+                <input
+                  className="w-full border rounded-md p-2.5 text-sm mb-2"
+                  placeholder="Enter clause title"
+                  value={clause.title}
+                  onChange={e => {
+                    const newClauses = [...clauses];
+                    newClauses[idx].title = e.target.value;
+                    setClauses(newClauses);
+                  }}
+                />
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50">
+                  <span className="text-4xl mb-2" role="img" aria-label="upload">⬆️</span>
+                  <label className="bg-white border px-4 py-2 rounded mb-2 font-medium cursor-pointer">
+                    Choose File
                     <input
                       type="file"
                       className="hidden"
                       accept=".pdf,.docx,.jpg,.jpeg,.png"
-                      onChange={(e) => handleUploadChange(`clause-${index}`, e.target.files[0])}
+                      onChange={e => handleUploadChange(`clause-${idx}`, e.target.files[0])}
                     />
                   </label>
-                  {uploadError[`clause-${index}`] && <p className="text-red-500 text-xs mt-1">{uploadError[`clause-${index}`]}</p>}
-                  {uploadStatuses[`clause-${index}`]?.uploaded && (
-                    <>
-                      <button
-                        type="button"
-                        className="text-blue-600 underline text-xs ml-2"
-                        onClick={() => {
-                          const file = uploadStatuses[`clause-${index}`]?.file;
-                          if (file) {
-                            const url = URL.createObjectURL(file);
+                  {uploadStatuses[`clause-${idx}`] && uploadStatuses[`clause-${idx}`].uploaded && uploadStatuses[`clause-${idx}`].file && (
+                    <div className="flex flex-col items-center gap-2 mt-2">
+                      <span className="text-xs text-gray-700">{uploadStatuses[`clause-${idx}`].file.name}</span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="text-blue-600 underline text-xs"
+                          onClick={() => {
+                            const url = URL.createObjectURL(uploadStatuses[`clause-${idx}`].file);
                             window.open(url, '_blank');
-                          }
-                        }}
-                      >
-                        View
-                      </button>
-                      <button
-                        type="button"
-                        className="text-red-600 text-xs ml-2"
-                        onClick={() => handleRemoveUpload(`clause-${index}`)}
-                        title="Remove uploaded file"
-                      >
-                        Remove
-                      </button>
-                    </>
+                          }}
+                        >
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          className="text-red-600 text-xs"
+                          onClick={() => handleRemoveUpload(`clause-${idx}`)}
+                          title="Remove uploaded file"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
                   )}
-                </>
+                  <span className="text-gray-400 text-sm mb-2">or drag and drop your file here</span>
+                  <span className="text-xs text-gray-400">Max size: 10MB • Allowed: .pdf, .docx, .jpg, .jpeg, .png</span>
+                </div>
+                <textarea
+                  className="w-full border rounded-md p-2.5 text-sm min-h-[60px] mt-2"
+                  placeholder="Enter clause details..."
+                  value={clause.details || ''}
+                  onChange={e => {
+                    const newClauses = [...clauses];
+                    newClauses[idx].details = e.target.value;
+                    setClauses(newClauses);
+                  }}
+                />
+                {!clause.isInitial && (
+                  <button
+                    type="button"
+                    className="text-red-600 text-xs mt-1"
+                    onClick={() => handleRemoveClause(idx)}
+                  >
+                    Remove Clause
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              className="border px-4 py-2 rounded font-medium flex items-center gap-2"
+              onClick={handleAddClause}
+            >
+              <span className="text-xl">＋</span> Add Clause
+            </button>
+          </div>
+        </section>
+
+        {/* Contact Information */}
+        <section className="mb-10">
+          <h2 className="text-xl font-bold mb-1 text-gray-900">Contact Information</h2>
+          <p className="text-gray-500 mb-6">Contact details for I Smart and Client</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <button className="border px-4 py-1 rounded-full font-medium mb-2">I Smart</button>
+              <input
+                className="w-full border rounded-md p-2.5 text-sm mb-2"
+                placeholder="Enter name"
+                name="iSmartName"
+                value={form.iSmartName}
+                onChange={handleChange}
+              />
+              <input
+                className="w-full border rounded-md p-2.5 text-sm mb-2"
+                placeholder="Enter phone number"
+                name="iSmartContact"
+                value={form.iSmartContact}
+                onChange={handleChange}
+              />
+              {errors.iSmartContact && (
+                <div className="text-red-600 text-xs mb-2">{errors.iSmartContact}</div>
               )}
-              {!clause.isInitial && (
-                <button
-                  onClick={() => handleRemoveClause(index)}
-                  className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100"
-                  title="Remove clause"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                </button>
+              <input
+                className="w-full border rounded-md p-2.5 text-sm mb-2"
+                placeholder="Enter email"
+                name="iSmartEmail"
+                value={form.iSmartEmail}
+                onChange={handleChange}
+              />
+              {errors.iSmartEmail && (
+                <div className="text-red-600 text-xs mb-2">{errors.iSmartEmail}</div>
+              )}
+            </div>
+            <div>
+              <button className="border px-4 py-1 rounded-full font-medium mb-2">Client</button>
+              <input
+                className="w-full border rounded-md p-2.5 text-sm mb-2"
+                placeholder="Enter name"
+                name="clientName"
+                value={form.clientName}
+                onChange={handleChange}
+              />
+              <input
+                className="w-full border rounded-md p-2.5 text-sm mb-2"
+                placeholder="Enter phone number"
+                name="clientContact"
+                value={form.clientContact}
+                onChange={handleChange}
+              />
+              {errors.clientContact && (
+                <div className="text-red-600 text-xs mb-2">{errors.clientContact}</div>
+              )}
+              <input
+                className="w-full border rounded-md p-2.5 text-sm mb-2"
+                placeholder="Enter email"
+                name="clientEmail"
+                value={form.clientEmail}
+                onChange={handleChange}
+              />
+              {errors.clientEmail && (
+                <div className="text-red-600 text-xs mb-2">{errors.clientEmail}</div>
               )}
             </div>
           </div>
-        ))}
-        <div className="flex gap-4 items-center">
-          <button 
-            onClick={handleAddClause} 
-            className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm"
+        </section>
+
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-4 mt-8 items-start">
+          {/* Draft chip to the left */}
+          {draft && (
+            <div className="flex items-center mr-4">
+              <button
+                type="button"
+                className="flex items-center bg-gray-100 border border-gray-300 rounded-full px-4 py-1 text-sm font-medium text-gray-800 hover:bg-gray-200 transition mr-2 shadow"
+                onClick={() => {
+                  // Load draft into form
+                  setForm(draft.form);
+                  setClauses(draft.clauses);
+                  setUnderList(draft.underList);
+                  setEntityType(draft.entityType);
+                  setUserRole(draft.userRole);
+                  setSelectedClient(draft.selectedClient);
+                  // Update availableSites based on selectedClient
+                  const clientObj = clientsData.find(c => c.name === draft.selectedClient);
+                  setAvailableSites(clientObj ? clientObj.sites : []);
+                  setSelectedSites(draft.selectedSites);
+                  setUploadStatuses(draft.uploadStatuses);
+                  setStartDate(new Date(draft.startDate));
+                  setEndDate(new Date(draft.endDate));
+                }}
+                title="Open draft for editing"
+              >
+                <span className="truncate max-w-[120px]">Draft</span>
+              </button>
+              <button
+                type="button"
+                className="ml-1 text-gray-400 hover:text-red-500 focus:outline-none"
+                onClick={() => setDraft(null)}
+                title="Remove draft"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+          )}
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              className="border px-6 py-2 rounded font-medium bg-white hover:bg-gray-100"
+              onClick={() => {
+                // Save draft to state
+                const draftData = {
+                  form,
+                  clauses,
+                  underList,
+                  entityType,
+                  userRole,
+                  selectedClient,
+                  selectedSites,
+                  uploadStatuses,
+                  startDate,
+                  endDate
+                };
+                setDraft(draftData);
+                setDraftSaved(true);
+                setTimeout(() => setDraftSaved(false), 2000);
+              }}
+            >
+              Save Draft
+            </button>
+            {draftSaved && (
+              <div className="text-green-700 bg-green-100 border-l-4 border-green-500 p-2 rounded text-xs">Draft saved successfully!</div>
+            )}
+          </div>
+          <button
+            type="button"
+            className="bg-black text-white px-6 py-2 rounded font-medium hover:bg-gray-900"
+            onClick={handleSubmit}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-            </svg>
-            Add Clause
+            Submit for Review
           </button>
         </div>
-      </div>
-
-      <div className="mt-10">
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">Contact Information</h2>
-        <div className="grid grid-cols-2 gap-6 mb-6">
-          <div>
-            <h3 className="font-medium text-gray-700 mb-2">Person from I Smart</h3>
-            <input name="iSmartName" value={form.iSmartName} onChange={handleChange} placeholder="Name" className="w-full border p-2 rounded text-sm mb-2" />
-            <input name="iSmartContact" value={form.iSmartContact} onChange={handleChange} placeholder="Contact No" className="w-full border p-2 rounded text-sm mb-1" />
-            {errors.iSmartContact && <p className="text-red-600 text-xs mb-1">{errors.iSmartContact}</p>}
-            <input name="iSmartEmail" value={form.iSmartEmail} onChange={handleChange} placeholder="Email" className="w-full border p-2 rounded text-sm" />
-            {errors.iSmartEmail && <p className="text-red-600 text-xs">{errors.iSmartEmail}</p>}
-          </div>
-          <div>
-            <h3 className="font-medium text-gray-700 mb-2">Person from Client</h3>
-            <input name="clientName" value={form.clientName} onChange={handleChange} placeholder="Name" className="w-full border p-2 rounded text-sm mb-2" />
-            <input name="clientContact" value={form.clientContact} onChange={handleChange} placeholder="Contact No" className="w-full border p-2 rounded text-sm mb-1" />
-            {errors.clientContact && <p className="text-red-600 text-xs mb-1">{errors.clientContact}</p>}
-            <input name="clientEmail" value={form.clientEmail} onChange={handleChange} placeholder="Email" className="w-full border p-2 rounded text-sm" />
-            {errors.clientEmail && <p className="text-red-600 text-xs">{errors.clientEmail}</p>}
-          </div>
-        </div>
-      </div>
-      {escalationError && (
-          <div className="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded text-sm">
-            {escalationError}
-          </div>
-        )}
-
-      <div className="mt-10 text-right">
-        <button onClick={handleSubmit} className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 text-sm">
-          Submit
-        </button>
-      </div>
-
-      {
-        isSubmitted && (
-          <div className="fixed top-5 right-5 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded shadow-lg z-50">
-            <div className="flex items-center justify-between">
-              <span>Submitted successfully!</span>
-              <button onClick={closePopup} className="ml-4 text-green-700 font-bold hover:text-green-900">×</button>
+        {/* Submission Success Modal */}
+        {showSuccessModal && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-30">
+            <div className="bg-white p-8 rounded shadow-xl flex flex-col items-center">
+              <div className="text-2xl font-bold mb-2 text-green-700">Submission Successful!</div>
+              <div className="mb-4 text-gray-700">Your agreement has been submitted for review.</div>
+              <button
+                className="mt-2 px-6 py-2 rounded bg-blue-600 text-white font-medium hover:bg-blue-700"
+                onClick={() => setShowSuccessModal(false)}
+              >
+                Close
+              </button>
             </div>
           </div>
-        )
-      }
-    </div >
+        )}
+        {/* Submission Error Modal */}
+        {showErrorModal && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-30">
+            <div className="bg-white p-8 rounded shadow-xl flex flex-col items-center">
+              <div className="text-2xl font-bold mb-2 text-red-700">Submission Blocked</div>
+              <div className="mb-4 text-gray-700">{errorModalMessage}</div>
+              <button
+                className="mt-2 px-6 py-2 rounded bg-blue-600 text-white font-medium hover:bg-blue-700"
+                onClick={() => setShowErrorModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </form>
+    </div>
   );
 };
 
