@@ -27,6 +27,7 @@ const clientsData = [
 ];
 
 const AgreementForm = (props) => {
+  const { onSubmit } = props;
   const [entityType, setEntityType] = useState("single");
   const [clauses, setClauses] = useState(initialClauses());
   const [underList, setUnderList] = useState(initialUnderList());
@@ -196,7 +197,7 @@ const AgreementForm = (props) => {
       return;
     }
 
-    console.log("Form data submitted:", {
+    const agreementData = {
       form,
       clauses,
       underList,
@@ -204,7 +205,17 @@ const AgreementForm = (props) => {
       userRole,
       selectedClient,
       selectedSites,
-    });
+      uploadStatuses,
+      startDate,
+      endDate
+    };
+
+    console.log("Form data submitted:", agreementData);
+
+    // Call the onSubmit prop to add to dashboard
+    if (onSubmit) {
+      onSubmit(agreementData);
+    }
 
     setIsSubmitted(true);
     setShowSuccessModal(true);
@@ -214,10 +225,12 @@ const AgreementForm = (props) => {
     setEntityType("single");
     setErrors({});
     setUploadedStatus({});
-    setUserRole("");
+    setUserRole("checker");
     setSelectedClient("");
     setAvailableSites([]);
     setSelectedSites([]);
+    setStartDate(new Date());
+    setEndDate(new Date());
     setTimeout(() => setIsSubmitted(false), 3000);
   };
 
