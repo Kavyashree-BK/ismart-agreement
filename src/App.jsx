@@ -237,14 +237,15 @@ function App() {
   };
 
   // Handler for status updates by approvers
-  const handleStatusUpdate = (agreementId, newStatus, approvedDate) => {
+  const handleStatusUpdate = (agreementId, newStatus, approvedDate, finalAgreement = null) => {
     setAgreements(prev => prev.map(agreement => 
       agreement.id === agreementId 
         ? { 
             ...agreement, 
             status: newStatus, 
             approvedDate: approvedDate,
-            approvedBy: "Current Approver" // You can get this from user context
+            approvedBy: "Current Approver", // You can get this from user context
+            finalAgreement: finalAgreement || agreement.finalAgreement // Add final agreement if provided
           }
         : agreement
     ));

@@ -81,6 +81,118 @@ const ClauseLinks = ({ clauses, uploadStatuses }) => {
   );
 };
 
+// Final Agreement Upload Modal Component
+const FinalAgreementUpload = ({ agreementId, onUpload, onCancel }) => {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadError, setUploadError] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+      'image/jpeg',
+      'image/png',
+      'image/jpg',
+    ];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    if (!allowedTypes.includes(file.type)) {
+      setUploadError('Invalid file type. Only PDF, DOCX, JPG, JPEG, PNG allowed.');
+      return;
+    }
+
+    if (file.size > maxSize) {
+      setUploadError('File size exceeds 10MB limit.');
+      return;
+    }
+
+    setUploadError("");
+    setSelectedFile(file);
+  };
+
+  const handleUpload = () => {
+    if (!selectedFile) {
+      setUploadError("Please select a file to upload.");
+      return;
+    }
+
+    setIsUploading(true);
+    // Simulate upload process
+    setTimeout(() => {
+      onUpload(agreementId, selectedFile);
+      setIsUploading(false);
+    }, 1000);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg shadow-lg p-6 min-w-[400px] max-w-lg">
+        <h3 className="text-xl font-bold mb-4">📄 Upload Final Signed Agreement</h3>
+        
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Select Final Agreement Document
+          </label>
+          <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50">
+            <span className="text-4xl mb-2" role="img" aria-label="upload">📄</span>
+            <label className="bg-blue-600 text-white px-4 py-2 rounded mb-2 font-medium cursor-pointer hover:bg-blue-700">
+              Choose Final Agreement
+              <input
+                type="file"
+                className="hidden"
+                accept=".pdf,.docx,.jpg,.jpeg,.png"
+                onChange={handleFileChange}
+              />
+            </label>
+            <p className="text-xs text-gray-500 text-center">
+              PDF, DOCX, JPG, JPEG, PNG (Max 10MB)
+            </p>
+          </div>
+        </div>
+
+        {selectedFile && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded">
+            <div className="flex items-center gap-2">
+              <span className="text-green-600">✓</span>
+              <span className="text-sm font-medium text-green-800">
+                Selected: {selectedFile.name}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {uploadError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
+            <p className="text-sm text-red-600">{uploadError}</p>
+          </div>
+        )}
+
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+            disabled={isUploading}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleUpload}
+            disabled={!selectedFile || isUploading}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {isUploading ? "Uploading..." : "Upload & Continue"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function HistoryModal({ open, onClose, history }) {
   if (!open) return null;
   return (
@@ -128,6 +240,7 @@ function DetailsModal({ open, onClose, agreement }) {
 
 export default function AgreementTable({ agreements = [], onStatusUpdate }) {
   const [filters, setFilters] = useState({ client: "", city: "", state: "" });
+  const [showFinalUpload, setShowFinalUpload] = useState(null);
   
   // Transform agreement data from form structure to table structure
   const transformedData = agreements.map((agreement, index) => {
@@ -168,6 +281,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
       date: agreement.submittedDate || new Date().toISOString().split('T')[0],
       status: agreement.status || "Pending Review",
       importantClauses: importantClauses,
+      finalAgreement: agreement.finalAgreement || null,
       originalAgreement: agreement, // Keep reference to original data
       progress: {
         executionPending: { text: "", date: "", history: [] },
@@ -214,15 +328,60 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
   };
 
   const handleStatusChange = (rowIdx, newStatus) => {
+    const agreement = data[rowIdx];
+    
+    // Check if this requires final agreement upload
+    if (newStatus === "Upload Final Agreement") {
+      setShowFinalUpload(agreement.id);
+      return;
+    }
+
+    // For direct status changes (like Rejected)
     setData(prev => prev.map((row, i) =>
       i === rowIdx ? { ...row, status: newStatus } : row
     ));
     
     // Update the agreement status using the onStatusUpdate callback
-    const agreement = data[rowIdx];
     if (onStatusUpdate && agreement.originalAgreement.id) {
       const approvedDate = newStatus !== "Pending Review" ? new Date().toISOString().split('T')[0] : null;
       onStatusUpdate(agreement.originalAgreement.id, newStatus, approvedDate);
+    }
+  };
+
+  // Handler for final agreement upload
+  const handleFinalAgreementUpload = (agreementId, file) => {
+    // Update local data with final agreement
+    setData(prev => prev.map(row => 
+      row.id === agreementId 
+        ? { 
+            ...row, 
+            status: "Final Agreement Uploaded",
+            finalAgreement: file 
+          }
+        : row
+    ));
+    
+    // Update the agreement in parent state
+    if (onStatusUpdate) {
+      const approvedDate = new Date().toISOString().split('T')[0];
+      onStatusUpdate(agreementId, "Final Agreement Uploaded", approvedDate, file);
+    }
+    
+    setShowFinalUpload(null);
+  };
+
+  // Handler for completion status
+  const handleCompletionStatusChange = (rowIdx, newStatus) => {
+    const agreement = data[rowIdx];
+    
+    setData(prev => prev.map((row, i) =>
+      i === rowIdx ? { ...row, status: newStatus } : row
+    ));
+    
+    // Update the agreement status using the onStatusUpdate callback
+    if (onStatusUpdate && agreement.originalAgreement.id) {
+      const completedDate = new Date().toISOString().split('T')[0];
+      onStatusUpdate(agreement.originalAgreement.id, newStatus, completedDate);
     }
   };
   
@@ -257,13 +416,12 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
     const exportData = filtered.map((row, i) => ({
       "Sr. No": i + 1,
       "Client Name": row.client,
-      Location: row.location,
-      City: row.city,
-      State: row.state,
-      "WO / PO / LOI": row.wo,
+      "Client Site": row.site,
+      "WO / PO / LOI / Email": row.wo,
       "Entity Type": row.entityType,
       "Submitted Date": row.date,
       "Important Clauses": row.importantClauses,
+      "Final Agreement": row.finalAgreement ? row.finalAgreement.name : "Not uploaded",
       "Execution Pending": row.progress.executionPending.text,
       "Executed": row.progress.executed.text,
       "Underprocess with Client": row.progress.underProcess.text,
@@ -281,20 +439,19 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
   const handleExportPDF = () => {
     const doc = new jsPDF();
     const columns = [
-      "Sr. No", "Client Name", "Location", "City", "State", "WO / PO / LOI", "Entity Type",
-      "Submitted Date", "Important Clauses", "Execution Pending", "Executed", "Underprocess with Client", 
+      "Sr. No", "Client Name", "Client Site", "WO / PO / LOI / Email", "Entity Type",
+      "Submitted Date", "Important Clauses", "Final Agreement", "Execution Pending", "Executed", "Underprocess with Client", 
       "Completed", "Priority", "Status"
     ];
     const rows = filtered.map((row, i) => [
       i + 1,
       row.client,
-      row.location,
-      row.city,
-      row.state,
+      row.site,
       row.wo,
       row.entityType,
       row.date,
       row.importantClauses,
+      row.finalAgreement ? row.finalAgreement.name : "Not uploaded",
       row.progress.executionPending.text,
       row.progress.executed.text,
       row.progress.underProcess.text,
@@ -339,6 +496,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
                 <th className="px-4 py-3 font-semibold text-left">Entity Type</th>
                 <th className="px-4 py-3 font-semibold text-left">Submitted Date</th>
                 <th className="px-4 py-3 font-semibold text-left">Important Clauses</th>
+                <th className="px-4 py-3 font-semibold text-left">Final Agreement</th>
                 <th className="px-4 py-3 font-semibold text-left">Execution Pending</th>
                 <th className="px-4 py-3 font-semibold text-left">Executed</th>
                 <th className="px-4 py-3 font-semibold text-left">Underprocess with Client</th>
@@ -351,7 +509,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan="14" className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan="15" className="px-4 py-8 text-center text-gray-500">
                     No agreements submitted yet. Agreements submitted by checkers will appear here.
                   </td>
                 </tr>
@@ -379,6 +537,17 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
                         clauses={row.originalAgreement.clauses || []}
                         uploadStatuses={row.originalAgreement.uploadStatuses || {}}
                       />
+                    </td>
+                    <td className="px-4 py-3 min-w-[120px]">
+                      {row.finalAgreement ? (
+                        <FileLink 
+                          file={row.finalAgreement} 
+                          label="Final Agreement" 
+                          type="final"
+                        />
+                      ) : (
+                        <span className="text-gray-400 text-xs">Not uploaded</span>
+                      )}
                     </td>
                     {/* Progress columns */}
                     {["executionPending", "executed", "underProcess", "completed"].map(stage => (
@@ -428,19 +597,34 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
                       </select>
                     </td>
                     <td className="px-4 py-3">
-                      <select
-                        value={row.status}
-                        onChange={e => handleStatusChange(i, e.target.value)}
-                        className={`px-2 py-1 rounded-full text-xs font-bold border-0 focus:ring-2 focus:ring-blue-300 ${
-                          row.status === "Approved" ? "bg-green-100 text-green-700" :
-                          row.status === "Rejected" ? "bg-red-100 text-red-700" :
-                          "bg-orange-100 text-orange-700"
-                        }`}
-                      >
-                        <option value="Pending Review">Pending Review</option>
-                        <option value="Approved">Approved</option>
-                        <option value="Rejected">Rejected</option>
-                      </select>
+                      {row.status === "Final Agreement Uploaded" ? (
+                        // Step 2: After final agreement is uploaded
+                        <select
+                          value={row.status}
+                          onChange={e => handleCompletionStatusChange(i, e.target.value)}
+                          className="px-2 py-1 rounded-full text-xs font-bold border-0 focus:ring-2 focus:ring-blue-300 bg-purple-100 text-purple-700"
+                        >
+                          <option value="Final Agreement Uploaded">Final Agreement Uploaded</option>
+                          <option value="Approved">Mark as Approved</option>
+                          <option value="Completed">Mark as Completed</option>
+                        </select>
+                      ) : (
+                        // Step 1: Initial status options
+                        <select
+                          value={row.status}
+                          onChange={e => handleStatusChange(i, e.target.value)}
+                          className={`px-2 py-1 rounded-full text-xs font-bold border-0 focus:ring-2 focus:ring-blue-300 ${
+                            row.status === "Approved" ? "bg-green-100 text-green-700" :
+                            row.status === "Completed" ? "bg-green-200 text-green-800" :
+                            row.status === "Rejected" ? "bg-red-100 text-red-700" :
+                            "bg-orange-100 text-orange-700"
+                          }`}
+                        >
+                          <option value="Pending Review">Pending Review</option>
+                          <option value="Upload Final Agreement">Upload Final Agreement</option>
+                          <option value="Rejected">Reject</option>
+                        </select>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-center">
                       <button className="text-xl hover:bg-blue-100 rounded-full p-2 transition" title="View" onClick={() => setDetails({ open: true, agreement: row })}><span role="img" aria-label="eye">👁️</span></button>
@@ -452,6 +636,16 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
           </table>
         </div>
       </div>
+
+      {/* Final Agreement Upload Modal */}
+      {showFinalUpload && (
+        <FinalAgreementUpload
+          agreementId={showFinalUpload}
+          onUpload={handleFinalAgreementUpload}
+          onCancel={() => setShowFinalUpload(null)}
+        />
+      )}
+
       <HistoryModal open={modal.open} onClose={() => setModal({ open: false, history: [] })} history={modal.history} />
       <DetailsModal open={details.open} onClose={() => setDetails({ open: false, agreement: null })} agreement={details.agreement} />
     </div>
