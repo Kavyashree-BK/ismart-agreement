@@ -215,24 +215,67 @@ function DetailsModal({ open, onClose, agreement }) {
   if (!open || !agreement) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
-      <div className="bg-white rounded-lg shadow-lg p-8 min-w-[400px] max-w-lg">
-        <h3 className="text-xl font-bold mb-4">Agreement Details</h3>
-        <div className="space-y-2 text-sm">
-          <div><b>ID:</b> {agreement.id}</div>
-          <div><b>Client:</b> {agreement.client}</div>
-          <div><b>Location:</b> {agreement.location}</div>
-          <div><b>Site:</b> {agreement.site}</div>
-          <div><b>City:</b> {agreement.city}</div>
-          <div><b>State:</b> {agreement.state}</div>
-          <div><b>WO / PO / LOI:</b> {agreement.wo}</div>
-          <div><b>Priority:</b> {priorityBadge(agreement.priority)}</div>
-          <div><b>Checker:</b> {agreement.checker}</div>
-          <div><b>Entity Type:</b> {agreement.entityType}</div>
-          <div><b>Date:</b> {agreement.date}</div>
-          <div><b>Status:</b> {agreement.status}</div>
-          <div><b>Important Clauses:</b> {agreement.importantClauses}</div>
+      <div className="bg-white rounded-lg shadow-lg p-8 min-w-[500px] max-w-2xl max-h-[80vh] overflow-y-auto">
+        <h3 className="text-xl font-bold mb-4">📄 Agreement Summary</h3>
+        <div className="space-y-3 text-sm">
+          <div className="grid grid-cols-2 gap-4">
+            <div><b>Agreement ID:</b> {agreement.id}</div>
+            <div><b>Entity Type:</b> {agreement.entityType}</div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><b>Client Name:</b> {agreement.client}</div>
+            <div><b>Submitted Date:</b> {agreement.date}</div>
+          </div>
+          <div><b>Client Site:</b> {agreement.site}</div>
+          <div><b>Submitted By:</b> {agreement.checker}</div>
+          
+          <div className="border-t pt-3 mt-3">
+            <div className="flex items-center gap-4 mb-2">
+              <div><b>Priority:</b> {priorityBadge(agreement.priority)}</div>
+              <div><b>Status:</b> <span className={`px-2 py-1 rounded text-xs font-medium ${
+                agreement.status === "Approved" ? "bg-green-100 text-green-700" :
+                agreement.status === "Rejected" ? "bg-red-100 text-red-700" :
+                agreement.status === "Completed" ? "bg-blue-100 text-blue-700" :
+                "bg-orange-100 text-orange-700"
+              }`}>{agreement.status}</span></div>
+            </div>
+          </div>
+          
+          <div className="border-t pt-3 mt-3">
+            <div><b>Documents Uploaded:</b> {agreement.wo}</div>
+            <div><b>Final Agreement:</b> {agreement.finalAgreement ? 
+              <span className="text-green-600">✓ Uploaded</span> : 
+              <span className="text-gray-500">Not uploaded</span>
+            }</div>
+          </div>
+          
+          <div className="border-t pt-3 mt-3">
+            <div><b>Important Clauses:</b></div>
+            <div className="text-xs text-gray-600 mt-1 ml-4">{agreement.importantClauses}</div>
+          </div>
+          
+          {/* Progress Summary */}
+          <div className="border-t pt-3 mt-3">
+            <div><b>Progress Summary:</b></div>
+            <div className="ml-4 mt-2 space-y-1 text-xs">
+              {agreement.progress.executionPending.text && (
+                <div><b>Execution Pending:</b> {agreement.progress.executionPending.text}</div>
+              )}
+              {agreement.progress.executed.text && (
+                <div><b>Executed:</b> {agreement.progress.executed.text}</div>
+              )}
+              {agreement.progress.underProcess.text && (
+                <div><b>Under Process:</b> {agreement.progress.underProcess.text}</div>
+              )}
+              {agreement.progress.completed.text && (
+                <div><b>Completed:</b> {agreement.progress.completed.text}</div>
+              )}
+            </div>
+          </div>
         </div>
-        <button className="mt-6 px-4 py-2 bg-blue-600 text-white rounded" onClick={onClose}>Close</button>
+        <div className="flex justify-end mt-6">
+          <button className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" onClick={onClose}>Close</button>
+        </div>
       </div>
     </div>
   );
@@ -256,9 +299,10 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
       ? agreement.clauses.slice(0, 3).map(clause => clause.title).join(", ")
       : "No clauses";
     
-    // Get the first site as primary location, others as additional info
-    const primarySite = agreement.selectedSites?.[0] || "Not specified";
-    const additionalSites = agreement.selectedSites?.slice(1) || [];
+    // Join all selected sites with commas to display all sites
+    const allSites = (agreement.selectedSites && agreement.selectedSites.length > 0) 
+      ? agreement.selectedSites.join(", ") 
+      : "Not specified";
     
     // Calculate priority based on days since submission (like in dashboard)
     const submittedDate = new Date(agreement.submittedDate);
@@ -270,9 +314,9 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
     return {
       id: agreement.id || `AGR${String(index + 1).padStart(3, '0')}`,
       client: agreement.selectedClient || "Unknown Client",
-      location: primarySite, // Using first site as location
-      site: primarySite,
-      city: primarySite, // Using site as city for now
+      location: allSites, // Using all sites as location
+      site: allSites,
+      city: allSites, // Using all sites as city for now
       state: "Not specified", // This info isn't captured in form, keeping as placeholder
       wo: woPoLoiText,
       priority: agreement.priority || priority, // Use agreement priority if available, otherwise calculate
@@ -421,12 +465,12 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
       "Entity Type": row.entityType,
       "Submitted Date": row.date,
       "Important Clauses": row.importantClauses,
-      "Final Agreement": row.finalAgreement ? row.finalAgreement.name : "Not uploaded",
       "Execution Pending": row.progress.executionPending.text,
       "Executed": row.progress.executed.text,
       "Underprocess with Client": row.progress.underProcess.text,
       Completed: row.progress.completed.text,
       Priority: row.priority,
+      "Final Agreement": row.finalAgreement ? row.finalAgreement.name : "Not uploaded",
       Status: row.status,
     }));
     const ws = XLSX.utils.json_to_sheet(exportData);
@@ -440,8 +484,8 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
     const doc = new jsPDF();
     const columns = [
       "Sr. No", "Client Name", "Client Site", "WO / PO / LOI / Email", "Entity Type",
-      "Submitted Date", "Important Clauses", "Final Agreement", "Execution Pending", "Executed", "Underprocess with Client", 
-      "Completed", "Priority", "Status"
+      "Submitted Date", "Important Clauses", "Execution Pending", "Executed", "Underprocess with Client", 
+      "Completed", "Priority", "Final Agreement", "Status"
     ];
     const rows = filtered.map((row, i) => [
       i + 1,
@@ -451,12 +495,12 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
       row.entityType,
       row.date,
       row.importantClauses,
-      row.finalAgreement ? row.finalAgreement.name : "Not uploaded",
       row.progress.executionPending.text,
       row.progress.executed.text,
       row.progress.underProcess.text,
       row.progress.completed.text,
       row.priority,
+      row.finalAgreement ? row.finalAgreement.name : "Not uploaded",
       row.status,
     ]);
     autoTable(doc, { head: [columns], body: rows, styles: { fontSize: 6 } });
@@ -496,12 +540,12 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
                 <th className="px-4 py-3 font-semibold text-left">Entity Type</th>
                 <th className="px-4 py-3 font-semibold text-left">Submitted Date</th>
                 <th className="px-4 py-3 font-semibold text-left">Important Clauses</th>
-                <th className="px-4 py-3 font-semibold text-left">Final Agreement</th>
                 <th className="px-4 py-3 font-semibold text-left">Execution Pending</th>
                 <th className="px-4 py-3 font-semibold text-left">Executed</th>
                 <th className="px-4 py-3 font-semibold text-left">Underprocess with Client</th>
                 <th className="px-4 py-3 font-semibold text-left">Completed</th>
                 <th className="px-4 py-3 font-semibold text-left">Priority</th>
+                <th className="px-4 py-3 font-semibold text-left">Final Agreement</th>
                 <th className="px-4 py-3 font-semibold text-left">Status</th>
                 <th className="px-4 py-3 font-semibold text-left">Actions</th>
               </tr>
@@ -537,17 +581,6 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
                         clauses={row.originalAgreement.clauses || []}
                         uploadStatuses={row.originalAgreement.uploadStatuses || {}}
                       />
-                    </td>
-                    <td className="px-4 py-3 min-w-[120px]">
-                      {row.finalAgreement ? (
-                        <FileLink 
-                          file={row.finalAgreement} 
-                          label="Final Agreement" 
-                          type="final"
-                        />
-                      ) : (
-                        <span className="text-gray-400 text-xs">Not uploaded</span>
-                      )}
                     </td>
                     {/* Progress columns */}
                     {["executionPending", "executed", "underProcess", "completed"].map(stage => (
@@ -595,6 +628,17 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
                         <option value="Medium">Medium</option>
                         <option value="Low">Low</option>
                       </select>
+                    </td>
+                    <td className="px-4 py-3 min-w-[120px]">
+                      {row.finalAgreement ? (
+                        <FileLink 
+                          file={row.finalAgreement} 
+                          label="Final Agreement" 
+                          type="final"
+                        />
+                      ) : (
+                        <span className="text-gray-400 text-xs">Not uploaded</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {row.status === "Final Agreement Uploaded" ? (

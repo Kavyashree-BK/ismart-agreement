@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import Select from "react-select";
 
 // Hardcoded clients and their sites
 const clientsData = [
@@ -27,7 +28,7 @@ const clientsData = [
 ];
 
 const AgreementForm = (props) => {
-  const { onSubmit } = props;
+  const { onSubmit, editingAgreement, onEditComplete } = props;
   const [entityType, setEntityType] = useState("single");
   const [clauses, setClauses] = useState(initialClauses());
   const [underList, setUnderList] = useState(initialUnderList());
@@ -59,12 +60,39 @@ const AgreementForm = (props) => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState("");
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Check if agreement is expiring within 30 days
   const today = new Date();
   const timeDiff = endDate.getTime() - today.getTime();
   const daysToExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24));
   const isExpiringSoon = daysToExpiry > 0 && daysToExpiry <= 30;
+
+  // Handle editing mode - pre-fill form when editingAgreement is provided
+  useEffect(() => {
+    if (editingAgreement) {
+      setIsEditMode(true);
+      
+      // Pre-fill all form data
+      setForm(editingAgreement.form || initialFormData());
+      setClauses(editingAgreement.clauses || initialClauses());
+      setUnderList(editingAgreement.underList || initialUnderList());
+      setEntityType(editingAgreement.entityType || "single");
+      setUserRole(editingAgreement.userRole || "checker");
+      setSelectedClient(editingAgreement.selectedClient || "");
+      
+      // Update available sites based on selected client
+      const clientObj = clientsData.find(c => c.name === editingAgreement.selectedClient);
+      setAvailableSites(clientObj ? clientObj.sites : []);
+      setSelectedSites(editingAgreement.selectedSites || []);
+      
+      setUploadStatuses(editingAgreement.uploadStatuses || {});
+      setStartDate(editingAgreement.startDate ? new Date(editingAgreement.startDate) : new Date());
+      setEndDate(editingAgreement.endDate ? new Date(editingAgreement.endDate) : new Date());
+    } else {
+      setIsEditMode(false);
+    }
+  }, [editingAgreement]);
 
   function initialClauses() {
     return [
@@ -100,17 +128,17 @@ const AgreementForm = (props) => {
     };
   }
 
-  const handleAddClause = () => {
-    setClauses(prevClauses => {
-      const newClauses = [...prevClauses, { title: "Enter clause", placeholder: "Enter clause details", isInitial: false }];
-      // Initialize uploadStatuses for the new clause
-      setUploadStatuses(prevStatuses => ({
-        ...prevStatuses,
-        [`clause-${newClauses.length - 1}`]: { uploaded: false, file: undefined }
-      }));
-      return newClauses;
-    });
-  };
+     const handleAddClause = () => {
+     setClauses(prevClauses => {
+       const newClauses = [...prevClauses, { title: "", placeholder: "Enter clause details", isInitial: false }];
+       // Initialize uploadStatuses for the new clause
+       setUploadStatuses(prevStatuses => ({
+         ...prevStatuses,
+         [`clause-${newClauses.length - 1}`]: { uploaded: false, file: undefined }
+       }));
+       return newClauses;
+     });
+   };
 
   const handleRemoveClause = (index) => {
     const updatedClauses = clauses.filter((_, i) => i !== index);
@@ -210,6 +238,13 @@ const AgreementForm = (props) => {
       endDate
     };
 
+    // If in edit mode, preserve the original ID and add it to the data
+    if (isEditMode && editingAgreement) {
+      agreementData.id = editingAgreement.id;
+      agreementData.submittedDate = editingAgreement.submittedDate; // Keep original submission date
+      agreementData.submittedBy = editingAgreement.submittedBy; // Keep original submitter
+    }
+
     console.log("Form data submitted:", agreementData);
 
     // Call the onSubmit prop to add to dashboard
@@ -219,18 +254,24 @@ const AgreementForm = (props) => {
 
     setIsSubmitted(true);
     setShowSuccessModal(true);
-    setForm(initialFormData());
-    setClauses(initialClauses());
-    setUnderList(initialUnderList());
-    setEntityType("single");
-    setErrors({});
-    setUploadedStatus({});
-    setUserRole("checker");
-    setSelectedClient("");
-    setAvailableSites([]);
-    setSelectedSites([]);
-    setStartDate(new Date());
-    setEndDate(new Date());
+    
+    // Only reset form if not in edit mode, otherwise call onEditComplete
+    if (isEditMode) {
+      if (onEditComplete) onEditComplete();
+    } else {
+      setForm(initialFormData());
+      setClauses(initialClauses());
+      setUnderList(initialUnderList());
+      setEntityType("single");
+      setErrors({});
+      setUploadedStatus({});
+      setUserRole("checker");
+      setSelectedClient("");
+      setAvailableSites([]);
+      setSelectedSites([]);
+      setStartDate(new Date());
+      setEndDate(new Date());
+    }
     setTimeout(() => setIsSubmitted(false), 3000);
   };
 
@@ -389,8 +430,15 @@ const AgreementForm = (props) => {
     <div className="relative max-w-5xl mx-auto p-0 bg-transparent mt-8 mb-12">
       <div className="bg-white border-b px-8 pt-8 pb-4 rounded-t-2xl">
         <h1 className="text-2xl font-bold flex items-center gap-2 mb-1">
-          <span role="img" aria-label="doc">📄</span> Legal Agreement ERP
+          <span role="img" aria-label="doc">📄</span> {isEditMode ? 'Edit Agreement' : 'Legal Agreement ERP'}
         </h1>
+        {isEditMode && (
+          <div className="mt-2">
+            <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+              Editing Agreement ID: {editingAgreement?.id}
+            </span>
+          </div>
+        )}
         <div className="flex gap-3 mt-2">
           <span className="font-semibold text-blue-600">Dashboard</span>
           <span className="text-gray-400">|</span>
@@ -399,9 +447,8 @@ const AgreementForm = (props) => {
       </div>
       <form className="bg-white px-8 py-10 rounded-b-2xl shadow-xl border-t-0">
         {/* User Information */}
-        <section className="mb-10">
-          <h2 className="text-xl font-bold mb-1 text-gray-900">User Information</h2>
-          <p className="text-gray-500 mb-6">Basic information about the agreement</p>
+                 <section className="mb-10">
+           <h2 className="text-xl font-bold mb-1 text-gray-900">User Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">User Role</label>
@@ -428,28 +475,53 @@ const AgreementForm = (props) => {
               )}
             </div>
           </div>
-          <div className="flex gap-8 mt-6">
+          <div className="mt-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">Client Site(s) *</label>
-            <div className="flex flex-wrap gap-6">
-              {(availableSites || []).map(site => (
-                <label key={site} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    value={site}
-                    checked={selectedSites.includes(site)}
-                    onChange={e => {
-                      if (e.target.checked) {
-                        setSelectedSites([...selectedSites, site]);
-                      } else {
-                        setSelectedSites(selectedSites.filter(s => s !== site));
-                      }
-                    }}
-                    disabled={!selectedClient}
-                  />
-                  {site}
-                </label>
-              ))}
-            </div>
+            <Select
+              isMulti
+              value={selectedSites.map(site => ({ value: site, label: site }))}
+              onChange={(selectedOptions) => {
+                const newSelectedSites = selectedOptions ? selectedOptions.map(option => option.value) : [];
+                setSelectedSites(newSelectedSites);
+                // Clear the error if sites are selected
+                if (newSelectedSites.length > 0 && userInfoErrors.clientSite) {
+                  setUserInfoErrors(prev => ({ ...prev, clientSite: null }));
+                }
+              }}
+              options={(availableSites || []).map(site => ({ value: site, label: site }))}
+              isDisabled={!selectedClient}
+              placeholder={selectedClient ? "Select client sites..." : "Please select a client first"}
+              className="text-sm"
+              classNamePrefix="react-select"
+              styles={{
+                control: (provided, state) => ({
+                  ...provided,
+                  minHeight: '42px',
+                  borderColor: userInfoErrors.clientSite ? '#ef4444' : state.isFocused ? '#3b82f6' : '#d1d5db',
+                  boxShadow: state.isFocused ? '0 0 0 1px #3b82f6' : 'none',
+                  '&:hover': {
+                    borderColor: userInfoErrors.clientSite ? '#ef4444' : '#9ca3af'
+                  }
+                }),
+                multiValue: (provided) => ({
+                  ...provided,
+                  backgroundColor: '#dbeafe',
+                }),
+                multiValueLabel: (provided) => ({
+                  ...provided,
+                  color: '#1e40af',
+                  fontSize: '14px'
+                }),
+                multiValueRemove: (provided) => ({
+                  ...provided,
+                  color: '#1e40af',
+                  '&:hover': {
+                    backgroundColor: '#3b82f6',
+                    color: 'white'
+                  }
+                })
+              }}
+            />
             {userInfoErrors.clientSite && (
               <div className="text-red-600 text-xs mt-1">{userInfoErrors.clientSite}</div>
             )}
@@ -624,16 +696,20 @@ const AgreementForm = (props) => {
             {clauses.map((clause, idx) => (
               <div className="mb-4" key={idx}>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Clause {idx + 1}</label>
-                <input
-                  className="w-full border rounded-md p-2.5 text-sm mb-2"
-                  placeholder="Enter clause title"
-                  value={clause.title}
-                  onChange={e => {
-                    const newClauses = [...clauses];
-                    newClauses[idx].title = e.target.value;
-                    setClauses(newClauses);
-                  }}
-                />
+                                 <input
+                   className={`w-full border rounded-md p-2.5 text-sm mb-2 ${clause.isInitial ? 'bg-gray-100' : 'bg-white'}`}
+                   placeholder={clause.isInitial ? clause.title : "Enter custom clause title"}
+                   value={clause.title}
+                   readOnly={clause.isInitial}
+                   disabled={clause.isInitial}
+                   onChange={e => {
+                     if (!clause.isInitial) {
+                       const newClauses = [...clauses];
+                       newClauses[idx].title = e.target.value;
+                       setClauses(newClauses);
+                     }
+                   }}
+                 />
                 <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50">
                   <span className="text-4xl mb-2" role="img" aria-label="upload">⬆️</span>
                   <label className="bg-white border px-4 py-2 rounded mb-2 font-medium cursor-pointer">
@@ -718,13 +794,16 @@ const AgreementForm = (props) => {
                 value={form.iSmartName}
                 onChange={handleChange}
               />
-              <input
-                className="w-full border rounded-md p-2.5 text-sm mb-2"
-                placeholder="Enter phone number"
-                name="iSmartContact"
-                value={form.iSmartContact}
-                onChange={handleChange}
-              />
+                             <input
+                 type="tel"
+                 className="w-full border rounded-md p-2.5 text-sm mb-2"
+                 placeholder="Enter phone number"
+                 name="iSmartContact"
+                 value={form.iSmartContact}
+                 onChange={handleChange}
+                 pattern="[0-9]*"
+                 inputMode="numeric"
+               />
               {errors.iSmartContact && (
                 <div className="text-red-600 text-xs mb-2">{errors.iSmartContact}</div>
               )}
@@ -748,13 +827,16 @@ const AgreementForm = (props) => {
                 value={form.clientName}
                 onChange={handleChange}
               />
-              <input
-                className="w-full border rounded-md p-2.5 text-sm mb-2"
-                placeholder="Enter phone number"
-                name="clientContact"
-                value={form.clientContact}
-                onChange={handleChange}
-              />
+                             <input
+                 type="tel"
+                 className="w-full border rounded-md p-2.5 text-sm mb-2"
+                 placeholder="Enter phone number"
+                 name="clientContact"
+                 value={form.clientContact}
+                 onChange={handleChange}
+                 pattern="[0-9]*"
+                 inputMode="numeric"
+               />
               {errors.clientContact && (
                 <div className="text-red-600 text-xs mb-2">{errors.clientContact}</div>
               )}
@@ -844,8 +926,19 @@ const AgreementForm = (props) => {
             className="bg-black text-white px-6 py-2 rounded font-medium hover:bg-gray-900"
             onClick={handleSubmit}
           >
-            Submit for Review
+            {isEditMode ? 'Update Agreement' : 'Submit for Review'}
           </button>
+          {isEditMode && (
+            <button
+              type="button"
+              className="bg-gray-500 text-white px-6 py-2 rounded font-medium hover:bg-gray-600 ml-2"
+              onClick={() => {
+                if (onEditComplete) onEditComplete();
+              }}
+            >
+              Cancel Edit
+            </button>
+          )}
         </div>
         {/* Submission Success Modal */}
         {showSuccessModal && (
@@ -882,4 +975,4 @@ const AgreementForm = (props) => {
   );
 };
 
-export default AgreementForm;
+export default AgreementForm; 
