@@ -48,7 +48,6 @@ const AgreementForm = (props) => {
     LOI: { uploaded: false, status: "", remarks: "" },
     WO: { uploaded: false, status: "", remarks: "" },
     PO: { uploaded: false, status: "", remarks: "" },
-    Email: { uploaded: false, status: "", remarks: "" },
     Agreement: { uploaded: false, status: "", remarks: "" },
     // Clause uploads will be added dynamically as clause-0, clause-1, ...
   });
@@ -182,8 +181,8 @@ const AgreementForm = (props) => {
   const handleSubmit = () => {
     console.log("Submit clicked");
     const errs = validateForm();
-    // Only require LOI, WO, PO, Email uploads (not Agreement)
-    const requiredSections = ["WO", "PO", "LOI", "Email"];
+    // Only require LOI, WO, PO uploads (not Agreement)
+    const requiredSections = ["WO", "PO", "LOI"];
     const missingUploads = requiredSections
       .map(type => {
         return !uploadStatuses[type]?.uploaded ? type : null;
@@ -355,10 +354,10 @@ const AgreementForm = (props) => {
     }));
   };
 
-  const canUploadAgreement = () => {
-    const initialUploads = ['LOI', 'WO', 'PO', 'Email'];
-    return initialUploads.some(type => uploadStatuses[type].uploaded);
-  };
+     const canUploadAgreement = () => {
+     const initialUploads = ['LOI', 'WO', 'PO'];
+     return initialUploads.some(type => uploadStatuses[type].uploaded);
+   };
 
   const handleDateChange1 = (date) => {
     setStartDate(date)
@@ -400,10 +399,10 @@ const AgreementForm = (props) => {
     }
   };
 
-  // Helper to check if all required uploads are done (for checker)
-  const isCheckerUploadsComplete = () => {
-    return ["LOI", "WO", "PO", "Email"].every(type => uploadStatuses[type].uploaded);
-  };
+     // Helper to check if all required uploads are done (for checker)
+   const isCheckerUploadsComplete = () => {
+     return ["LOI", "WO", "PO"].every(type => uploadStatuses[type].uploaded);
+   };
 
   // Helper to check if all required user info fields are filled (for checker)
   const isCheckerUserInfoComplete = () => {
@@ -531,11 +530,11 @@ const AgreementForm = (props) => {
         {/* Document Uploads */}
         {isExpiringSoon && (
           <div className="mb-4 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 rounded">
-            <strong>Alert:</strong> This agreement is expiring in {daysToExpiry} day{daysToExpiry !== 1 ? 's' : ''}. Please ensure all required documents (WO, LOI, Email, PO) are uploaded for renewal/escalation.
-            {(["WO", "LOI", "Email", "PO"].some(type => !uploadStatuses[type]?.uploaded)) && (
+            <strong>Alert:</strong> This agreement is expiring in {daysToExpiry} day{daysToExpiry !== 1 ? 's' : ''}. Please ensure all required documents (WO, LOI, PO) are uploaded for renewal/escalation.
+            {(["WO", "LOI", "PO"].some(type => !uploadStatuses[type]?.uploaded)) && (
               <div className="mt-2 text-red-700">
                 <strong>Escalation:</strong> Missing uploads for: {
-                  ["WO", "LOI", "Email", "PO"].filter(type => !uploadStatuses[type]?.uploaded).join(", ")
+                  ["WO", "LOI", "PO"].filter(type => !uploadStatuses[type]?.uploaded).join(", ")
                 }
               </div>
             )}
@@ -543,7 +542,7 @@ const AgreementForm = (props) => {
         )}
         <section className="mb-10">
           <h2 className="text-xl font-bold mb-1 text-gray-900">Document Uploads</h2>
-          <p className="text-gray-500 mb-6">Upload required documents (LOI, WO, PO, Email)</p>
+                     <p className="text-gray-500 mb-6">Upload required documents (LOI, WO, PO)</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">From Date *</label>
@@ -567,7 +566,7 @@ const AgreementForm = (props) => {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
-            {["LOI (Letter of Intent)", "WO (Work Order)", "PO (Purchase Order)", "Email"].map((label, idx) => {
+                         {["LOI (Letter of Intent)", "WO (Work Order)", "PO (Purchase Order)"].map((label, idx) => {
               const type = label.split(" ")[0];
               const upload = uploadStatuses[type] || {};
               return (

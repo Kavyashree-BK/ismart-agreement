@@ -57,12 +57,12 @@ ${idx + 1}. ${clause.title}
    Details: ${clause.details || 'No details provided'}
 `).join('')}
 
-DOCUMENTS UPLOADED:
-==================
-${Object.entries(agreement.uploadStatuses || {})
-  .filter(([key, status]) => status.uploaded && ['LOI', 'WO', 'PO', 'Email'].includes(key))
-  .map(([key, status]) => `${key}: ${status.file?.name || 'Uploaded'}`)
-  .join('\n') || 'No documents uploaded'}
+ DOCUMENTS UPLOADED:
+ ==================
+ ${Object.entries(agreement.uploadStatuses || {})
+   .filter(([key, status]) => status.uploaded && ['LOI', 'WO', 'PO'].includes(key))
+   .map(([key, status]) => `${key}: ${status.file?.name || 'Uploaded'}`)
+   .join('\n') || 'No documents uploaded'}
 
 ${agreement.entityType === 'group' ? `
 GROUP COMPANIES:
@@ -522,8 +522,8 @@ function App() {
          {/* Documents */}
          <div className="mt-6 bg-purple-50 p-4 rounded-lg">
            <h4 className="font-semibold text-gray-800 mb-3">📎 Uploaded Documents</h4>
-           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-             {['LOI', 'WO', 'PO', 'Email'].map(docType => (
+                       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+              {['LOI', 'WO', 'PO'].map(docType => (
                <div key={docType} className="flex items-center gap-2">
                  <span className={`w-3 h-3 rounded-full ${
                    agreement.uploadStatuses?.[docType]?.uploaded ? 'bg-green-500' : 'bg-gray-300'

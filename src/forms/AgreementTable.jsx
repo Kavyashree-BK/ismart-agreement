@@ -576,7 +576,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
        "Sr. No": i + 1,
        "Client Name": row.client,
        "Client Site": row.site,
-       "WO / PO / LOI / Email": row.wo,
+       "WO / PO / LOI": row.wo,
        "Entity Type": row.entityType,
        "Submitted Date": row.date,
        "Important Clauses": row.importantClauses,
@@ -597,7 +597,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
    const handleExportPDF = () => {
      const doc = new jsPDF();
      const columns = [
-       "Sr. No", "Client Name", "Client Site", "WO / PO / LOI / Email", "Entity Type",
+       "Sr. No", "Client Name", "Client Site", "WO / PO / LOI", "Entity Type",
        "Submitted Date", "Important Clauses", "Execution Pending", "Executed", "Underprocess with Client", 
        "Completed", "Priority", "Status"
      ];
@@ -649,7 +649,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
                                  <th className="px-4 py-3 font-semibold text-left">Sr. No</th>
                  <th className="px-4 py-3 font-semibold text-left">Client Name</th>
                  <th className="px-4 py-3 font-semibold text-left">Client Site</th>
-                 <th className="px-4 py-3 font-semibold text-left">WO / PO / LOI / Email</th>
+                 <th className="px-4 py-3 font-semibold text-left">WO / PO / LOI</th>
                  <th className="px-4 py-3 font-semibold text-left">Entity Type</th>
                  <th className="px-4 py-3 font-semibold text-left">Submitted Date</th>
                  <th className="px-4 py-3 font-semibold text-left">Important Clauses</th>
@@ -682,7 +682,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
                           { type: 'WO', label: 'WO' },
                           { type: 'PO', label: 'PO' },
                           { type: 'LOI', label: 'LOI' },
-                          { type: 'Email', label: 'Email' }
+                
                         ]}
                       />
                     </td>
