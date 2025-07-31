@@ -3,33 +3,147 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import Select from "react-select";
 
-// Hardcoded clients and their sites
+// Hardcoded clients and their branches
 const clientsData = [
   {
     name: "ABC Corp",
-    sites: ["Mumbai Office", "Pune Office", "Delhi Branch"]
+    branches: [
+      {
+        id: "BR001",
+        name: "Mumbai Branch",
+        code: "MUM",
+        type: "Regional",
+        status: "Active",
+        address: "Mumbai, Maharashtra",
+        manager: "John Doe"
+      },
+      {
+        id: "BR002",
+        name: "Pune Branch", 
+        code: "PUN",
+        type: "Regional",
+        status: "Active",
+        address: "Pune, Maharashtra",
+        manager: "Jane Smith"
+      },
+      {
+        id: "BR003",
+        name: "Delhi Branch",
+        code: "DEL",
+        type: "Regional", 
+        status: "Active",
+        address: "Delhi, NCR",
+        manager: "Mike Johnson"
+      }
+    ]
   },
   {
     name: "XYZ Ltd",
-    sites: ["Chennai Branch", "Hyderabad Site"]
+    branches: [
+      {
+        id: "BR004",
+        name: "Chennai Branch",
+        code: "CHE",
+        type: "Regional",
+        status: "Active", 
+        address: "Chennai, Tamil Nadu",
+        manager: "Sarah Wilson"
+      },
+      {
+        id: "BR005",
+        name: "Hyderabad Branch",
+        code: "HYD",
+        type: "Regional",
+        status: "Active",
+        address: "Hyderabad, Telangana", 
+        manager: "David Brown"
+      }
+    ]
   },
   {
     name: "Tech Solutions",
-    sites: ["Bangalore HQ", "Kolkata Center"]
+    branches: [
+      {
+        id: "BR006",
+        name: "Bangalore HQ",
+        code: "BLR",
+        type: "Headquarters",
+        status: "Active",
+        address: "Bangalore, Karnataka",
+        manager: "Lisa Anderson"
+      },
+      {
+        id: "BR007",
+        name: "Kolkata Branch",
+        code: "KOL",
+        type: "Regional",
+        status: "Active",
+        address: "Kolkata, West Bengal",
+        manager: "Robert Taylor"
+      }
+    ]
   },
   {
     name: "CC Ltd",
-    sites: ["Lucknow", "Kanpur"]
+    branches: [
+      {
+        id: "BR008",
+        name: "Lucknow Branch",
+        code: "LKO",
+        type: "Regional",
+        status: "Active",
+        address: "Lucknow, Uttar Pradesh",
+        manager: "Priya Sharma"
+      },
+      {
+        id: "BR009",
+        name: "Kanpur Branch",
+        code: "KNP",
+        type: "Regional",
+        status: "Active",
+        address: "Kanpur, Uttar Pradesh",
+        manager: "Amit Kumar"
+      }
+    ]
   },
   {
     name: "Delta Inc",
-    sites: ["Ahmedabad", "Surat", "Vadodara"]
+    branches: [
+      {
+        id: "BR010",
+        name: "Ahmedabad Branch",
+        code: "AMD",
+        type: "Regional",
+        status: "Active",
+        address: "Ahmedabad, Gujarat",
+        manager: "Rajesh Patel"
+      },
+      {
+        id: "BR011",
+        name: "Surat Branch",
+        code: "SUR",
+        type: "Regional",
+        status: "Active",
+        address: "Surat, Gujarat",
+        manager: "Meera Shah"
+      },
+      {
+        id: "BR012",
+        name: "Vadodara Branch",
+        code: "VAD",
+        type: "Regional",
+        status: "Active",
+        address: "Vadodara, Gujarat",
+        manager: "Vikram Singh"
+      }
+    ]
   }
 ];
 
 const AgreementForm = (props) => {
   const { onSubmit, editingAgreement, onEditComplete } = props;
   const [entityType, setEntityType] = useState("single");
+  const [agreementDraftType, setAgreementDraftType] = useState("client");
   const [clauses, setClauses] = useState(initialClauses());
   const [underList, setUnderList] = useState(initialUnderList());
   const [form, setForm] = useState(initialFormData());
@@ -41,13 +155,14 @@ const AgreementForm = (props) => {
   const [escalationError, setEscalationError] = useState("");
   const [userRole, setUserRole] = useState("checker");
   const [selectedClient, setSelectedClient] = useState("");
-  const [availableSites, setAvailableSites] = useState([]);
-  const [selectedSites, setSelectedSites] = useState([]);
+  const [availableBranches, setAvailableBranches] = useState([]);
+  const [selectedBranches, setSelectedBranches] = useState([]);
   const [userInfoErrors, setUserInfoErrors] = useState({});
   const [uploadStatuses, setUploadStatuses] = useState({
     LOI: { uploaded: false, status: "", remarks: "" },
     WO: { uploaded: false, status: "", remarks: "" },
     PO: { uploaded: false, status: "", remarks: "" },
+    EmailApproval: { uploaded: false, status: "", remarks: "" },
     Agreement: { uploaded: false, status: "", remarks: "" },
     // Clause uploads will be added dynamically as clause-0, clause-1, ...
   });
@@ -77,13 +192,14 @@ const AgreementForm = (props) => {
       setClauses(editingAgreement.clauses || initialClauses());
       setUnderList(editingAgreement.underList || initialUnderList());
       setEntityType(editingAgreement.entityType || "single");
+      setAgreementDraftType(editingAgreement.agreementDraftType || "client");
       setUserRole(editingAgreement.userRole || "checker");
       setSelectedClient(editingAgreement.selectedClient || "");
       
       // Update available sites based on selected client
       const clientObj = clientsData.find(c => c.name === editingAgreement.selectedClient);
-      setAvailableSites(clientObj ? clientObj.sites : []);
-      setSelectedSites(editingAgreement.selectedSites || []);
+      setAvailableBranches(clientObj ? clientObj.branches : []);
+      setSelectedBranches(editingAgreement.selectedBranches || []);
       
       setUploadStatuses(editingAgreement.uploadStatuses || {});
       setStartDate(editingAgreement.startDate ? new Date(editingAgreement.startDate) : new Date());
@@ -181,32 +297,37 @@ const AgreementForm = (props) => {
   const handleSubmit = () => {
     console.log("Submit clicked");
     const errs = validateForm();
-    // Only require LOI, WO, PO uploads (not Agreement)
-    const requiredSections = ["WO", "PO", "LOI"];
-    const missingUploads = requiredSections
-      .map(type => {
-        return !uploadStatuses[type]?.uploaded ? type : null;
-      })
-      .filter(Boolean);
+    // Require at least one document from: LOI, WO, PO, or Email Approval
+    const requiredDocumentTypes = ["WO", "PO", "LOI", "EmailApproval"];
+    const hasAtLeastOneDocument = requiredDocumentTypes.some(type => uploadStatuses[type]?.uploaded);
+    
+    if (!hasAtLeastOneDocument) {
+      const msg = "Escalation: At least one document is required (LOI, WO, PO, or Email Approval)";
+      setEscalationError(msg);
+      setErrorModalMessage(msg);
+      setShowErrorModal(true);
+      console.log("Submission blocked:", msg);
+      return;
+    }
 
     // Check missing user info fields
     const missingUserFields = [];
     if (!selectedClient) missingUserFields.push("Client Name");
-    if (!selectedSites.length) missingUserFields.push("Client Site(s)");
+    if (!selectedBranches.length) missingUserFields.push("Client Branch(s)");
     if (!userRole) missingUserFields.push("User Role");
 
     // Show error messages for missing client name/site
-    if (!selectedClient || !selectedSites.length) {
+    if (!selectedClient || !selectedBranches.length) {
       setUserInfoErrors(prev => ({
         ...prev,
         clientName: !selectedClient ? "Client name is required" : undefined,
-        clientSite: !selectedSites.length ? "At least one site is required" : undefined,
+        clientSite: !selectedBranches.length ? "At least one branch is required" : undefined,
       }));
     }
 
-    const allMissing = [...missingUploads, ...missingUserFields];
+    const allMissing = [...missingUserFields];
     if (allMissing.length > 0) {
-      const msg = `Escalation: Missing uploads for section(s): ${allMissing.join(", ")}`;
+      const msg = `Escalation: Missing required fields: ${allMissing.join(", ")}`;
       setEscalationError(msg);
       setErrorModalMessage(msg);
       setShowErrorModal(true);
@@ -229,9 +350,10 @@ const AgreementForm = (props) => {
       clauses,
       underList,
       entityType,
+      agreementDraftType,
       userRole,
       selectedClient,
-      selectedSites,
+      selectedBranches,
       uploadStatuses,
       startDate,
       endDate
@@ -262,12 +384,13 @@ const AgreementForm = (props) => {
       setClauses(initialClauses());
       setUnderList(initialUnderList());
       setEntityType("single");
+      setAgreementDraftType("client");
       setErrors({});
       setUploadedStatus({});
       setUserRole("checker");
       setSelectedClient("");
-      setAvailableSites([]);
-      setSelectedSites([]);
+      setAvailableBranches([]);
+      setSelectedBranches([]);
       setStartDate(new Date());
       setEndDate(new Date());
     }
@@ -355,7 +478,7 @@ const AgreementForm = (props) => {
   };
 
      const canUploadAgreement = () => {
-     const initialUploads = ['LOI', 'WO', 'PO'];
+     const initialUploads = ['LOI', 'WO', 'PO', 'EmailApproval'];
      return initialUploads.some(type => uploadStatuses[type].uploaded);
    };
 
@@ -370,7 +493,7 @@ const AgreementForm = (props) => {
     const newErrors = {};
     if (!userRole) newErrors.userRole = "User role is required";
     if (!selectedClient) newErrors.clientName = "Client name is required";
-    if (!selectedSites.length) newErrors.clientSite = "At least one site is required";
+    if (!selectedBranches.length) newErrors.clientBranch = "At least one branch is required";
     setUserInfoErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -385,12 +508,12 @@ const AgreementForm = (props) => {
         setForm(prev => ({ ...prev, clientName: value }));
         // Update available sites and reset selected sites
         const clientObj = clientsData.find(c => c.name === value);
-        setAvailableSites(clientObj ? clientObj.sites : []);
-        setSelectedSites([]);
+        setAvailableBranches(clientObj ? clientObj.branches : []);
+        setSelectedBranches([]);
         break;
-      case 'clientSite':
-        setSelectedSites(value); // value is array
-        break;
+              case 'clientBranch':
+          setSelectedBranches(value); // value is array
+          break;
       default:
         break;
     }
@@ -401,22 +524,22 @@ const AgreementForm = (props) => {
 
      // Helper to check if all required uploads are done (for checker)
    const isCheckerUploadsComplete = () => {
-     return ["LOI", "WO", "PO"].every(type => uploadStatuses[type].uploaded);
+     return ["LOI", "WO", "PO", "EmailApproval"].some(type => uploadStatuses[type].uploaded);
    };
 
   // Helper to check if all required user info fields are filled (for checker)
   const isCheckerUserInfoComplete = () => {
-    return userRole && selectedClient && selectedSites.length > 0;
+    return userRole && selectedClient && selectedBranches.length > 0;
   };
 
   // Handler for Continue (checkpoint, not stage change)
   const handleContinue = () => {
     // Prevent continue if client name or site is missing
-    if (!selectedClient || !selectedSites.length) {
+    if (!selectedClient || !selectedBranches.length) {
       setUserInfoErrors(prev => ({
         ...prev,
         clientName: !selectedClient ? "Client name is required" : undefined,
-        clientSite: !selectedSites.length ? "At least one site is required" : undefined,
+        clientBranch: !selectedBranches.length ? "At least one branch is required" : undefined,
       }));
       return;
     }
@@ -460,8 +583,8 @@ const AgreementForm = (props) => {
                 value={selectedClient}
                 onChange={e => {
                   setSelectedClient(e.target.value);
-                  setAvailableSites(clientsData.find(c => c.name === e.target.value)?.sites || []);
-                  setSelectedSites([]);
+                  setAvailableBranches(clientsData.find(c => c.name === e.target.value)?.branches || []);
+                  setSelectedBranches([]);
                 }}
               >
                 <option value="" disabled>Select Client</option>
@@ -475,31 +598,34 @@ const AgreementForm = (props) => {
             </div>
           </div>
           <div className="mt-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Client Site(s) *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Client Branch(s) *</label>
             <Select
               isMulti
-              value={selectedSites.map(site => ({ value: site, label: site }))}
+              value={selectedBranches.map(branch => ({ value: branch.id, label: `${branch.name} (${branch.code})` }))}
               onChange={(selectedOptions) => {
-                const newSelectedSites = selectedOptions ? selectedOptions.map(option => option.value) : [];
-                setSelectedSites(newSelectedSites);
-                // Clear the error if sites are selected
-                if (newSelectedSites.length > 0 && userInfoErrors.clientSite) {
-                  setUserInfoErrors(prev => ({ ...prev, clientSite: null }));
-                }
+                const newSelectedBranches = selectedOptions ? selectedOptions.map(option => {
+                  const client = clientsData.find(c => c.name === selectedClient);
+                  return client.branches.find(b => b.id === option.value);
+                }) : [];
+                setSelectedBranches(newSelectedBranches);
+                                 // Clear the error if branches are selected
+                 if (newSelectedBranches.length > 0 && userInfoErrors.clientBranch) {
+                   setUserInfoErrors(prev => ({ ...prev, clientBranch: null }));
+                 }
               }}
-              options={(availableSites || []).map(site => ({ value: site, label: site }))}
+              options={(availableBranches || []).map(branch => ({ value: branch.id, label: `${branch.name} (${branch.code})` }))}
               isDisabled={!selectedClient}
-              placeholder={selectedClient ? "Select client sites..." : "Please select a client first"}
+              placeholder={selectedClient ? "Select client branches..." : "Please select a client first"}
               className="text-sm"
               classNamePrefix="react-select"
               styles={{
                 control: (provided, state) => ({
                   ...provided,
                   minHeight: '42px',
-                  borderColor: userInfoErrors.clientSite ? '#ef4444' : state.isFocused ? '#3b82f6' : '#d1d5db',
+                  borderColor: userInfoErrors.clientBranch ? '#ef4444' : state.isFocused ? '#3b82f6' : '#d1d5db',
                   boxShadow: state.isFocused ? '0 0 0 1px #3b82f6' : 'none',
                   '&:hover': {
-                    borderColor: userInfoErrors.clientSite ? '#ef4444' : '#9ca3af'
+                    borderColor: userInfoErrors.clientBranch ? '#ef4444' : '#9ca3af'
                   }
                 }),
                 multiValue: (provided) => ({
@@ -521,8 +647,8 @@ const AgreementForm = (props) => {
                 })
               }}
             />
-            {userInfoErrors.clientSite && (
-              <div className="text-red-600 text-xs mt-1">{userInfoErrors.clientSite}</div>
+            {userInfoErrors.clientBranch && (
+              <div className="text-red-600 text-xs mt-1">{userInfoErrors.clientBranch}</div>
             )}
           </div>
         </section>
@@ -530,19 +656,17 @@ const AgreementForm = (props) => {
         {/* Document Uploads */}
         {isExpiringSoon && (
           <div className="mb-4 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 rounded">
-            <strong>Alert:</strong> This agreement is expiring in {daysToExpiry} day{daysToExpiry !== 1 ? 's' : ''}. Please ensure all required documents (WO, LOI, PO) are uploaded for renewal/escalation.
-            {(["WO", "LOI", "PO"].some(type => !uploadStatuses[type]?.uploaded)) && (
+            <strong>Alert:</strong> This agreement is expiring in {daysToExpiry} day{daysToExpiry !== 1 ? 's' : ''}. Please ensure at least one required document (LOI, WO, PO, or Email Approval) is uploaded for renewal/escalation.
+            {!["WO", "LOI", "PO", "EmailApproval"].some(type => uploadStatuses[type]?.uploaded) && (
               <div className="mt-2 text-red-700">
-                <strong>Escalation:</strong> Missing uploads for: {
-                  ["WO", "LOI", "PO"].filter(type => !uploadStatuses[type]?.uploaded).join(", ")
-                }
+                <strong>Escalation:</strong> At least one document is required (LOI, WO, PO, or Email Approval)
               </div>
             )}
           </div>
         )}
         <section className="mb-10">
           <h2 className="text-xl font-bold mb-1 text-gray-900">Document Uploads</h2>
-                     <p className="text-gray-500 mb-6">Upload required documents (LOI, WO, PO)</p>
+                     <p className="text-gray-500 mb-6">Upload at least one of the following documents: LOI, WO, PO, or Email Approval</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">From Date *</label>
@@ -566,12 +690,17 @@ const AgreementForm = (props) => {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
-                         {["LOI (Letter of Intent)", "WO (Work Order)", "PO (Purchase Order)"].map((label, idx) => {
+                         {[
+                           "LOI (Letter of Intent)", 
+                           "WO (Work Order)", 
+                           "PO (Purchase Order)",
+                           "EmailApproval (Email Approval)"
+                         ].map((label, idx) => {
               const type = label.split(" ")[0];
               const upload = uploadStatuses[type] || {};
               return (
                 <div key={label} className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">{label} *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
                   <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50">
                     <span className="text-4xl mb-2" role="img" aria-label="upload">⬆️</span>
                     <label className="bg-white border px-4 py-2 rounded mb-2 font-medium cursor-pointer">
@@ -621,6 +750,30 @@ const AgreementForm = (props) => {
         <section className="mb-10">
           <label className="block text-sm font-medium text-gray-700 mb-2">Remarks</label>
           <textarea className="w-full border rounded-md p-2.5 text-sm min-h-[80px]" placeholder="Add any additional remarks..." />
+        </section>
+
+        {/* Agreement Type Selection */}
+        <section className="mb-10">
+          <h2 className="text-xl font-bold mb-1 text-gray-900">Agreement Type Selection</h2>
+          <p className="text-gray-500 mb-6">Identify the origin of the agreement draft</p>
+          <div className="flex gap-8 mb-4 items-start">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                checked={agreementDraftType === "client"}
+                onChange={() => setAgreementDraftType("client")}
+              />
+              Client Draft
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                checked={agreementDraftType === "ismart"}
+                onChange={() => setAgreementDraftType("ismart")}
+              />
+              iSmart Draft
+            </label>
+          </div>
         </section>
 
         {/* Entity Type */}
@@ -696,32 +849,26 @@ const AgreementForm = (props) => {
               <div className="border border-gray-200 rounded-lg p-4 bg-gray-50" key={idx}>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-sm font-medium text-gray-700">Clause {idx + 1}</span>
-                  {!clause.isInitial && (
-                    <button
-                      type="button"
-                      className="text-red-500 text-xs hover:text-red-700"
-                      onClick={() => handleRemoveClause(idx)}
-                    >
-                      ✕ Remove
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="focus:outline-none text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900"
+                    onClick={() => handleRemoveClause(idx)}
+                  >
+                    ✕
+                  </button>
                 </div>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                   {/* Title Input */}
                   <div className="lg:col-span-2">
                     <input
-                      className={`w-full border rounded-md p-2 text-sm ${clause.isInitial ? 'bg-gray-100' : 'bg-white'}`}
-                      placeholder={clause.isInitial ? clause.title : "Enter custom clause title"}
+                      className="w-full border rounded-md p-2 text-sm bg-white"
+                      placeholder="Enter clause title"
                       value={clause.title}
-                      readOnly={clause.isInitial}
-                      disabled={clause.isInitial}
                       onChange={e => {
-                        if (!clause.isInitial) {
-                          const newClauses = [...clauses];
-                          newClauses[idx].title = e.target.value;
-                          setClauses(newClauses);
-                        }
+                        const newClauses = [...clauses];
+                        newClauses[idx].title = e.target.value;
+                        setClauses(newClauses);
                       }}
                     />
                   </div>
@@ -881,12 +1028,13 @@ const AgreementForm = (props) => {
                   setClauses(draft.clauses);
                   setUnderList(draft.underList);
                   setEntityType(draft.entityType);
+                  setAgreementDraftType(draft.agreementDraftType || "client");
                   setUserRole(draft.userRole);
                   setSelectedClient(draft.selectedClient);
                   // Update availableSites based on selectedClient
                   const clientObj = clientsData.find(c => c.name === draft.selectedClient);
-                  setAvailableSites(clientObj ? clientObj.sites : []);
-                  setSelectedSites(draft.selectedSites);
+                  setAvailableBranches(clientObj ? clientObj.branches : []);
+                  setSelectedBranches(draft.selectedBranches);
                   setUploadStatuses(draft.uploadStatuses);
                   setStartDate(new Date(draft.startDate));
                   setEndDate(new Date(draft.endDate));
@@ -916,9 +1064,10 @@ const AgreementForm = (props) => {
                   clauses,
                   underList,
                   entityType,
+                  agreementDraftType,
                   userRole,
                   selectedClient,
-                  selectedSites,
+                  selectedBranches,
                   uploadStatuses,
                   startDate,
                   endDate

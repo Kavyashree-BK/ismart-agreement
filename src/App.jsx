@@ -32,7 +32,7 @@ LEGAL AGREEMENT COPY
 
 Agreement ID: ${agreement.id}
 Client: ${agreement.selectedClient}
-Sites: ${(agreement.selectedSites || []).join(", ")}
+Branches: ${(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}
 Submitted Date: ${agreement.submittedDate}
 Status: ${agreement.status}
 Entity Type: ${agreement.entityType}
@@ -162,7 +162,7 @@ Generated on: ${new Date().toLocaleString()}
                 <div className="flex items-center justify-between py-4" key={agreement.id}>
                   <div className="flex-1">
                     <div className="font-semibold">{agreement.selectedClient}</div>
-                    <div className="text-gray-500 text-sm">{(agreement.selectedSites || []).join(", ")}</div>
+                    <div className="text-gray-500 text-sm">{(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}</div>
                     <div className="text-xs text-gray-400 mt-1">
                       Submitted by: {agreement.submittedBy} • {agreement.daysPending} days ago
                     </div>
@@ -243,7 +243,7 @@ Generated on: ${new Date().toLocaleString()}
               <div className="flex items-center justify-between py-3" key={agreement.id || idx}>
                 <div className="flex-1">
                   <div className="font-semibold">{agreement.selectedClient}</div>
-                  <div className="text-gray-500 text-sm">{(agreement.selectedSites || []).join(", ")}</div>
+                  <div className="text-gray-500 text-sm">{(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}</div>
                   <div className="text-xs text-gray-400 mt-1">
                     Submitted: {agreement.submittedDate}
                     {agreement.approvedDate && agreement.status === "Approved" && 
@@ -455,7 +455,7 @@ function App() {
              <div className="space-y-2 text-sm">
                <div><span className="font-medium">Agreement ID:</span> {agreement.id}</div>
                <div><span className="font-medium">Client:</span> {agreement.selectedClient}</div>
-               <div><span className="font-medium">Sites:</span> {(agreement.selectedSites || []).join(", ")}</div>
+               <div><span className="font-medium">Branches:</span> {(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}</div>
                <div><span className="font-medium">Entity Type:</span> {agreement.entityType}</div>
                <div><span className="font-medium">Status:</span> 
                  <span className={`ml-2 px-2 py-1 rounded text-xs font-medium ${

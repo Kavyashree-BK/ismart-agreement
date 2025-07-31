@@ -193,28 +193,12 @@ const FinalAgreementUpload = ({ agreementId, onUpload, onCancel }) => {
   );
 };
 
-function HistoryModal({ open, onClose, history }) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
-      <div className="bg-white rounded-lg shadow-lg p-6 min-w-[320px]">
-        <h3 className="text-lg font-bold mb-2">Progress History</h3>
-        <ul className="max-h-48 overflow-y-auto text-sm">
-          {history.length === 0 ? <li className="text-gray-400">No history yet.</li> :
-            history.map((h, i) => (
-              <li key={i} className="mb-1"><span className="font-semibold">{h.date}:</span> {h.text}</li>
-            ))}
-        </ul>
-        <button className="mt-4 px-4 py-2 bg-blue-600 text-white rounded" onClick={onClose}>Close</button>
-      </div>
-    </div>
-  );
-}
+
 
 // Agreement Details Modal with Actions
 function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChange, onFinalAgreementUpload }) {
   const [localPriority, setLocalPriority] = useState(agreement?.priority || "Low");
-  const [localStatus, setLocalStatus] = useState(agreement?.status || "Pending Review");
+  const [localStatus, setLocalStatus] = useState(agreement?.status || "Execution Pending");
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadError, setUploadError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -222,7 +206,7 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
   React.useEffect(() => {
     if (agreement) {
       setLocalPriority(agreement.priority || "Low");
-      setLocalStatus(agreement.status || "Pending Review");
+      setLocalStatus(agreement.status || "Execution Pending");
       setSelectedFile(null);
       setUploadError("");
     }
@@ -263,18 +247,31 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
       setIsUploading(true);
       setTimeout(() => {
         onFinalAgreementUpload(agreement.id, selectedFile);
-        onStatusChange(agreement.id, "Approved");
+        onStatusChange(agreement.id, "Under Process with Client");
         setIsUploading(false);
         onClose();
       }, 1000);
     } else {
-      onStatusChange(agreement.id, "Approved");
+      // Move to next status in progression
+      const currentStatus = agreement.status || "Execution Pending";
+      let nextStatus = "Execution Pending";
+      
+      if (currentStatus === "Execution Pending") {
+        nextStatus = "Executed";
+      } else if (currentStatus === "Executed") {
+        nextStatus = "Under Process with Client";
+      } else if (currentStatus === "Under Process with Client") {
+        nextStatus = "Under Process with Client"; // Stay at final status
+      }
+      
+      onStatusChange(agreement.id, nextStatus);
       onClose();
     }
   };
 
   const handleReject = () => {
-    onStatusChange(agreement.id, "Rejected");
+    // Reset to Execution Pending on reject
+    onStatusChange(agreement.id, "Execution Pending");
     onClose();
   };
 
@@ -325,12 +322,9 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
               onChange={(e) => setLocalStatus(e.target.value)}
               className="w-full border rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-300"
             >
-              <option value="Pending Review">Pending Review</option>
-              <option value="Under Review">Under Review</option>
-              <option value="Final Agreement Uploaded">Final Agreement Uploaded</option>
-              <option value="Approved">Approved</option>
-              <option value="Rejected">Rejected</option>
-              <option value="Completed">Completed</option>
+              <option value="Execution Pending">Execution Pending</option>
+              <option value="Executed">Executed</option>
+              <option value="Under Process with Client">Under Process with Client</option>
             </select>
           </div>
         </div>
@@ -385,14 +379,14 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
             onClick={handleReject}
             className="px-6 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
           >
-            Reject
+            Reset to Pending
           </button>
           <button
             onClick={handleApprove}
             disabled={isUploading}
             className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            {isUploading ? "Processing..." : "Approve"}
+            {isUploading ? "Processing..." : "Move to Next Stage"}
           </button>
         </div>
       </div>
@@ -401,8 +395,40 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
 }
 
 export default function AgreementTable({ agreements = [], onStatusUpdate }) {
-  const [filters, setFilters] = useState({ client: "", city: "", state: "" });
+  const [filters, setFilters] = useState({ 
+    client: "", 
+    city: "", 
+    state: "", 
+    fromDate: "", 
+    toDate: "" 
+  });
   const [showFinalUpload, setShowFinalUpload] = useState(null);
+  
+  // Function to determine which status should be shown based on progression
+  const getCurrentStatus = (agreement) => {
+    // Default to "Execution Pending" if no status is set
+    if (!agreement.status) {
+      return "Execution Pending";
+    }
+    
+    // If status is "Execution Pending", show only that
+    if (agreement.status === "Execution Pending") {
+      return "Execution Pending";
+    }
+    
+    // If status is "Executed", show only that
+    if (agreement.status === "Executed") {
+      return "Executed";
+    }
+    
+    // If status is "Under Process with Client", show only that
+    if (agreement.status === "Under Process with Client") {
+      return "Under Process with Client";
+    }
+    
+    // Default fallback
+    return "Execution Pending";
+  };
   
   // Transform agreement data from form structure to table structure
   const transformedData = agreements.map((agreement, index) => {
@@ -411,6 +437,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
     if (agreement.uploadStatuses?.WO?.uploaded) woPoLoiInfo.push("WO");
     if (agreement.uploadStatuses?.PO?.uploaded) woPoLoiInfo.push("PO");
     if (agreement.uploadStatuses?.LOI?.uploaded) woPoLoiInfo.push("LOI");
+    if (agreement.uploadStatuses?.EmailApproval?.uploaded) woPoLoiInfo.push("Email Approval");
     const woPoLoiText = woPoLoiInfo.length > 0 ? woPoLoiInfo.join(" / ") : "None uploaded";
     
     // Extract important clauses (first 3 clauses as summary)
@@ -418,9 +445,9 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
       ? agreement.clauses.slice(0, 3).map(clause => clause.title).join(", ")
       : "No clauses";
     
-    // Join all selected sites with commas to display all sites
-    const allSites = (agreement.selectedSites && agreement.selectedSites.length > 0) 
-      ? agreement.selectedSites.join(", ") 
+    // Join all selected branches with commas to display all branches
+    const allBranches = (agreement.selectedBranches && agreement.selectedBranches.length > 0) 
+      ? agreement.selectedBranches.map(branch => branch.name).join(", ") 
       : "Not specified";
     
     // Calculate priority based on days since submission (like in dashboard)
@@ -433,30 +460,23 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
     return {
       id: agreement.id || `AGR${String(index + 1).padStart(3, '0')}`,
       client: agreement.selectedClient || "Unknown Client",
-      location: allSites, // Using all sites as location
-      site: allSites,
-      city: allSites, // Using all sites as city for now
+      location: allBranches, // Using all branches as location
+      site: allBranches,
+      city: allBranches, // Using all branches as city for now
       state: "Not specified", // This info isn't captured in form, keeping as placeholder
       wo: woPoLoiText,
       priority: agreement.priority || priority, // Use agreement priority if available, otherwise calculate
       checker: agreement.submittedBy || "Unknown",
       entityType: agreement.entityType || "single",
       date: agreement.submittedDate || new Date().toISOString().split('T')[0],
-      status: agreement.status || "Pending Review",
+      status: getCurrentStatus(agreement),
       importantClauses: importantClauses,
       finalAgreement: agreement.finalAgreement || null,
       originalAgreement: agreement, // Keep reference to original data
-      progress: {
-        executionPending: { text: "", date: "", history: [] },
-        executed: { text: "", date: "", history: [] },
-        underProcess: { text: "", date: "", history: [] },
-        completed: { text: "", date: "", history: [] },
-      },
     };
   });
 
   const [data, setData] = useState(transformedData);
-  const [modal, setModal] = useState({ open: false, history: [] });
   const [details, setDetails] = useState({ open: false, agreement: null });
 
   // Update data when agreements prop changes
@@ -469,13 +489,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
   const uniqueCities = [ ...new Set(data.map(row => row.city)) ];
   const uniqueStates = [ ...new Set(data.map(row => row.state)) ];
 
-  const handleProgressChange = (rowIdx, stage, field, value) => {
-    setData(prev => prev.map((row, i) =>
-      i === rowIdx
-        ? { ...row, progress: { ...row.progress, [stage]: { ...row.progress[stage], [field]: value } } }
-        : row
-    ));
-  };
+
 
   const handlePriorityChange = (agreementId, newPriority) => {
     setData(prev => prev.map(row =>
@@ -496,7 +510,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
     
     // Update the agreement status using the onStatusUpdate callback
     if (onStatusUpdate) {
-      const approvedDate = newStatus !== "Pending Review" ? new Date().toISOString().split('T')[0] : null;
+      const approvedDate = newStatus !== "Execution Pending" ? new Date().toISOString().split('T')[0] : null;
       onStatusUpdate(agreementId, newStatus, approvedDate);
     }
   };
@@ -544,31 +558,33 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
 
 
   
-  const handleSaveHistory = (rowIdx, stage) => {
-    setData(prev => prev.map((row, i) => {
-      if (i !== rowIdx) return row;
-      const { text, date, history } = row.progress[stage];
-      if (!text && !date) return row;
-      return {
-        ...row,
-        progress: {
-          ...row.progress,
-          [stage]: {
-            text: "",
-            date: "",
-            history: [...history, { text, date: date || new Date().toISOString().slice(0, 10) }],
-          },
-        },
-      };
-    }));
-  };
 
-  // Filtering logic (dropdowns)
-  const filtered = data.filter(row =>
-    (!filters.client || row.client === filters.client) &&
-    (!filters.city || row.city === filters.city) &&
-    (!filters.state || row.state === filters.state)
-  );
+
+  // Filtering logic (dropdowns and date range)
+  const filtered = data.filter(row => {
+    // Client, city, state filters
+    const clientMatch = !filters.client || row.client === filters.client;
+    const cityMatch = !filters.city || row.city === filters.city;
+    const stateMatch = !filters.state || row.state === filters.state;
+    
+    // Date range filter
+    let dateMatch = true;
+    if (filters.fromDate || filters.toDate) {
+      const rowDate = new Date(row.date);
+      const fromDate = filters.fromDate ? new Date(filters.fromDate) : null;
+      const toDate = filters.toDate ? new Date(filters.toDate) : null;
+      
+      if (fromDate && toDate) {
+        dateMatch = rowDate >= fromDate && rowDate <= toDate;
+      } else if (fromDate) {
+        dateMatch = rowDate >= fromDate;
+      } else if (toDate) {
+        dateMatch = rowDate <= toDate;
+      }
+    }
+    
+    return clientMatch && cityMatch && stateMatch && dateMatch;
+  });
 
      // Export Excel
    const handleExportExcel = () => {
@@ -580,17 +596,23 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
        "Entity Type": row.entityType,
        "Submitted Date": row.date,
        "Important Clauses": row.importantClauses,
-       "Execution Pending": row.progress.executionPending.text,
-       "Executed": row.progress.executed.text,
-       "Underprocess with Client": row.progress.underProcess.text,
-       Completed: row.progress.completed.text,
        Priority: row.priority,
        Status: row.status,
      }));
      const ws = XLSX.utils.json_to_sheet(exportData);
      const wb = XLSX.utils.book_new();
      XLSX.utils.book_append_sheet(wb, ws, "Agreements");
-     XLSX.writeFile(wb, "agreements.xlsx");
+     
+     // Generate filename with date range if specified
+     let filename = "agreements";
+     if (filters.fromDate || filters.toDate) {
+       const fromDateStr = filters.fromDate ? filters.fromDate.replace(/-/g, '') : 'start';
+       const toDateStr = filters.toDate ? filters.toDate.replace(/-/g, '') : 'end';
+       filename += `_${fromDateStr}_to_${toDateStr}`;
+     }
+     filename += ".xlsx";
+     
+     XLSX.writeFile(wb, filename);
    };
 
      // Export PDF
@@ -598,8 +620,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
      const doc = new jsPDF();
      const columns = [
        "Sr. No", "Client Name", "Client Site", "WO / PO / LOI", "Entity Type",
-       "Submitted Date", "Important Clauses", "Execution Pending", "Executed", "Underprocess with Client", 
-       "Completed", "Priority", "Status"
+       "Submitted Date", "Important Clauses", "Priority", "Status"
      ];
      const rows = filtered.map((row, i) => [
        i + 1,
@@ -609,15 +630,21 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
        row.entityType,
        row.date,
        row.importantClauses,
-       row.progress.executionPending.text,
-       row.progress.executed.text,
-       row.progress.underProcess.text,
-       row.progress.completed.text,
        row.priority,
        row.status,
      ]);
      autoTable(doc, { head: [columns], body: rows, styles: { fontSize: 6 } });
-     doc.save("agreements.pdf");
+     
+     // Generate filename with date range if specified
+     let filename = "agreements";
+     if (filters.fromDate || filters.toDate) {
+       const fromDateStr = filters.fromDate ? filters.fromDate.replace(/-/g, '') : 'start';
+       const toDateStr = filters.toDate ? filters.toDate.replace(/-/g, '') : 'end';
+       filename += `_${fromDateStr}_to_${toDateStr}`;
+     }
+     filename += ".pdf";
+     
+     doc.save(filename);
    };
 
   return (
@@ -625,6 +652,9 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
       <div className="flex gap-4 mb-6">
         <button className="bg-white border px-4 py-2 rounded shadow-sm flex items-center gap-2" onClick={handleExportExcel}><span>⬇️</span> Export Excel</button>
         <button className="bg-white border px-4 py-2 rounded shadow-sm flex items-center gap-2" onClick={handleExportPDF}><span>⬇️</span> Export PDF</button>
+        <div className="text-sm text-gray-600 flex items-center">
+          💡 Use date filters above to export agreements within a specific date range
+        </div>
       </div>
       <div className="bg-white rounded-2xl shadow p-6 mb-8">
         <div className="flex flex-wrap gap-4 mb-4">
@@ -640,7 +670,68 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
             <option value="">All States</option>
             {uniqueStates.map(state => <option key={state} value={state}>{state}</option>)}
           </select>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">From Date:</label>
+            <input
+              type="date"
+              className="border rounded px-3 py-2 text-sm"
+              value={filters.fromDate}
+              onChange={e => setFilters(f => ({ ...f, fromDate: e.target.value }))}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">To Date:</label>
+            <input
+              type="date"
+              className="border rounded px-3 py-2 text-sm"
+              value={filters.toDate}
+              onChange={e => setFilters(f => ({ ...f, toDate: e.target.value }))}
+            />
+          </div>
+          <button
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
+            onClick={() => setFilters({ client: "", city: "", state: "", fromDate: "", toDate: "" })}
+          >
+            Clear Filters
+          </button>
         </div>
+        
+        {/* Filter Summary */}
+        {(filters.client || filters.city || filters.state || filters.fromDate || filters.toDate) && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="text-sm text-blue-800">
+              <span className="font-medium">Active Filters:</span>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {filters.client && (
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                    Client: {filters.client}
+                  </span>
+                )}
+                {filters.city && (
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                    City: {filters.city}
+                  </span>
+                )}
+                {filters.state && (
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                    State: {filters.state}
+                  </span>
+                )}
+                {filters.fromDate && (
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                    From: {new Date(filters.fromDate).toLocaleDateString()}
+                  </span>
+                )}
+                {filters.toDate && (
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                    To: {new Date(filters.toDate).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        
         <h2 className="text-xl font-bold mb-2">Agreements ({filtered.length})</h2>
         <div className="overflow-x-auto rounded-2xl border border-gray-200">
           <table className="min-w-full text-sm">
@@ -653,10 +744,6 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
                  <th className="px-4 py-3 font-semibold text-left">Entity Type</th>
                  <th className="px-4 py-3 font-semibold text-left">Submitted Date</th>
                  <th className="px-4 py-3 font-semibold text-left">Important Clauses</th>
-                 <th className="px-4 py-3 font-semibold text-left">Execution Pending</th>
-                 <th className="px-4 py-3 font-semibold text-left">Executed</th>
-                 <th className="px-4 py-3 font-semibold text-left">Underprocess with Client</th>
-                 <th className="px-4 py-3 font-semibold text-left">Completed</th>
                  <th className="px-4 py-3 font-semibold text-left">Priority</th>
                  <th className="px-4 py-3 font-semibold text-left">Status</th>
                  <th className="px-4 py-3 font-semibold text-left">Actions</th>
@@ -665,7 +752,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
             <tbody>
               {filtered.length === 0 ? (
                                  <tr>
-                   <td colSpan="14" className="px-4 py-8 text-center text-gray-500">
+                   <td colSpan="10" className="px-4 py-8 text-center text-gray-500">
                      No agreements submitted yet. Agreements submitted by checkers will appear here.
                    </td>
                  </tr>
@@ -694,48 +781,15 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
                         uploadStatuses={row.originalAgreement.uploadStatuses || {}}
                       />
                     </td>
-                    {/* Progress columns */}
-                    {["executionPending", "executed", "underProcess", "completed"].map(stage => (
-                      <td className="px-4 py-3 min-w-[180px]" key={stage}>
-                        <textarea
-                          className="border rounded w-full p-1 text-xs mb-1 focus:ring-2 focus:ring-blue-300"
-                          placeholder="Enter progress"
-                          value={row.progress[stage].text}
-                          onChange={e => handleProgressChange(i, stage, "text", e.target.value)}
-                          rows={2}
-                        />
-                        <div className="flex items-center gap-2 mb-1">
-                          <input
-                            type="date"
-                            className="border rounded px-2 py-1 text-xs focus:ring-2 focus:ring-blue-300"
-                            value={row.progress[stage].date}
-                            onChange={e => handleProgressChange(i, stage, "date", e.target.value)}
-                          />
-                          <button
-                            className="text-blue-600 underline text-xs"
-                            onClick={() => setModal({ open: true, history: row.progress[stage].history })}
-                            type="button"
-                          >
-                            ▶ View History
-                          </button>
-                          <button
-                            className="ml-auto px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs"
-                            onClick={() => handleSaveHistory(i, stage)}
-                            type="button"
-                          >Save</button>
-                        </div>
-                      </td>
-                    ))}
                                                                                    <td className="px-4 py-3">
                         {priorityBadge(row.priority)}
                       </td>
                                           <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          row.status === "Approved" ? "bg-green-100 text-green-700" :
-                          row.status === "Completed" ? "bg-green-200 text-green-800" :
-                          row.status === "Rejected" ? "bg-red-100 text-red-700" :
-                          row.status === "Final Agreement Uploaded" ? "bg-purple-100 text-purple-700" :
-                          "bg-orange-100 text-orange-700"
+                          row.status === "Execution Pending" ? "bg-yellow-100 text-yellow-700" :
+                          row.status === "Executed" ? "bg-blue-100 text-blue-700" :
+                          row.status === "Under Process with Client" ? "bg-purple-100 text-purple-700" :
+                          "bg-gray-100 text-gray-700"
                         }`}>
                           {row.status}
                         </span>
@@ -766,7 +820,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
         />
       )}
 
-             <HistoryModal open={modal.open} onClose={() => setModal({ open: false, history: [] })} history={modal.history} />
+
        <DetailsModal 
          open={details.open} 
          onClose={() => setDetails({ open: false, agreement: null })} 
