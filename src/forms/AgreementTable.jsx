@@ -220,6 +220,7 @@ function StatusHistoryModal({ open, onClose, history, title }) {
                     entry.status === "Execution Pending" ? "bg-yellow-100 text-yellow-700" :
                     entry.status === "Executed" ? "bg-blue-100 text-blue-700" :
                     entry.status === "Under Process with Client" ? "bg-purple-100 text-purple-700" :
+                    entry.status === "Approved" ? "bg-green-100 text-green-700" :
                     "bg-gray-100 text-gray-700"
                   }`}>
                     {entry.status}
@@ -304,7 +305,7 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
       setIsUploading(true);
       setTimeout(() => {
         onFinalAgreementUpload(agreement.id, selectedFile);
-        onStatusChange(agreement.id, "Under Process with Client");
+        onStatusChange(agreement.id, "Approved");
         setIsUploading(false);
         onClose();
       }, 1000);
@@ -318,7 +319,9 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
       } else if (currentStatus === "Executed") {
         nextStatus = "Under Process with Client";
       } else if (currentStatus === "Under Process with Client") {
-        nextStatus = "Under Process with Client"; // Stay at final status
+        nextStatus = "Approved"; // Move to final status
+      } else if (currentStatus === "Approved") {
+        nextStatus = "Approved"; // Stay at final status
       }
       
       onStatusChange(agreement.id, nextStatus);
@@ -382,6 +385,7 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
               <option value="Execution Pending">Execution Pending</option>
               <option value="Executed">Executed</option>
               <option value="Under Process with Client">Under Process with Client</option>
+              <option value="Approved">Approved</option>
             </select>
           </div>
         </div>
@@ -481,6 +485,11 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
     // If status is "Under Process with Client", show only that
     if (agreement.status === "Under Process with Client") {
       return "Under Process with Client";
+    }
+    
+    // If status is "Approved", show only that (final status)
+    if (agreement.status === "Approved") {
+      return "Approved";
     }
     
     // Default fallback
@@ -901,50 +910,60 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
                                           <td className="px-4 py-3 min-w-[200px]">
                         {/* Status Badge */}
                         <div className="mb-2">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            row.status === "Execution Pending" ? "bg-yellow-100 text-yellow-700" :
-                            row.status === "Executed" ? "bg-blue-100 text-blue-700" :
-                            row.status === "Under Process with Client" ? "bg-purple-100 text-purple-700" :
-                            "bg-gray-100 text-gray-700"
-                          }`}>
-                            {row.status}
-                          </span>
+                                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          row.status === "Execution Pending" ? "bg-yellow-100 text-yellow-700" :
+                          row.status === "Executed" ? "bg-blue-100 text-blue-700" :
+                          row.status === "Under Process with Client" ? "bg-purple-100 text-purple-700" :
+                          row.status === "Approved" ? "bg-green-100 text-green-700" :
+                          "bg-gray-100 text-gray-700"
+                        }`}>
+                          {row.status}
+                        </span>
                         </div>
                         
-                        {/* Status Progress Input */}
-                        <div className="space-y-2">
-                          <textarea
-                            className="w-full border rounded px-2 py-1 text-xs resize-none"
-                            placeholder="Enter progress notes..."
-                            rows="2"
-                            value={row.statusProgress?.notes || ""}
-                            onChange={(e) => handleStatusProgressUpdate(row.id, "notes", e.target.value)}
-                          />
-                          
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="date"
-                              className="border rounded px-2 py-1 text-xs flex-1"
-                              value={row.statusProgress?.date || ""}
-                              onChange={(e) => handleStatusProgressUpdate(row.id, "date", e.target.value)}
+                        {/* Status Progress Input - Only show for non-final statuses */}
+                        {row.status !== "Approved" && (
+                          <div className="space-y-2">
+                            <textarea
+                              className="w-full border rounded px-2 py-1 text-xs resize-none"
+                              placeholder="Enter progress notes..."
+                              rows="2"
+                              value={row.statusProgress?.notes || ""}
+                              onChange={(e) => handleStatusProgressUpdate(row.id, "notes", e.target.value)}
                             />
+                            
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="date"
+                                className="border rounded px-2 py-1 text-xs flex-1"
+                                value={row.statusProgress?.date || ""}
+                                onChange={(e) => handleStatusProgressUpdate(row.id, "date", e.target.value)}
+                              />
+                              <button
+                                className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200"
+                                onClick={() => handleSaveStatusProgress(row.id)}
+                                title="Save progress"
+                              >
+                                Save
+                              </button>
+                            </div>
+                            
                             <button
-                              className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200"
-                              onClick={() => handleSaveStatusProgress(row.id)}
-                              title="Save progress"
+                              className="w-full text-blue-600 underline text-xs hover:text-blue-800"
+                              onClick={() => handleViewStatusHistory(row.id, row.client)}
+                              title="View status history"
                             >
-                              Save
+                              ▶ View History ({row.statusHistory?.length || 0})
                             </button>
                           </div>
-                          
-                          <button
-                            className="w-full text-blue-600 underline text-xs hover:text-blue-800"
-                            onClick={() => handleViewStatusHistory(row.id, row.client)}
-                            title="View status history"
-                          >
-                            ▶ View History ({row.statusHistory?.length || 0})
-                          </button>
-                        </div>
+                        )}
+                        
+                        {/* Final Status Message */}
+                        {row.status === "Approved" && (
+                          <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+                            ✓ Approved - No further action required
+                          </div>
+                        )}
                       </td>
                                          <td className="px-4 py-3 text-center">
                        <button 
