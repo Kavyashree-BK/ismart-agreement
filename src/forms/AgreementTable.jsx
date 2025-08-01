@@ -195,6 +195,63 @@ const FinalAgreementUpload = ({ agreementId, onUpload, onCancel }) => {
 
 
 
+// Status History Modal
+function StatusHistoryModal({ open, onClose, history, title }) {
+  if (!open) return null;
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+      <div className="bg-white rounded-lg shadow-lg p-6 min-w-[500px] max-w-2xl max-h-[80vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-bold">{title}</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-xl">×</button>
+        </div>
+        
+        {history.length === 0 ? (
+          <div className="text-center text-gray-500 py-8">
+            <p>No status history available yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {history.map((entry, index) => (
+              <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    entry.status === "Execution Pending" ? "bg-yellow-100 text-yellow-700" :
+                    entry.status === "Executed" ? "bg-blue-100 text-blue-700" :
+                    entry.status === "Under Process with Client" ? "bg-purple-100 text-purple-700" :
+                    "bg-gray-100 text-gray-700"
+                  }`}>
+                    {entry.status}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {new Date(entry.timestamp).toLocaleString()}
+                  </span>
+                </div>
+                {entry.notes && (
+                  <p className="text-sm text-gray-700 mb-2">{entry.notes}</p>
+                )}
+                {entry.date && (
+                  <p className="text-xs text-gray-500">Date: {entry.date}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        
+        <div className="mt-6 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Agreement Details Modal with Actions
 function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChange, onFinalAgreementUpload }) {
   const [localPriority, setLocalPriority] = useState(agreement?.priority || "Low");
@@ -430,6 +487,8 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
     return "Execution Pending";
   };
   
+
+
   // Transform agreement data from form structure to table structure
   const transformedData = agreements.map((agreement, index) => {
     // Extract WO/PO/LOI information from uploadStatuses
@@ -478,6 +537,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
 
   const [data, setData] = useState(transformedData);
   const [details, setDetails] = useState({ open: false, agreement: null });
+  const [statusHistoryModal, setStatusHistoryModal] = useState({ open: false, history: [], title: "" });
 
   // Update data when agreements prop changes
   React.useEffect(() => {
@@ -512,6 +572,60 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
     if (onStatusUpdate) {
       const approvedDate = newStatus !== "Execution Pending" ? new Date().toISOString().split('T')[0] : null;
       onStatusUpdate(agreementId, newStatus, approvedDate);
+    }
+  };
+
+  // Handle status progress updates (notes, dates, history)
+  const handleStatusProgressUpdate = (agreementId, field, value) => {
+    setData(prev => prev.map(row => {
+      if (row.id === agreementId) {
+        return {
+          ...row,
+          statusProgress: {
+            ...row.statusProgress,
+            [field]: value
+          }
+        };
+      }
+      return row;
+    }));
+  };
+
+  // Handle saving status progress to history
+  const handleSaveStatusProgress = (agreementId) => {
+    setData(prev => prev.map(row => {
+      if (row.id === agreementId) {
+        const currentProgress = row.statusProgress || {};
+        const history = row.statusHistory || [];
+        
+        if (currentProgress.notes || currentProgress.date) {
+          const newHistoryEntry = {
+            notes: currentProgress.notes || "",
+            date: currentProgress.date || new Date().toISOString().split('T')[0],
+            timestamp: new Date().toISOString(),
+            status: row.status
+          };
+          
+          return {
+            ...row,
+            statusHistory: [...history, newHistoryEntry],
+            statusProgress: { notes: "", date: "" } // Clear current progress
+          };
+        }
+      }
+      return row;
+    }));
+  };
+
+  // Handle viewing status history
+  const handleViewStatusHistory = (agreementId, clientName) => {
+    const agreement = data.find(row => row.id === agreementId);
+    if (agreement) {
+      setStatusHistoryModal({
+        open: true,
+        history: agreement.statusHistory || [],
+        title: `Status History - ${clientName}`
+      });
     }
   };
 
@@ -784,15 +898,53 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
                                                                                    <td className="px-4 py-3">
                         {priorityBadge(row.priority)}
                       </td>
-                                          <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          row.status === "Execution Pending" ? "bg-yellow-100 text-yellow-700" :
-                          row.status === "Executed" ? "bg-blue-100 text-blue-700" :
-                          row.status === "Under Process with Client" ? "bg-purple-100 text-purple-700" :
-                          "bg-gray-100 text-gray-700"
-                        }`}>
-                          {row.status}
-                        </span>
+                                          <td className="px-4 py-3 min-w-[200px]">
+                        {/* Status Badge */}
+                        <div className="mb-2">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            row.status === "Execution Pending" ? "bg-yellow-100 text-yellow-700" :
+                            row.status === "Executed" ? "bg-blue-100 text-blue-700" :
+                            row.status === "Under Process with Client" ? "bg-purple-100 text-purple-700" :
+                            "bg-gray-100 text-gray-700"
+                          }`}>
+                            {row.status}
+                          </span>
+                        </div>
+                        
+                        {/* Status Progress Input */}
+                        <div className="space-y-2">
+                          <textarea
+                            className="w-full border rounded px-2 py-1 text-xs resize-none"
+                            placeholder="Enter progress notes..."
+                            rows="2"
+                            value={row.statusProgress?.notes || ""}
+                            onChange={(e) => handleStatusProgressUpdate(row.id, "notes", e.target.value)}
+                          />
+                          
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="date"
+                              className="border rounded px-2 py-1 text-xs flex-1"
+                              value={row.statusProgress?.date || ""}
+                              onChange={(e) => handleStatusProgressUpdate(row.id, "date", e.target.value)}
+                            />
+                            <button
+                              className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200"
+                              onClick={() => handleSaveStatusProgress(row.id)}
+                              title="Save progress"
+                            >
+                              Save
+                            </button>
+                          </div>
+                          
+                          <button
+                            className="w-full text-blue-600 underline text-xs hover:text-blue-800"
+                            onClick={() => handleViewStatusHistory(row.id, row.client)}
+                            title="View status history"
+                          >
+                            ▶ View History ({row.statusHistory?.length || 0})
+                          </button>
+                        </div>
                       </td>
                                          <td className="px-4 py-3 text-center">
                        <button 
@@ -828,6 +980,13 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
          onPriorityChange={handlePriorityChange}
          onStatusChange={handleStatusChange}
          onFinalAgreementUpload={handleFinalAgreementUploadFromModal}
+       />
+       
+       <StatusHistoryModal
+         open={statusHistoryModal.open}
+         onClose={() => setStatusHistoryModal({ open: false, history: [], title: "" })}
+         history={statusHistoryModal.history}
+         title={statusHistoryModal.title}
        />
     </div>
   );

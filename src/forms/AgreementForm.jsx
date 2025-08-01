@@ -752,30 +752,6 @@ const AgreementForm = (props) => {
           <textarea className="w-full border rounded-md p-2.5 text-sm min-h-[80px]" placeholder="Add any additional remarks..." />
         </section>
 
-        {/* Agreement Type Selection */}
-        <section className="mb-10">
-          <h2 className="text-xl font-bold mb-1 text-gray-900">Agreement Type Selection</h2>
-          <p className="text-gray-500 mb-6">Identify the origin of the agreement draft</p>
-          <div className="flex gap-8 mb-4 items-start">
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                checked={agreementDraftType === "client"}
-                onChange={() => setAgreementDraftType("client")}
-              />
-              Client Draft
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                checked={agreementDraftType === "ismart"}
-                onChange={() => setAgreementDraftType("ismart")}
-              />
-              iSmart Draft
-            </label>
-          </div>
-        </section>
-
         {/* Entity Type */}
         <section className="mb-10">
           <h2 className="text-xl font-bold mb-1 text-gray-900">Entity Type</h2>
@@ -837,6 +813,30 @@ const AgreementForm = (props) => {
                 </div>
               )}
             </div>
+          </div>
+        </section>
+
+        {/* Agreement Type Selection */}
+        <section className="mb-10">
+          <h2 className="text-xl font-bold mb-1 text-gray-900">Agreement Type Selection</h2>
+          <p className="text-gray-500 mb-6">Identify the origin of the agreement draft</p>
+          <div className="flex gap-8 mb-4 items-start">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                checked={agreementDraftType === "client"}
+                onChange={() => setAgreementDraftType("client")}
+              />
+              Client Draft
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                checked={agreementDraftType === "ismart"}
+                onChange={() => setAgreementDraftType("ismart")}
+              />
+              iSmart Draft
+            </label>
           </div>
         </section>
 
