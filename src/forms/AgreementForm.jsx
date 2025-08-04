@@ -176,6 +176,7 @@ const AgreementForm = (props) => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState("");
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isOpenAgreement, setIsOpenAgreement] = useState(false);
 
   // Check if agreement is expiring within 30 days
   const today = new Date();
@@ -205,6 +206,7 @@ const AgreementForm = (props) => {
       setUploadStatuses(editingAgreement.uploadStatuses || {});
       setStartDate(editingAgreement.startDate ? new Date(editingAgreement.startDate) : new Date());
       setEndDate(editingAgreement.endDate ? new Date(editingAgreement.endDate) : new Date());
+      setIsOpenAgreement(editingAgreement.isOpenAgreement || false); // Set the new state
     } else {
       setIsEditMode(false);
     }
@@ -371,7 +373,8 @@ const AgreementForm = (props) => {
       selectedBranches,
       uploadStatuses,
       startDate,
-      endDate
+      endDate,
+      isOpenAgreement // Add the new state to the data
     };
 
     // If in edit mode, preserve the original ID and add it to the data
@@ -408,6 +411,7 @@ const AgreementForm = (props) => {
       setSelectedBranches([]);
       setStartDate(new Date());
       setEndDate(new Date());
+      setIsOpenAgreement(false); // Reset the new state
     }
     setTimeout(() => setIsSubmitted(false), 3000);
   };
@@ -798,26 +802,48 @@ const AgreementForm = (props) => {
         <section className="mb-10">
           <h2 className="text-xl font-bold mb-1 text-gray-900">Document Uploads</h2>
                      <p className="text-gray-500 mb-6">Upload at least one of the following documents: LOI, WO, PO, or Email Approval</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">From Date *</label>
-              <DatePicker
-                className="w-full border rounded-md p-2.5 text-sm"
-                selected={startDate}
-                onChange={date => setStartDate(date)}
-                dateFormat="dd-MM-yyyy"
-                placeholderText="dd-mm-yyyy"
-              />
+          {/* Agreement Date Section */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Agreement Duration</label>
+            <div className="flex items-center gap-4 mb-2">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={isOpenAgreement}
+                  onChange={e => setIsOpenAgreement(e.target.checked)}
+                  className="mr-2"
+                />
+                Open Agreement (No End Date)
+              </label>
+              <span className="text-xs text-gray-500">
+                {isOpenAgreement
+                  ? "Only 'From Date' is required"
+                  : "Both 'From Date' and 'To Date' are required"}
+              </span>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">To Date *</label>
-              <DatePicker
-                className="w-full border rounded-md p-2.5 text-sm"
-                selected={endDate}
-                onChange={date => setEndDate(date)}
-                dateFormat="dd-MM-yyyy"
-                placeholderText="dd-mm-yyyy"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">From Date *</label>
+                <DatePicker
+                  className="w-full border rounded-md p-2.5 text-sm"
+                  selected={startDate}
+                  onChange={date => setStartDate(date)}
+                  dateFormat="dd-MM-yyyy"
+                  placeholderText="dd-mm-yyyy"
+                />
+              </div>
+              {!isOpenAgreement && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">To Date *</label>
+                  <DatePicker
+                    className="w-full border rounded-md p-2.5 text-sm"
+                    selected={endDate}
+                    onChange={date => setEndDate(date)}
+                    dateFormat="dd-MM-yyyy"
+                    placeholderText="dd-mm-yyyy"
+                  />
+                </div>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
@@ -1169,6 +1195,7 @@ const AgreementForm = (props) => {
                   setUploadStatuses(draft.uploadStatuses);
                   setStartDate(new Date(draft.startDate));
                   setEndDate(new Date(draft.endDate));
+                  setIsOpenAgreement(draft.isOpenAgreement || false); // Set the new state from draft
                 }}
                 title="Open draft for editing"
               >
@@ -1201,7 +1228,8 @@ const AgreementForm = (props) => {
                   selectedBranches,
                   uploadStatuses,
                   startDate,
-                  endDate
+                  endDate,
+                  isOpenAgreement // Add the new state to the draft
                 };
                 setDraft(draftData);
                 setDraftSaved(true);
