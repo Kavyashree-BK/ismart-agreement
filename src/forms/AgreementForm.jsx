@@ -157,6 +157,7 @@ const AgreementForm = (props) => {
   const [selectedClient, setSelectedClient] = useState("");
   const [availableBranches, setAvailableBranches] = useState([]);
   const [selectedBranches, setSelectedBranches] = useState([]);
+  const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
   const [userInfoErrors, setUserInfoErrors] = useState({});
   const [uploadStatuses, setUploadStatuses] = useState({
     LOI: { uploaded: false, status: "", remarks: "" },
@@ -208,6 +209,20 @@ const AgreementForm = (props) => {
       setIsEditMode(false);
     }
   }, [editingAgreement]);
+
+  // Handle click outside to close branch dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (branchDropdownOpen && !event.target.closest('.branch-dropdown')) {
+        setBranchDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [branchDropdownOpen]);
 
   function initialClauses() {
     return [
@@ -599,54 +614,170 @@ const AgreementForm = (props) => {
           </div>
           <div className="mt-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">Client Branch(s) *</label>
-            <Select
-              isMulti
-              value={selectedBranches.map(branch => ({ value: branch.id, label: `${branch.name} (${branch.code})` }))}
-              onChange={(selectedOptions) => {
-                const newSelectedBranches = selectedOptions ? selectedOptions.map(option => {
-                  const client = clientsData.find(c => c.name === selectedClient);
-                  return client.branches.find(b => b.id === option.value);
-                }) : [];
-                setSelectedBranches(newSelectedBranches);
-                                 // Clear the error if branches are selected
-                 if (newSelectedBranches.length > 0 && userInfoErrors.clientBranch) {
-                   setUserInfoErrors(prev => ({ ...prev, clientBranch: null }));
-                 }
-              }}
-              options={(availableBranches || []).map(branch => ({ value: branch.id, label: `${branch.name} (${branch.code})` }))}
-              isDisabled={!selectedClient}
-              placeholder={selectedClient ? "Select client branches..." : "Please select a client first"}
-              className="text-sm"
-              classNamePrefix="react-select"
-              styles={{
-                control: (provided, state) => ({
-                  ...provided,
-                  minHeight: '42px',
-                  borderColor: userInfoErrors.clientBranch ? '#ef4444' : state.isFocused ? '#3b82f6' : '#d1d5db',
-                  boxShadow: state.isFocused ? '0 0 0 1px #3b82f6' : 'none',
-                  '&:hover': {
-                    borderColor: userInfoErrors.clientBranch ? '#ef4444' : '#9ca3af'
+            <div className="relative branch-dropdown">
+              <button
+                type="button"
+                onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
+                className={`w-full border rounded-md p-2.5 text-sm text-left flex items-center justify-between ${
+                  userInfoErrors.clientBranch ? 'border-red-500' : 'border-gray-300'
+                } ${!selectedClient ? 'bg-gray-100 text-gray-500' : 'bg-white text-gray-700'}`}
+                disabled={!selectedClient}
+              >
+                <span className={selectedBranches.length > 0 ? 'text-gray-700' : 'text-gray-500'}>
+                  {selectedBranches.length > 0 
+                    ? selectedBranches.length === availableBranches.length && availableBranches.length > 0
+                      ? "🌏 Pan India (All Branches)"
+                      : `${selectedBranches.length} branch${selectedBranches.length !== 1 ? 'es' : ''} selected`
+                    : selectedClient ? "Select client branches..." : "Please select a client first"
                   }
-                }),
-                multiValue: (provided) => ({
-                  ...provided,
-                  backgroundColor: '#dbeafe',
-                }),
-                multiValueLabel: (provided) => ({
-                  ...provided,
-                  color: '#1e40af',
-                  fontSize: '14px'
-                }),
-                multiValueRemove: (provided) => ({
-                  ...provided,
-                  color: '#1e40af',
-                  '&:hover': {
-                    backgroundColor: '#3b82f6',
-                    color: 'white'
-                  }
-                })
-              }}
-            />
+                </span>
+                <svg className={`w-4 h-4 transition-transform ${branchDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {branchDropdownOpen && selectedClient && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  <div className="p-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">Select Branches</span>
+                      <button
+                        type="button"
+                        onClick={() => setBranchDropdownOpen(false)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      {/* Pan India Option */}
+                      <label className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer border-b border-gray-200">
+                        <input
+                          type="checkbox"
+                          checked={selectedBranches.length === availableBranches.length && availableBranches.length > 0}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedBranches([...availableBranches]);
+                              if (userInfoErrors.clientBranch) {
+                                setUserInfoErrors(prev => ({ ...prev, clientBranch: null }));
+                              }
+                            } else {
+                              setSelectedBranches([]);
+                            }
+                          }}
+                          className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-blue-700">🌏 Pan India</div>
+                          <div className="text-xs text-gray-500">Apply to all branches nationwide</div>
+                        </div>
+                      </label>
+                      
+                      {/* Individual Branches */}
+                      {availableBranches.map((branch) => {
+                        const isSelected = selectedBranches.some(selected => selected.id === branch.id);
+                        return (
+                          <label key={branch.id} className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  const newSelectedBranches = [...selectedBranches, branch];
+                                  setSelectedBranches(newSelectedBranches);
+                                  if (userInfoErrors.clientBranch) {
+                                    setUserInfoErrors(prev => ({ ...prev, clientBranch: null }));
+                                  }
+                                } else {
+                                  const newSelectedBranches = selectedBranches.filter(b => b.id !== branch.id);
+                                  setSelectedBranches(newSelectedBranches);
+                                }
+                              }}
+                              className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <div className="flex-1">
+                              <div className="text-sm font-medium text-gray-700">{branch.name}</div>
+                              <div className="text-xs text-gray-500">{branch.code} • {branch.type}</div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    
+                    <div className="border-t pt-2 mt-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-500">
+                          {selectedBranches.length} of {availableBranches.length} selected
+                        </span>
+                        <div className="space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (selectedBranches.length === availableBranches.length) {
+                                setSelectedBranches([]);
+                              } else {
+                                setSelectedBranches([...availableBranches]);
+                              }
+                            }}
+                            className="text-xs text-blue-600 hover:text-blue-800"
+                          >
+                            {selectedBranches.length === availableBranches.length ? 'Deselect All' : 'Select All'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBranchDropdownOpen(false)}
+                            className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+                          >
+                            Done
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Selected Branches Display */}
+            {selectedBranches.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {selectedBranches.length === availableBranches.length && availableBranches.length > 0 ? (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    🌏 Pan India (All Branches)
+                    <button
+                      type="button"
+                      onClick={() => setSelectedBranches([])}
+                      className="ml-1 text-green-600 hover:text-green-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ) : (
+                  selectedBranches.map((branch) => (
+                    <span
+                      key={branch.id}
+                      className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                    >
+                      {branch.name} ({branch.code})
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newSelectedBranches = selectedBranches.filter(b => b.id !== branch.id);
+                          setSelectedBranches(newSelectedBranches);
+                        }}
+                        className="ml-1 text-blue-600 hover:text-blue-800"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+            )}
+            
             {userInfoErrors.clientBranch && (
               <div className="text-red-600 text-xs mt-1">{userInfoErrors.clientBranch}</div>
             )}
