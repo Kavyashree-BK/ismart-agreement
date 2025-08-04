@@ -14,6 +14,25 @@ function Dashboard({ agreements, userRole, onStatusUpdate, setViewModal, setEdit
   // Get today's date for filtering
   const today = new Date().toISOString().split('T')[0];
 
+  // Calculate expiring contracts (within 30 days)
+  const expiringContracts = agreements.filter(agreement => {
+    if (!agreement.endDate || agreement.status !== "Approved") return false;
+    const endDate = new Date(agreement.endDate);
+    const today = new Date();
+    const timeDiff = endDate.getTime() - today.getTime();
+    const daysToExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    return daysToExpiry > 0 && daysToExpiry <= 30;
+  });
+
+  // Calculate critical expiring contracts (within 7 days)
+  const criticalExpiringContracts = expiringContracts.filter(agreement => {
+    const endDate = new Date(agreement.endDate);
+    const today = new Date();
+    const timeDiff = endDate.getTime() - today.getTime();
+    const daysToExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    return daysToExpiry <= 7;
+  });
+
   const handleViewAgreement = (agreement) => {
     setViewModal({ open: true, agreement });
   };
@@ -55,30 +74,28 @@ IMPORTANT CLAUSES:
 ${(agreement.clauses || []).map((clause, idx) => `
 ${idx + 1}. ${clause.title}
    Details: ${clause.details || 'No details provided'}
-`).join('')}
+`).join('\n')}
 
- DOCUMENTS UPLOADED:
- ==================
- ${Object.entries(agreement.uploadStatuses || {})
-   .filter(([key, status]) => status.uploaded && ['LOI', 'WO', 'PO'].includes(key))
-   .map(([key, status]) => `${key}: ${status.file?.name || 'Uploaded'}`)
-   .join('\n') || 'No documents uploaded'}
+DOCUMENTS:
+==========
+${Object.entries(agreement.uploadStatuses || {}).map(([type, status]) => 
+  `${type}: ${status.uploaded ? 'Uploaded' : 'Not uploaded'}`
+).join('\n')}
 
-${agreement.entityType === 'group' ? `
-GROUP COMPANIES:
-===============
-${(agreement.underList || []).map((item, idx) => `${idx + 1}. ${item.value || 'Not specified'}`).join('\n')}
-` : ''}
+UNDER LIST/ANNEXURE:
+===================
+${(agreement.underList || []).map((item, idx) => 
+  `${idx + 1}. ${item.placeholder || 'No details provided'}`
+).join('\n')}
 
 Generated on: ${new Date().toLocaleString()}
     `;
 
-    // Create and download the file
     const blob = new Blob([agreementContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Agreement_${agreement.selectedClient}_${agreement.id}.txt`;
+    link.download = `Agreement_${agreement.id}_${agreement.selectedClient}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -120,7 +137,35 @@ Generated on: ${new Date().toLocaleString()}
 
     return (
       <div className="px-8 py-6">
-        <div className="grid grid-cols-4 gap-6 mb-8">
+        {/* Contract Expiry Alert Banner */}
+        {expiringContracts.length > 0 && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-orange-100 to-red-100 border-l-4 border-orange-500 rounded-lg shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">⚠️</span>
+                <div>
+                  <h3 className="font-bold text-orange-800">
+                    Contract Expiry Alert: {expiringContracts.length} contract{expiringContracts.length !== 1 ? 's' : ''} expiring soon
+                  </h3>
+                  <p className="text-orange-700 text-sm">
+                    {criticalExpiringContracts.length > 0 
+                      ? `${criticalExpiringContracts.length} contract${criticalExpiringContracts.length !== 1 ? 's' : ''} expiring within 7 days`
+                      : 'Contracts expiring within 30 days'
+                    }
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setActiveTab("agreements")}
+                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium"
+              >
+                View All Contracts
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-5 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <div className="text-2xl font-bold text-orange-600">{pendingApproval}</div>
             <div className="text-gray-600 mt-2 flex items-center justify-center gap-2">
@@ -149,49 +194,106 @@ Generated on: ${new Date().toLocaleString()}
               <span role="img" aria-label="overdue">🚨</span>
             </div>
           </div>
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <div className="text-2xl font-bold text-orange-600">{expiringContracts.length}</div>
+            <div className="text-gray-600 mt-2 flex items-center justify-center gap-2">
+              <span>Expiring Soon</span>
+              <span role="img" aria-label="expiring">⏰</span>
+            </div>
+          </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-bold mb-2">Priority Actions</h2>
-          <p className="text-gray-500 mb-4">Agreements requiring your review</p>
-          <div className="divide-y">
-            {priorityActions.length === 0 ? (
-              <div className="text-gray-500 text-center py-4">No pending agreements</div>
-            ) : (
-              priorityActions.map((agreement) => (
-                <div className="flex items-center justify-between py-4" key={agreement.id}>
-                  <div className="flex-1">
-                    <div className="font-semibold">{agreement.selectedClient}</div>
-                    <div className="text-gray-500 text-sm">{(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}</div>
-                    <div className="text-xs text-gray-400 mt-1">
-                      Submitted by: {agreement.submittedBy} • {agreement.daysPending} days ago
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Priority Actions */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-bold mb-2">Priority Actions</h2>
+            <p className="text-gray-500 mb-4">Agreements requiring your review</p>
+            <div className="divide-y">
+              {priorityActions.length === 0 ? (
+                <div className="text-gray-500 text-center py-4">No pending agreements</div>
+              ) : (
+                priorityActions.map((agreement) => (
+                  <div className="flex items-center justify-between py-4" key={agreement.id}>
+                    <div className="flex-1">
+                      <div className="font-semibold">{agreement.selectedClient}</div>
+                      <div className="text-gray-500 text-sm">{(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}</div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        Submitted by: {agreement.submittedBy} • {agreement.daysPending} days ago
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                      agreement.priority === "High" ? "bg-red-100 text-red-700" :
-                      agreement.priority === "Medium" ? "bg-yellow-100 text-yellow-700" :
-                      "bg-blue-100 text-blue-700"
-                    }`}>
-                      {agreement.priority}
-                    </span>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleStatusUpdate(agreement.id, "Approved")}
-                        className="px-3 py-1 bg-green-100 text-green-700 rounded text-sm font-medium hover:bg-green-200"
+                    <div className="flex items-center gap-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                        agreement.priority === "High" ? "bg-red-100 text-red-700" :
+                        agreement.priority === "Medium" ? "bg-yellow-100 text-yellow-700" :
+                        "bg-green-100 text-green-700"
+                      }`}>
+                        {agreement.priority}
+                      </span>
+                      <button 
+                        className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                        onClick={() => setViewModal({ open: true, agreement })}
                       >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleStatusUpdate(agreement.id, "Rejected")}
-                        className="px-3 py-1 bg-red-100 text-red-700 rounded text-sm font-medium hover:bg-red-200"
-                      >
-                        Reject
+                        Review
                       </button>
                     </div>
                   </div>
-                </div>
-              ))
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Expiring Contracts */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-bold mb-2">Expiring Contracts</h2>
+            <p className="text-gray-500 mb-4">Contracts expiring within 30 days</p>
+            <div className="divide-y">
+              {expiringContracts.length === 0 ? (
+                <div className="text-gray-500 text-center py-4">No contracts expiring soon</div>
+              ) : (
+                expiringContracts.slice(0, 5).map((agreement) => {
+                  const endDate = new Date(agreement.endDate);
+                  const today = new Date();
+                  const timeDiff = endDate.getTime() - today.getTime();
+                  const daysToExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                  
+                  return (
+                    <div className="flex items-center justify-between py-4" key={agreement.id}>
+                      <div className="flex-1">
+                        <div className="font-semibold">{agreement.selectedClient}</div>
+                        <div className="text-gray-500 text-sm">{(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}</div>
+                        <div className="text-xs text-gray-400 mt-1">
+                          Expires: {endDate.toLocaleDateString()} • {daysToExpiry} days left
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                          daysToExpiry <= 7 ? "bg-red-100 text-red-700" :
+                          daysToExpiry <= 14 ? "bg-orange-100 text-orange-700" :
+                          "bg-yellow-100 text-yellow-700"
+                        }`}>
+                          {daysToExpiry <= 7 ? "Critical" : daysToExpiry <= 14 ? "Urgent" : "Warning"}
+                        </span>
+                        <button 
+                          className="px-3 py-1 bg-orange-600 text-white rounded text-xs hover:bg-orange-700"
+                          onClick={() => setViewModal({ open: true, agreement })}
+                        >
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            {expiringContracts.length > 5 && (
+              <div className="mt-4 text-center">
+                <button 
+                  onClick={() => setActiveTab("agreements")}
+                  className="text-orange-600 hover:text-orange-800 text-sm font-medium"
+                >
+                  View all {expiringContracts.length} expiring contracts →
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -202,7 +304,35 @@ Generated on: ${new Date().toLocaleString()}
   // Checker Dashboard (default) - Shows interconnected data
   return (
     <div className="px-8 py-6">
-      <div className="grid grid-cols-4 gap-6 mb-8">
+      {/* Contract Expiry Alert Banner */}
+      {expiringContracts.length > 0 && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-orange-100 to-red-100 border-l-4 border-orange-500 rounded-lg shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <h3 className="font-bold text-orange-800">
+                  Contract Expiry Alert: {expiringContracts.length} contract{expiringContracts.length !== 1 ? 's' : ''} expiring soon
+                </h3>
+                <p className="text-orange-700 text-sm">
+                  {criticalExpiringContracts.length > 0 
+                    ? `${criticalExpiringContracts.length} contract${criticalExpiringContracts.length !== 1 ? 's' : ''} expiring within 7 days`
+                    : 'Contracts expiring within 30 days'
+                  }
+                </p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setActiveTab("agreements")}
+              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 text-sm font-medium"
+            >
+              View All Contracts
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-5 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow p-6 text-center">
           <div className="text-2xl font-bold">{agreements.length}</div>
           <div className="text-gray-600 mt-2 flex items-center justify-center gap-2">
@@ -231,65 +361,141 @@ Generated on: ${new Date().toLocaleString()}
             <span role="img" aria-label="cross">❗</span>
           </div>
         </div>
+        <div className="bg-white rounded-lg shadow p-6 text-center">
+          <div className="text-2xl font-bold text-orange-600">{expiringContracts.length}</div>
+          <div className="text-gray-600 mt-2 flex items-center justify-center gap-2">
+            <span>Expiring Soon</span>
+            <span role="img" aria-label="expiring">⏰</span>
+          </div>
+        </div>
       </div>
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-bold mb-2">Recent Submissions</h2>
-        <p className="text-gray-500 mb-4">Your latest agreement submissions and their approval status</p>
-        <div className="divide-y">
-          {recentSubmissions.length === 0 ? (
-            <div className="text-gray-500 text-center py-4">No submissions yet</div>
-          ) : (
-            recentSubmissions.map((agreement, idx) => (
-              <div className="flex items-center justify-between py-3" key={agreement.id || idx}>
-                <div className="flex-1">
-                  <div className="font-semibold">{agreement.selectedClient}</div>
-                  <div className="text-gray-500 text-sm">{(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}</div>
-                  <div className="text-xs text-gray-400 mt-1">
-                    Submitted: {agreement.submittedDate}
-                    {agreement.approvedDate && agreement.status === "Approved" && 
-                      ` • Approved: ${agreement.approvedDate}`}
-                    {agreement.approvedDate && agreement.status === "Rejected" && 
-                      ` • Rejected: ${agreement.approvedDate}`}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Recent Submissions */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-bold mb-2">Recent Submissions</h2>
+          <p className="text-gray-500 mb-4">Your latest agreement submissions and their approval status</p>
+          <div className="divide-y">
+            {recentSubmissions.length === 0 ? (
+              <div className="text-gray-500 text-center py-4">No submissions yet</div>
+            ) : (
+              recentSubmissions.map((agreement, idx) => (
+                <div className="flex items-center justify-between py-3" key={agreement.id || idx}>
+                  <div className="flex-1">
+                    <div className="font-semibold">{agreement.selectedClient}</div>
+                    <div className="text-gray-500 text-sm">{(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}</div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      Submitted: {agreement.submittedDate}
+                      {agreement.approvedDate && agreement.status === "Approved" && 
+                        ` • Approved: ${agreement.approvedDate}`}
+                      {agreement.approvedDate && agreement.status === "Rejected" && 
+                        ` • Rejected: ${agreement.approvedDate}`}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={
-                    agreement.status === "Approved"
-                      ? "px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold"
-                    : agreement.status === "Rejected"
-                      ? "px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold"
-                    : "px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold"
-                  }>
-                    {agreement.status}
-                  </span>
-                  <div className="flex gap-2">
-                    <button 
-                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200"
-                      onClick={() => handleViewAgreement(agreement)}
-                      title="View Agreement Details"
-                    >
-                      👁️ View
-                    </button>
-                    {agreement.status === "Pending Review" && (
+                  <div className="flex items-center gap-3">
+                    <span className={
+                      agreement.status === "Approved"
+                        ? "px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold"
+                      : agreement.status === "Rejected"
+                        ? "px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold"
+                      : "px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold"
+                    }>
+                      {agreement.status}
+                    </span>
+                    <div className="flex gap-2">
                       <button 
-                        className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium hover:bg-yellow-200"
-                        onClick={() => handleEditAgreement(agreement)}
-                        title="Edit Agreement"
+                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200"
+                        onClick={() => handleViewAgreement(agreement)}
+                        title="View Agreement Details"
                       >
-                        ✏️ Edit
+                        👁️ View
                       </button>
-                    )}
-                    <button 
-                      className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-medium hover:bg-green-200"
-                      onClick={() => handleDownloadAgreement(agreement)}
-                      title="Download Agreement Copy"
-                    >
-                      📥 Download
-                    </button>
+                      {agreement.status === "Pending Review" && (
+                        <button 
+                          className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium hover:bg-yellow-200"
+                          onClick={() => handleEditAgreement(agreement)}
+                          title="Edit Agreement"
+                        >
+                          ✏️ Edit
+                        </button>
+                      )}
+                      <button 
+                        className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-medium hover:bg-green-200"
+                        onClick={() => handleDownloadAgreement(agreement)}
+                        title="Download Agreement Copy"
+                      >
+                        📥 Download
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Expiring Contracts */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-bold mb-2">Expiring Contracts</h2>
+          <p className="text-gray-500 mb-4">Your contracts expiring within 30 days</p>
+          <div className="divide-y">
+            {expiringContracts.length === 0 ? (
+              <div className="text-gray-500 text-center py-4">No contracts expiring soon</div>
+            ) : (
+              expiringContracts.slice(0, 5).map((agreement) => {
+                const endDate = new Date(agreement.endDate);
+                const today = new Date();
+                const timeDiff = endDate.getTime() - today.getTime();
+                const daysToExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                
+                return (
+                  <div className="flex items-center justify-between py-3" key={agreement.id}>
+                    <div className="flex-1">
+                      <div className="font-semibold">{agreement.selectedClient}</div>
+                      <div className="text-gray-500 text-sm">{(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}</div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        Expires: {endDate.toLocaleDateString()} • {daysToExpiry} days left
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                        daysToExpiry <= 7 ? "bg-red-100 text-red-700" :
+                        daysToExpiry <= 14 ? "bg-orange-100 text-orange-700" :
+                        "bg-yellow-100 text-yellow-700"
+                      }`}>
+                        {daysToExpiry <= 7 ? "Critical" : daysToExpiry <= 14 ? "Urgent" : "Warning"}
+                      </span>
+                      <div className="flex gap-2">
+                        <button 
+                          className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium hover:bg-blue-200"
+                          onClick={() => handleViewAgreement(agreement)}
+                          title="View Agreement Details"
+                        >
+                          👁️ View
+                        </button>
+                        <button 
+                          className="px-3 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium hover:bg-orange-200"
+                          onClick={() => handleEditAgreement(agreement)}
+                          title="Renew Agreement"
+                        >
+                          🔄 Renew
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          {expiringContracts.length > 5 && (
+            <div className="mt-4 text-center">
+              <button 
+                onClick={() => setActiveTab("agreements")}
+                className="text-orange-600 hover:text-orange-800 text-sm font-medium"
+              >
+                View all {expiringContracts.length} expiring contracts →
+              </button>
+            </div>
           )}
         </div>
       </div>

@@ -572,12 +572,33 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
   };
 
   const handleStatusChange = (agreementId, newStatus) => {
-    // Update local data
-    setData(prev => prev.map(row =>
-      row.id === agreementId ? { ...row, status: newStatus } : row
-    ));
-    
-    // Update the agreement status using the onStatusUpdate callback
+    setData(prev => prev.map(row => {
+      if (row.id === agreementId) {
+        const history = row.statusHistory || [];
+        const timestamp = new Date().toISOString();
+        let notes = "";
+        if (newStatus === "Approved") {
+          notes = "Final approval granted by approver";
+        } else if (newStatus === "Execution Pending") {
+          notes = "Status reset to pending";
+        } else {
+          notes = `Status updated to ${newStatus}`;
+        }
+        const newHistoryEntry = {
+          notes,
+          date: new Date().toISOString().split('T')[0],
+          timestamp,
+          status: newStatus
+        };
+        return {
+          ...row,
+          status: newStatus,
+          statusHistory: [...history, newHistoryEntry]
+        };
+      }
+      return row;
+    }));
+
     if (onStatusUpdate) {
       const approvedDate = newStatus !== "Execution Pending" ? new Date().toISOString().split('T')[0] : null;
       onStatusUpdate(agreementId, newStatus, approvedDate);
@@ -958,11 +979,20 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
                           </div>
                         )}
                         
-                        {/* Final Status Message */}
+                        {/* Final Status Message and View History for Approved */}
                         {row.status === "Approved" && (
-                          <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
-                            ✓ Approved - No further action required
-                          </div>
+                          <>
+                            <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+                              ✓ Approved - No further action required
+                            </div>
+                            <button
+                              className="w-full text-blue-600 underline text-xs hover:text-blue-800 mt-2"
+                              onClick={() => handleViewStatusHistory(row.id, row.client)}
+                              title="View status history"
+                            >
+                              ▶ View History ({row.statusHistory?.length || 0})
+                            </button>
+                          </>
                         )}
                       </td>
                                          <td className="px-4 py-3 text-center">
