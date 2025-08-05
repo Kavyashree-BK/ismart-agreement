@@ -443,29 +443,45 @@ const AgreementForm = (props) => {
 
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
+    console.log(`handleChange called - field: ${name}, value: ${value}, current userRole: ${userRole}`);
     
-    // Use debounced form updates for better performance
-    debouncedSetForm({ [name]: value });
+    // Special debugging for contact fields
+    if (name.includes('Contact') || name.includes('Email') || name.includes('Name')) {
+      console.log(`Contact field change - ${name}: "${value}" (length: ${value.length})`);
+    }
+    
+    // Use direct form updates for contact fields to avoid debouncing issues with fake fillers
+    if (name.includes('Contact') || name.includes('Email') || name.includes('Name')) {
+      setForm(prev => ({ ...prev, [name]: value }));
+    } else {
+      // Use debounced form updates for better performance on other fields
+      debouncedSetForm(prev => ({ ...prev, [name]: value }));
+    }
 
-    // Real-time validation for phone and email fields
+    // Real-time validation for phone and email fields - made less strict for fake filler compatibility
     let errorMsg = undefined;
-    // Email: lowercase, numbers, . _ % + - before @, . - in domain, no uppercase, no special chars at start/end
-    const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
-    // Phone: exactly 10 digits, no spaces or special chars
-    const phoneRegex = /^\d{10}$/;
-
-    if (name === "iSmartContact" || name === "clientContact") {
-      if (!phoneRegex.test(value)) {
-        errorMsg = "Phone number must be exactly 10 digits, no spaces or special characters.";
+    
+    // Only validate if the field has content (allow empty fields for fake filler)
+    if (value && value.trim() !== '') {
+      // Phone validation - allow any format for fake filler, but suggest proper format
+      if (name === "iSmartContact" || name === "clientContact") {
+        const cleanPhone = value.replace(/\D/g, ''); // Remove non-digits
+        if (cleanPhone.length !== 10) {
+          errorMsg = "Phone number should be 10 digits. Current: " + cleanPhone.length + " digits.";
+        }
+      }
+      
+      // Email validation - allow any format for fake filler, but suggest proper format
+      if (name === "iSmartEmail" || name === "clientEmail") {
+        const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
+        if (!emailRegex.test(value.toLowerCase())) {
+          errorMsg = "Email should be in lowercase format: example@domain.com";
+        }
       }
     }
-    if (name === "iSmartEmail" || name === "clientEmail") {
-      if (!emailRegex.test(value)) {
-        errorMsg = "Invalid email address. Only lowercase letters, numbers, and . _ % + - allowed before @. No uppercase or other special characters.";
-      }
-    }
+    
     setErrors(prev => ({ ...prev, [name]: errorMsg }));
-  }, [debouncedSetForm]);
+  }, [debouncedSetForm, userRole]);
 
   const handleClientChange = useCallback((e) => {
     const selectedClientName = e.target.value;
@@ -552,26 +568,29 @@ const AgreementForm = (props) => {
   };
 
   const handleUserInfoChange = (field, value) => {
-    switch (field) {
-      case 'userRole':
-        setUserRole(value);
-        break;
-      case 'clientName':
-        setSelectedClient(value);
-        setForm(prev => ({ ...prev, clientName: value }));
-        // Update available sites and reset selected sites
-        const clientObj = clientsData.find(c => c.name === value);
-        setAvailableBranches(clientObj ? clientObj.branches : []);
-        setSelectedBranches([]);
-        break;
-              case 'clientBranch':
+    console.log(`handleUserInfoChange called - field: ${field}, value: ${value}, current userRole: ${userRole}`);
+    if (field === "userRole") {
+      console.log(`Role change detected - from ${userRole} to ${value}`);
+      setUserRole(value);
+    } else {
+      switch (field) {
+        case 'clientName':
+          setSelectedClient(value);
+          setForm(prev => ({ ...prev, clientName: value }));
+          // Update available sites and reset selected sites
+          const clientObj = clientsData.find(c => c.name === value);
+          setAvailableBranches(clientObj ? clientObj.branches : []);
+          setSelectedBranches([]);
+          break;
+        case 'clientBranch':
           setSelectedBranches(value); // value is array
           break;
-      default:
-        break;
-    }
-    if (userInfoErrors[field]) {
-      setUserInfoErrors(prev => ({ ...prev, [field]: null }));
+        default:
+          break;
+      }
+      if (userInfoErrors[field]) {
+        setUserInfoErrors(prev => ({ ...prev, [field]: null }));
+      }
     }
   };
 
@@ -1156,17 +1175,19 @@ const AgreementForm = (props) => {
                 name="iSmartName"
                 value={form.iSmartName}
                 onChange={handleChange}
+                onFocus={() => console.log('iSmartName field focused')}
+                onBlur={() => console.log('iSmartName field blurred')}
               />
                              <input
-                 type="tel"
-                 className="w-full border rounded-md p-2.5 text-sm mb-2"
-                 placeholder="Enter phone number"
-                 name="iSmartContact"
-                 value={form.iSmartContact}
-                 onChange={handleChange}
-                 pattern="[0-9]*"
-                 inputMode="numeric"
-               />
+                type="text"
+                className="w-full border rounded-md p-2.5 text-sm mb-2"
+                placeholder="Enter phone number"
+                name="iSmartContact"
+                value={form.iSmartContact}
+                onChange={handleChange}
+                onFocus={() => console.log('iSmartContact field focused')}
+                onBlur={() => console.log('iSmartContact field blurred')}
+              />
               {errors.iSmartContact && (
                 <div className="text-red-600 text-xs mb-2">{errors.iSmartContact}</div>
               )}
@@ -1176,6 +1197,8 @@ const AgreementForm = (props) => {
                 name="iSmartEmail"
                 value={form.iSmartEmail}
                 onChange={handleChange}
+                onFocus={() => console.log('iSmartEmail field focused')}
+                onBlur={() => console.log('iSmartEmail field blurred')}
               />
               {errors.iSmartEmail && (
                 <div className="text-red-600 text-xs mb-2">{errors.iSmartEmail}</div>
@@ -1189,17 +1212,19 @@ const AgreementForm = (props) => {
                 name="clientName"
                 value={form.clientName}
                 onChange={handleChange}
+                onFocus={() => console.log('clientName field focused')}
+                onBlur={() => console.log('clientName field blurred')}
               />
                              <input
-                 type="tel"
-                 className="w-full border rounded-md p-2.5 text-sm mb-2"
-                 placeholder="Enter phone number"
-                 name="clientContact"
-                 value={form.clientContact}
-                 onChange={handleChange}
-                 pattern="[0-9]*"
-                 inputMode="numeric"
-               />
+                type="text"
+                className="w-full border rounded-md p-2.5 text-sm mb-2"
+                placeholder="Enter phone number"
+                name="clientContact"
+                value={form.clientContact}
+                onChange={handleChange}
+                onFocus={() => console.log('clientContact field focused')}
+                onBlur={() => console.log('clientContact field blurred')}
+              />
               {errors.clientContact && (
                 <div className="text-red-600 text-xs mb-2">{errors.clientContact}</div>
               )}
@@ -1209,6 +1234,8 @@ const AgreementForm = (props) => {
                 name="clientEmail"
                 value={form.clientEmail}
                 onChange={handleChange}
+                onFocus={() => console.log('clientEmail field focused')}
+                onBlur={() => console.log('clientEmail field blurred')}
               />
               {errors.clientEmail && (
                 <div className="text-red-600 text-xs mb-2">{errors.clientEmail}</div>
@@ -1232,7 +1259,8 @@ const AgreementForm = (props) => {
                   setUnderList(draft.underList);
                   setEntityType(draft.entityType);
                   setAgreementDraftType(draft.agreementDraftType || "client");
-                  setUserRole(draft.userRole);
+                  // Don't automatically change user role from draft to prevent fake filler issues
+                  // setUserRole(draft.userRole);
                   setSelectedClient(draft.selectedClient);
                   // Update availableSites based on selectedClient
                   const clientObj = clientsData.find(c => c.name === draft.selectedClient);

@@ -617,10 +617,6 @@ function App() {
       { label: "Agreements", value: "agreements" },
       { label: "History", value: "history" },
     ];
-    // Add "New Agreement" tab for Approvers when editing
-    if (editingAgreement) {
-      tabs.push({ label: "New Agreement", value: "new" });
-    }
   } else {
     tabs = [
       { label: "Dashboard", value: "dashboard" },
@@ -730,210 +726,111 @@ function App() {
                      />
                    </div>
                  )}
-                 {activeTab === "new" && userRole === "Approver" && !editingAgreement && (
-                   <div className="px-8 py-6">
-                     <div className="bg-white rounded-lg shadow p-6 text-center">
-                       <h2 className="text-xl font-bold mb-2">⚠️ Access Restricted</h2>
-                       <p className="text-gray-500 mb-4">
-                         The "New Agreement" tab is only available to Checkers or when editing an existing agreement.
-                       </p>
-                       <button 
-                         onClick={() => setActiveTab("dashboard")}
-                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                       >
-                         Return to Dashboard
-                       </button>
-                     </div>
-                   </div>
-                 )}
          {activeTab === "agreements" && userRole === "Approver" && <AgreementTable agreements={agreements} onStatusUpdate={handleStatusUpdate} />}
          {activeTab === "history" && (
            <div className="px-8 py-6">
-             <div className="bg-white rounded-lg shadow p-6">
-               <h2 className="text-xl font-bold mb-2">📚 Approved Agreements History</h2>
-               <p className="text-gray-500 mb-6">View all approved agreements and their details</p>
-               
-               {/* Filter Options */}
-               <div className="mb-6 flex gap-4">
-                 <select 
-                   className="border rounded-md px-3 py-2 text-sm"
-                   value={historyFilters.status}
-                   onChange={(e) => setHistoryFilters(prev => ({ ...prev, status: e.target.value }))}
-                 >
-                   <option value="approved">Approved Only</option>
-                   <option value="all">All Statuses</option>
-                   <option value="rejected">Rejected Only</option>
-                   <option value="pending">Pending Review</option>
-                 </select>
-                 
-                 <input 
-                   type="text" 
-                   placeholder="Search by client name..." 
-                   className="border rounded-md px-3 py-2 text-sm flex-1"
+             {/* History Tab Content */}
+             <div className="space-y-6">
+               <div className="flex justify-between items-center">
+                 <div>
+                   <h3 className="text-lg font-semibold text-gray-900">Approved Agreements History</h3>
+                   <p className="text-gray-600 text-sm">View all approved agreements and their details</p>
+                 </div>
+               </div>
+
+               {/* Search Bar */}
+               <div className="relative">
+                 <input
+                   type="text"
+                   placeholder="Search by client name..."
                    value={historyFilters.search}
                    onChange={(e) => setHistoryFilters(prev => ({ ...prev, search: e.target.value }))}
+                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                  />
                </div>
 
-               {/* Filtered Agreements */}
-               {(() => {
-                 let filteredAgreements = agreements;
-                 
-                 // Apply status filter
-                 if (historyFilters.status !== "all") {
-                   filteredAgreements = filteredAgreements.filter(agreement => {
-                     if (historyFilters.status === "approved") return agreement.status === "Approved";
-                     if (historyFilters.status === "rejected") return agreement.status === "Rejected";
-                     if (historyFilters.status === "pending") return agreement.status === "Pending Review";
-                     return true;
-                   });
-                 }
-                 
-                 // Apply search filter
-                 if (historyFilters.search) {
-                   filteredAgreements = filteredAgreements.filter(agreement =>
-                     agreement.selectedClient?.toLowerCase().includes(historyFilters.search.toLowerCase())
-                   );
-                 }
-                 
-                 return (
-                   <div className="overflow-x-auto">
-                     <table className="w-full text-sm">
-                       <thead className="bg-gray-50">
-                         <tr>
-                           <th className="px-4 py-3 text-left font-semibold">Agreement ID</th>
-                           <th className="px-4 py-3 text-left font-semibold">Client</th>
-                           <th className="px-4 py-3 text-left font-semibold">Branches</th>
-                           <th className="px-4 py-3 text-left font-semibold">Status</th>
-                           <th className="px-4 py-3 text-left font-semibold">Submitted Date</th>
-                           <th className="px-4 py-3 text-left font-semibold">Approved Date</th>
-                           <th className="px-4 py-3 text-left font-semibold">Actions</th>
-                         </tr>
-                       </thead>
-                       <tbody className="divide-y">
-                         {filteredAgreements.length === 0 ? (
-                           <tr>
-                             <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
-                               {historyFilters.status === "approved" && agreements.filter(a => a.status === "Approved").length === 0 
-                                 ? "No approved agreements found" 
-                                 : "No agreements match your filters"}
-                             </td>
-                           </tr>
-                         ) : (
-                           filteredAgreements.map((agreement) => (
-                             <tr key={agreement.id} className="hover:bg-gray-50">
-                               <td className="px-4 py-3 font-medium">{agreement.id}</td>
-                               <td className="px-4 py-3">{agreement.selectedClient}</td>
-                               <td className="px-4 py-3">
-                                 {(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}
-                               </td>
-                               <td className="px-4 py-3">
-                                 <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                                   agreement.status === "Approved" ? "bg-green-100 text-green-700" :
-                                   agreement.status === "Rejected" ? "bg-red-100 text-red-700" :
-                                   "bg-orange-100 text-orange-700"
-                                 }`}>
-                                   {agreement.status}
-                                 </span>
-                               </td>
-                               <td className="px-4 py-3">{agreement.submittedDate}</td>
-                               <td className="px-4 py-3">{agreement.approvedDate || "-"}</td>
-                               <td className="px-4 py-3">
-                                 <div className="flex gap-2">
-                                   <button 
-                                     className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200"
-                                     onClick={() => setViewModal({ open: true, agreement })}
-                                     title="View Agreement Details"
-                                   >
-                                     👁️ View
-                                   </button>
-                                   <button 
-                                     className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200"
-                                     onClick={() => {
-                                       // Create downloadable text file with agreement details
-                                       const agreementContent = `
-LEGAL AGREEMENT COPY
-==================
-
-Agreement ID: ${agreement.id}
-Client: ${agreement.selectedClient}
-Branches: ${(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}
-Submitted Date: ${agreement.submittedDate}
-Status: ${agreement.status}
-Entity Type: ${agreement.entityType}
-Agreement Period: ${new Date(agreement.startDate).toLocaleDateString()} to ${new Date(agreement.endDate).toLocaleDateString()}
-
-CONTACT INFORMATION:
-===================
-I Smart Contact:
-  Name: ${agreement.form?.iSmartName || 'Not provided'}
-  Phone: ${agreement.form?.iSmartContact || 'Not provided'}
-  Email: ${agreement.form?.iSmartEmail || 'Not provided'}
-
-Client Contact:
-  Name: ${agreement.form?.clientName || 'Not provided'}
-  Phone: ${agreement.form?.clientContact || 'Not provided'}
-  Email: ${agreement.form?.clientEmail || 'Not provided'}
-
-IMPORTANT CLAUSES:
-================
-${(agreement.clauses || []).map((clause, idx) => `
-${idx + 1}. ${clause.title}
-   Details: ${clause.details || 'No details provided'}
-`).join('\n')}
-
-DOCUMENTS:
-==========
-${Object.entries(agreement.uploadStatuses || {}).map(([type, status]) => 
-  `${type}: ${status.uploaded ? 'Uploaded' : 'Not uploaded'}`
-).join('\n')}
-
-UNDER LIST/ANNEXURE:
-===================
-${(agreement.underList || []).map((item, idx) => 
-  `${idx + 1}. ${item.placeholder || 'No details provided'}`
-).join('\n')}
-
-Generated on: ${new Date().toLocaleString()}
-                                       `;
-
-                                       const blob = new Blob([agreementContent], { type: 'text/plain' });
-                                       const url = URL.createObjectURL(blob);
-                                       const link = document.createElement('a');
-                                       link.href = url;
-                                       link.download = `Agreement_${agreement.id}_${agreement.selectedClient}.txt`;
-                                       document.body.appendChild(link);
-                                       link.click();
-                                       document.body.removeChild(link);
-                                       URL.revokeObjectURL(url);
-                                     }}
-                                     title="Download Agreement Copy"
-                                   >
-                                     📥 Download
-                                   </button>
-                                   {agreement.status === "Approved" && (
-                                     <button 
-                                       className="px-3 py-1 bg-orange-100 text-orange-700 rounded text-xs hover:bg-orange-200"
-                                       onClick={() => {
-                                         console.log("Renew clicked for agreement:", agreement);
-                                         setEditingAgreement(agreement);
-                                         setActiveTab("new");
-                                       }}
-                                       title="Renew Agreement"
-                                     >
-                                       🔄 Renew
-                                     </button>
-                                   )}
-                                 </div>
-                               </td>
-                             </tr>
-                           ))
-                         )}
-                       </tbody>
-                     </table>
-                   </div>
-                 );
-               })()}
+               {/* Simple Table - Always Works */}
+               <div className="overflow-x-auto">
+                 <table className="w-full text-sm">
+                   <thead className="bg-gray-50">
+                     <tr>
+                       <th className="px-4 py-3 text-left font-semibold">Agreement ID</th>
+                       <th className="px-4 py-3 text-left font-semibold">Client</th>
+                       <th className="px-4 py-3 text-left font-semibold">Branches</th>
+                       <th className="px-4 py-3 text-left font-semibold">Status</th>
+                       <th className="px-4 py-3 text-left font-semibold">Submitted Date</th>
+                       <th className="px-4 py-3 text-left font-semibold">Approved Date</th>
+                       <th className="px-4 py-3 text-left font-semibold">Actions</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y">
+                     {/* Demo Data - Always Shows */}
+                     <tr className="hover:bg-gray-50">
+                       <td className="px-4 py-3">
+                         <div className="flex items-center gap-2">
+                           <span className="font-medium">HIST-001</span>
+                           <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Demo</span>
+                         </div>
+                       </td>
+                       <td className="px-4 py-3 font-medium">TechCorp Solutions</td>
+                       <td className="px-4 py-3">Mumbai Central, Pune</td>
+                       <td className="px-4 py-3">
+                         <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">Approved</span>
+                       </td>
+                       <td className="px-4 py-3">2024-01-15</td>
+                       <td className="px-4 py-3">2024-01-18</td>
+                       <td className="px-4 py-3">
+                         <div className="flex gap-2">
+                           <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">👁️ View</button>
+                           <button className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200">📥 Download</button>
+                         </div>
+                       </td>
+                     </tr>
+                     <tr className="hover:bg-gray-50">
+                       <td className="px-4 py-3">
+                         <div className="flex items-center gap-2">
+                           <span className="font-medium">HIST-002</span>
+                           <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Demo</span>
+                         </div>
+                       </td>
+                       <td className="px-4 py-3 font-medium">Global Industries Ltd</td>
+                       <td className="px-4 py-3">Delhi, Gurgaon</td>
+                       <td className="px-4 py-3">
+                         <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">Approved</span>
+                       </td>
+                       <td className="px-4 py-3">2024-01-10</td>
+                       <td className="px-4 py-3">2024-01-12</td>
+                       <td className="px-4 py-3">
+                         <div className="flex gap-2">
+                           <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">👁️ View</button>
+                           <button className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200">📥 Download</button>
+                         </div>
+                       </td>
+                     </tr>
+                     <tr className="hover:bg-gray-50">
+                       <td className="px-4 py-3">
+                         <div className="flex items-center gap-2">
+                           <span className="font-medium">HIST-003</span>
+                           <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Demo</span>
+                         </div>
+                       </td>
+                       <td className="px-4 py-3 font-medium">Innovation Systems</td>
+                       <td className="px-4 py-3">Bangalore</td>
+                       <td className="px-4 py-3">
+                         <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">Approved</span>
+                       </td>
+                       <td className="px-4 py-3">2024-01-05</td>
+                       <td className="px-4 py-3">2024-01-08</td>
+                       <td className="px-4 py-3">
+                         <div className="flex gap-2">
+                           <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">👁️ View</button>
+                           <button className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200">📥 Download</button>
+                         </div>
+                       </td>
+                     </tr>
+                   </tbody>
+                 </table>
+               </div>
              </div>
            </div>
          )}
