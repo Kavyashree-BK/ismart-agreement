@@ -979,20 +979,11 @@ export default function AgreementTable({ agreements = [], onStatusUpdate }) {
                           </div>
                         )}
                         
-                        {/* Final Status Message and View History for Approved */}
+                        {/* Final Status Message for Approved */}
                         {row.status === "Approved" && (
-                          <>
-                            <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
-                              ✓ Approved - No further action required
-                            </div>
-                            <button
-                              className="w-full text-blue-600 underline text-xs hover:text-blue-800 mt-2"
-                              onClick={() => handleViewStatusHistory(row.id, row.client)}
-                              title="View status history"
-                            >
-                              ▶ View History ({row.statusHistory?.length || 0})
-                            </button>
-                          </>
+                          <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+                            ✓ Approved - No further action required
+                          </div>
                         )}
                       </td>
                                          <td className="px-4 py-3 text-center">

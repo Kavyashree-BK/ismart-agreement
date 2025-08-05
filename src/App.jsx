@@ -33,6 +33,69 @@ function Dashboard({ agreements, userRole, onStatusUpdate, setViewModal, setEdit
     return daysToExpiry <= 7;
   });
 
+  // Static expiring contracts data for demonstration
+  const staticExpiringContracts = [
+    {
+      id: "STATIC-001",
+      selectedClient: "TechCorp Solutions",
+      selectedBranches: [{ name: "Mumbai Central" }, { name: "Pune" }],
+      endDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days
+      status: "Approved",
+      submittedDate: "2024-01-15",
+      submittedBy: "John Doe"
+    },
+    {
+      id: "STATIC-002", 
+      selectedClient: "Global Industries Ltd",
+      selectedBranches: [{ name: "Delhi" }, { name: "Gurgaon" }, { name: "Noida" }],
+      endDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString(), // 8 days
+      status: "Approved",
+      submittedDate: "2024-01-10",
+      submittedBy: "Jane Smith"
+    },
+    {
+      id: "STATIC-003",
+      selectedClient: "Innovation Systems",
+      selectedBranches: [{ name: "Bangalore" }],
+      endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(), // 15 days
+      status: "Approved", 
+      submittedDate: "2024-01-05",
+      submittedBy: "Mike Johnson"
+    },
+    {
+      id: "STATIC-004",
+      selectedClient: "Digital Solutions Pvt Ltd",
+      selectedBranches: [{ name: "Chennai" }, { name: "Coimbatore" }],
+      endDate: new Date(Date.now() + 22 * 24 * 60 * 60 * 1000).toISOString(), // 22 days
+      status: "Approved",
+      submittedDate: "2024-01-01", 
+      submittedBy: "Sarah Wilson"
+    },
+    {
+      id: "STATIC-005",
+      selectedClient: "Future Technologies",
+      selectedBranches: [{ name: "Hyderabad" }],
+      endDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString(), // 28 days
+      status: "Approved",
+      submittedDate: "2023-12-28",
+      submittedBy: "David Brown"
+    }
+  ];
+
+  // Combine real and static expiring contracts, but prioritize real ones
+  const allExpiringContracts = [...expiringContracts, ...staticExpiringContracts].slice(0, 5);
+
+  // Calculate critical static contracts (within 7 days)
+  const criticalStaticContracts = staticExpiringContracts.filter(agreement => {
+    const endDate = new Date(agreement.endDate);
+    const today = new Date();
+    const timeDiff = endDate.getTime() - today.getTime();
+    const daysToExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    return daysToExpiry <= 7;
+  });
+
+  const allCriticalExpiringContracts = [...criticalExpiringContracts, ...criticalStaticContracts];
+
   const handleViewAgreement = (agreement) => {
     setViewModal({ open: true, agreement });
   };
@@ -138,18 +201,18 @@ Generated on: ${new Date().toLocaleString()}
     return (
       <div className="px-8 py-6">
         {/* Contract Expiry Alert Banner */}
-        {expiringContracts.length > 0 && (
+        {allExpiringContracts.length > 0 && (
           <div className="mb-6 p-4 bg-gradient-to-r from-orange-100 to-red-100 border-l-4 border-orange-500 rounded-lg shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className="text-2xl">⚠️</span>
                 <div>
                   <h3 className="font-bold text-orange-800">
-                    Contract Expiry Alert: {expiringContracts.length} contract{expiringContracts.length !== 1 ? 's' : ''} expiring soon
+                    Contract Expiry Alert: {allExpiringContracts.length} contract{allExpiringContracts.length !== 1 ? 's' : ''} expiring soon
                   </h3>
                   <p className="text-orange-700 text-sm">
-                    {criticalExpiringContracts.length > 0 
-                      ? `${criticalExpiringContracts.length} contract${criticalExpiringContracts.length !== 1 ? 's' : ''} expiring within 7 days`
+                    {allCriticalExpiringContracts.length > 0 
+                      ? `${allCriticalExpiringContracts.length} contract${allCriticalExpiringContracts.length !== 1 ? 's' : ''} expiring within 7 days`
                       : 'Contracts expiring within 30 days'
                     }
                   </p>
@@ -195,7 +258,7 @@ Generated on: ${new Date().toLocaleString()}
             </div>
           </div>
           <div className="bg-white rounded-lg shadow p-6 text-center">
-            <div className="text-2xl font-bold text-orange-600">{expiringContracts.length}</div>
+            <div className="text-2xl font-bold text-orange-600">{allExpiringContracts.length}</div>
             <div className="text-gray-600 mt-2 flex items-center justify-center gap-2">
               <span>Expiring Soon</span>
               <span role="img" aria-label="expiring">⏰</span>
@@ -247,22 +310,31 @@ Generated on: ${new Date().toLocaleString()}
             <h2 className="text-xl font-bold mb-2">Expiring Contracts</h2>
             <p className="text-gray-500 mb-4">Contracts expiring within 30 days</p>
             <div className="divide-y">
-              {expiringContracts.length === 0 ? (
+              {allExpiringContracts.length === 0 ? (
                 <div className="text-gray-500 text-center py-4">No contracts expiring soon</div>
               ) : (
-                expiringContracts.slice(0, 5).map((agreement) => {
+                allExpiringContracts.slice(0, 5).map((agreement) => {
                   const endDate = new Date(agreement.endDate);
                   const today = new Date();
                   const timeDiff = endDate.getTime() - today.getTime();
                   const daysToExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                  const isStatic = agreement.id.startsWith('STATIC-');
                   
                   return (
                     <div className="flex items-center justify-between py-4" key={agreement.id}>
                       <div className="flex-1">
-                        <div className="font-semibold">{agreement.selectedClient}</div>
+                        <div className="font-semibold flex items-center gap-2">
+                          {agreement.selectedClient}
+                          {isStatic && (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                              Demo
+                            </span>
+                          )}
+                        </div>
                         <div className="text-gray-500 text-sm">{(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}</div>
                         <div className="text-xs text-gray-400 mt-1">
                           Expires: {endDate.toLocaleDateString()} • {daysToExpiry} days left
+                          {isStatic && " • Demo Data"}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
@@ -279,19 +351,27 @@ Generated on: ${new Date().toLocaleString()}
                         >
                           View
                         </button>
+                        {!isStatic && (
+                          <button 
+                            className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                            onClick={() => handleEditAgreement(agreement)}
+                          >
+                            Renew
+                          </button>
+                        )}
                       </div>
                     </div>
                   );
                 })
               )}
             </div>
-            {expiringContracts.length > 5 && (
+            {allExpiringContracts.length > 5 && (
               <div className="mt-4 text-center">
                 <button 
                   onClick={() => setActiveTab("agreements")}
                   className="text-orange-600 hover:text-orange-800 text-sm font-medium"
                 >
-                  View all {expiringContracts.length} expiring contracts →
+                  View all {allExpiringContracts.length} expiring contracts →
                 </button>
               </div>
             )}
@@ -305,18 +385,18 @@ Generated on: ${new Date().toLocaleString()}
   return (
     <div className="px-8 py-6">
       {/* Contract Expiry Alert Banner */}
-      {expiringContracts.length > 0 && (
+      {allExpiringContracts.length > 0 && (
         <div className="mb-6 p-4 bg-gradient-to-r from-orange-100 to-red-100 border-l-4 border-orange-500 rounded-lg shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="text-2xl">⚠️</span>
               <div>
                 <h3 className="font-bold text-orange-800">
-                  Contract Expiry Alert: {expiringContracts.length} contract{expiringContracts.length !== 1 ? 's' : ''} expiring soon
+                  Contract Expiry Alert: {allExpiringContracts.length} contract{allExpiringContracts.length !== 1 ? 's' : ''} expiring soon
                 </h3>
                 <p className="text-orange-700 text-sm">
-                  {criticalExpiringContracts.length > 0 
-                    ? `${criticalExpiringContracts.length} contract${criticalExpiringContracts.length !== 1 ? 's' : ''} expiring within 7 days`
+                  {allCriticalExpiringContracts.length > 0 
+                    ? `${allCriticalExpiringContracts.length} contract${allCriticalExpiringContracts.length !== 1 ? 's' : ''} expiring within 7 days`
                     : 'Contracts expiring within 30 days'
                   }
                 </p>
@@ -362,7 +442,7 @@ Generated on: ${new Date().toLocaleString()}
           </div>
         </div>
         <div className="bg-white rounded-lg shadow p-6 text-center">
-          <div className="text-2xl font-bold text-orange-600">{expiringContracts.length}</div>
+          <div className="text-2xl font-bold text-orange-600">{allExpiringContracts.length}</div>
           <div className="text-gray-600 mt-2 flex items-center justify-center gap-2">
             <span>Expiring Soon</span>
             <span role="img" aria-label="expiring">⏰</span>
@@ -439,22 +519,31 @@ Generated on: ${new Date().toLocaleString()}
           <h2 className="text-xl font-bold mb-2">Expiring Contracts</h2>
           <p className="text-gray-500 mb-4">Your contracts expiring within 30 days</p>
           <div className="divide-y">
-            {expiringContracts.length === 0 ? (
+            {allExpiringContracts.length === 0 ? (
               <div className="text-gray-500 text-center py-4">No contracts expiring soon</div>
             ) : (
-              expiringContracts.slice(0, 5).map((agreement) => {
+              allExpiringContracts.slice(0, 5).map((agreement) => {
                 const endDate = new Date(agreement.endDate);
                 const today = new Date();
                 const timeDiff = endDate.getTime() - today.getTime();
                 const daysToExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                const isStatic = agreement.id.startsWith('STATIC-');
                 
                 return (
                   <div className="flex items-center justify-between py-3" key={agreement.id}>
                     <div className="flex-1">
-                      <div className="font-semibold">{agreement.selectedClient}</div>
+                      <div className="font-semibold flex items-center gap-2">
+                        {agreement.selectedClient}
+                        {isStatic && (
+                          <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                            Demo
+                          </span>
+                        )}
+                      </div>
                       <div className="text-gray-500 text-sm">{(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}</div>
                       <div className="text-xs text-gray-400 mt-1">
                         Expires: {endDate.toLocaleDateString()} • {daysToExpiry} days left
+                        {isStatic && " • Demo Data"}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
@@ -473,12 +562,21 @@ Generated on: ${new Date().toLocaleString()}
                         >
                           👁️ View
                         </button>
+                        {!isStatic && (
+                          <button 
+                            className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-medium hover:bg-green-200"
+                            onClick={() => handleEditAgreement(agreement)}
+                            title="Renew Agreement"
+                          >
+                            🔄 Renew
+                          </button>
+                        )}
                         <button 
-                          className="px-3 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium hover:bg-orange-200"
-                          onClick={() => handleEditAgreement(agreement)}
-                          title="Renew Agreement"
+                          className="px-3 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium hover:bg-purple-200"
+                          onClick={() => handleDownloadAgreement(agreement)}
+                          title="Download Agreement Copy"
                         >
-                          🔄 Renew
+                          📥 Download
                         </button>
                       </div>
                     </div>
@@ -487,13 +585,13 @@ Generated on: ${new Date().toLocaleString()}
               })
             )}
           </div>
-          {expiringContracts.length > 5 && (
+          {allExpiringContracts.length > 5 && (
             <div className="mt-4 text-center">
               <button 
                 onClick={() => setActiveTab("agreements")}
                 className="text-orange-600 hover:text-orange-800 text-sm font-medium"
               >
-                View all {expiringContracts.length} expiring contracts →
+                View all {allExpiringContracts.length} expiring contracts →
               </button>
             </div>
           )}
@@ -509,6 +607,7 @@ function App() {
   const [agreements, setAgreements] = useState([]);
   const [editingAgreement, setEditingAgreement] = useState(null);
   const [viewModal, setViewModal] = useState({ open: false, agreement: null });
+  const [historyFilters, setHistoryFilters] = useState({ status: "approved", search: "" });
 
   // Tabs to show based on role
   let tabs = [];
@@ -516,7 +615,12 @@ function App() {
     tabs = [
       { label: "Dashboard", value: "dashboard" },
       { label: "Agreements", value: "agreements" },
+      { label: "History", value: "history" },
     ];
+    // Add "New Agreement" tab for Approvers when editing
+    if (editingAgreement) {
+      tabs.push({ label: "New Agreement", value: "new" });
+    }
   } else {
     tabs = [
       { label: "Dashboard", value: "dashboard" },
@@ -590,6 +694,8 @@ function App() {
                 ? "bg-orange-100 text-orange-800 border-orange-200 shadow font-bold"
               : tab.value === "new" && activeTab === "new"
                 ? "bg-blue-100 text-blue-800 border-blue-200 shadow font-bold"
+              : tab.value === "history" && activeTab === "history"
+                ? "bg-purple-100 text-purple-800 border-purple-200 shadow font-bold"
               : "bg-white border-transparent text-gray-600 hover:bg-gray-50"
             }`}
             onClick={() => setActiveTab(tab.value)}
@@ -599,7 +705,7 @@ function App() {
         ))}
       </nav>
       <div className={
-        activeTab === "new" && userRole !== "Approver"
+        activeTab === "new" && (userRole !== "Approver" || editingAgreement)
           ? "bg-white border-8 border-blue-600 rounded-xl mx-8 my-6 p-6 transition-all duration-300 text-blue-900 font-bold"
           : ""
       }>
@@ -613,15 +719,224 @@ function App() {
              setActiveTab={setActiveTab}
            />
          )}
-                 {activeTab === "new" && userRole !== "Approver" && (
-           <AgreementForm 
-             setUserRole={setUserRole} 
-             onSubmit={handleAgreementSubmit} 
-             editingAgreement={editingAgreement}
-             onEditComplete={() => setEditingAgreement(null)}
-           />
-         )}
+                 {activeTab === "new" && (userRole !== "Approver" || editingAgreement) && (
+                   <div>
+                     {console.log("Rendering AgreementForm - userRole:", userRole, "editingAgreement:", editingAgreement)}
+                     <AgreementForm 
+                       setUserRole={setUserRole} 
+                       onSubmit={handleAgreementSubmit} 
+                       editingAgreement={editingAgreement}
+                       onEditComplete={() => setEditingAgreement(null)}
+                     />
+                   </div>
+                 )}
+                 {activeTab === "new" && userRole === "Approver" && !editingAgreement && (
+                   <div className="px-8 py-6">
+                     <div className="bg-white rounded-lg shadow p-6 text-center">
+                       <h2 className="text-xl font-bold mb-2">⚠️ Access Restricted</h2>
+                       <p className="text-gray-500 mb-4">
+                         The "New Agreement" tab is only available to Checkers or when editing an existing agreement.
+                       </p>
+                       <button 
+                         onClick={() => setActiveTab("dashboard")}
+                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                       >
+                         Return to Dashboard
+                       </button>
+                     </div>
+                   </div>
+                 )}
          {activeTab === "agreements" && userRole === "Approver" && <AgreementTable agreements={agreements} onStatusUpdate={handleStatusUpdate} />}
+         {activeTab === "history" && (
+           <div className="px-8 py-6">
+             <div className="bg-white rounded-lg shadow p-6">
+               <h2 className="text-xl font-bold mb-2">📚 Approved Agreements History</h2>
+               <p className="text-gray-500 mb-6">View all approved agreements and their details</p>
+               
+               {/* Filter Options */}
+               <div className="mb-6 flex gap-4">
+                 <select 
+                   className="border rounded-md px-3 py-2 text-sm"
+                   value={historyFilters.status}
+                   onChange={(e) => setHistoryFilters(prev => ({ ...prev, status: e.target.value }))}
+                 >
+                   <option value="approved">Approved Only</option>
+                   <option value="all">All Statuses</option>
+                   <option value="rejected">Rejected Only</option>
+                   <option value="pending">Pending Review</option>
+                 </select>
+                 
+                 <input 
+                   type="text" 
+                   placeholder="Search by client name..." 
+                   className="border rounded-md px-3 py-2 text-sm flex-1"
+                   value={historyFilters.search}
+                   onChange={(e) => setHistoryFilters(prev => ({ ...prev, search: e.target.value }))}
+                 />
+               </div>
+
+               {/* Filtered Agreements */}
+               {(() => {
+                 let filteredAgreements = agreements;
+                 
+                 // Apply status filter
+                 if (historyFilters.status !== "all") {
+                   filteredAgreements = filteredAgreements.filter(agreement => {
+                     if (historyFilters.status === "approved") return agreement.status === "Approved";
+                     if (historyFilters.status === "rejected") return agreement.status === "Rejected";
+                     if (historyFilters.status === "pending") return agreement.status === "Pending Review";
+                     return true;
+                   });
+                 }
+                 
+                 // Apply search filter
+                 if (historyFilters.search) {
+                   filteredAgreements = filteredAgreements.filter(agreement =>
+                     agreement.selectedClient?.toLowerCase().includes(historyFilters.search.toLowerCase())
+                   );
+                 }
+                 
+                 return (
+                   <div className="overflow-x-auto">
+                     <table className="w-full text-sm">
+                       <thead className="bg-gray-50">
+                         <tr>
+                           <th className="px-4 py-3 text-left font-semibold">Agreement ID</th>
+                           <th className="px-4 py-3 text-left font-semibold">Client</th>
+                           <th className="px-4 py-3 text-left font-semibold">Branches</th>
+                           <th className="px-4 py-3 text-left font-semibold">Status</th>
+                           <th className="px-4 py-3 text-left font-semibold">Submitted Date</th>
+                           <th className="px-4 py-3 text-left font-semibold">Approved Date</th>
+                           <th className="px-4 py-3 text-left font-semibold">Actions</th>
+                         </tr>
+                       </thead>
+                       <tbody className="divide-y">
+                         {filteredAgreements.length === 0 ? (
+                           <tr>
+                             <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
+                               {historyFilters.status === "approved" && agreements.filter(a => a.status === "Approved").length === 0 
+                                 ? "No approved agreements found" 
+                                 : "No agreements match your filters"}
+                             </td>
+                           </tr>
+                         ) : (
+                           filteredAgreements.map((agreement) => (
+                             <tr key={agreement.id} className="hover:bg-gray-50">
+                               <td className="px-4 py-3 font-medium">{agreement.id}</td>
+                               <td className="px-4 py-3">{agreement.selectedClient}</td>
+                               <td className="px-4 py-3">
+                                 {(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}
+                               </td>
+                               <td className="px-4 py-3">
+                                 <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                   agreement.status === "Approved" ? "bg-green-100 text-green-700" :
+                                   agreement.status === "Rejected" ? "bg-red-100 text-red-700" :
+                                   "bg-orange-100 text-orange-700"
+                                 }`}>
+                                   {agreement.status}
+                                 </span>
+                               </td>
+                               <td className="px-4 py-3">{agreement.submittedDate}</td>
+                               <td className="px-4 py-3">{agreement.approvedDate || "-"}</td>
+                               <td className="px-4 py-3">
+                                 <div className="flex gap-2">
+                                   <button 
+                                     className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200"
+                                     onClick={() => setViewModal({ open: true, agreement })}
+                                     title="View Agreement Details"
+                                   >
+                                     👁️ View
+                                   </button>
+                                   <button 
+                                     className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200"
+                                     onClick={() => {
+                                       // Create downloadable text file with agreement details
+                                       const agreementContent = `
+LEGAL AGREEMENT COPY
+==================
+
+Agreement ID: ${agreement.id}
+Client: ${agreement.selectedClient}
+Branches: ${(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}
+Submitted Date: ${agreement.submittedDate}
+Status: ${agreement.status}
+Entity Type: ${agreement.entityType}
+Agreement Period: ${new Date(agreement.startDate).toLocaleDateString()} to ${new Date(agreement.endDate).toLocaleDateString()}
+
+CONTACT INFORMATION:
+===================
+I Smart Contact:
+  Name: ${agreement.form?.iSmartName || 'Not provided'}
+  Phone: ${agreement.form?.iSmartContact || 'Not provided'}
+  Email: ${agreement.form?.iSmartEmail || 'Not provided'}
+
+Client Contact:
+  Name: ${agreement.form?.clientName || 'Not provided'}
+  Phone: ${agreement.form?.clientContact || 'Not provided'}
+  Email: ${agreement.form?.clientEmail || 'Not provided'}
+
+IMPORTANT CLAUSES:
+================
+${(agreement.clauses || []).map((clause, idx) => `
+${idx + 1}. ${clause.title}
+   Details: ${clause.details || 'No details provided'}
+`).join('\n')}
+
+DOCUMENTS:
+==========
+${Object.entries(agreement.uploadStatuses || {}).map(([type, status]) => 
+  `${type}: ${status.uploaded ? 'Uploaded' : 'Not uploaded'}`
+).join('\n')}
+
+UNDER LIST/ANNEXURE:
+===================
+${(agreement.underList || []).map((item, idx) => 
+  `${idx + 1}. ${item.placeholder || 'No details provided'}`
+).join('\n')}
+
+Generated on: ${new Date().toLocaleString()}
+                                       `;
+
+                                       const blob = new Blob([agreementContent], { type: 'text/plain' });
+                                       const url = URL.createObjectURL(blob);
+                                       const link = document.createElement('a');
+                                       link.href = url;
+                                       link.download = `Agreement_${agreement.id}_${agreement.selectedClient}.txt`;
+                                       document.body.appendChild(link);
+                                       link.click();
+                                       document.body.removeChild(link);
+                                       URL.revokeObjectURL(url);
+                                     }}
+                                     title="Download Agreement Copy"
+                                   >
+                                     📥 Download
+                                   </button>
+                                   {agreement.status === "Approved" && (
+                                     <button 
+                                       className="px-3 py-1 bg-orange-100 text-orange-700 rounded text-xs hover:bg-orange-200"
+                                       onClick={() => {
+                                         console.log("Renew clicked for agreement:", agreement);
+                                         setEditingAgreement(agreement);
+                                         setActiveTab("new");
+                                       }}
+                                       title="Renew Agreement"
+                                     >
+                                       🔄 Renew
+                                     </button>
+                                   )}
+                                 </div>
+                               </td>
+                             </tr>
+                           ))
+                         )}
+                       </tbody>
+                     </table>
+                   </div>
+                 );
+               })()}
+             </div>
+           </div>
+         )}
        </div>
 
        {/* View Agreement Modal */}

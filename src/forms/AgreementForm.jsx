@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import Select from "react-select";
@@ -178,6 +178,28 @@ const AgreementForm = (props) => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [isOpenAgreement, setIsOpenAgreement] = useState(false);
 
+  // Debounce mechanism to prevent excessive re-renders
+  const [debounceTimer, setDebounceTimer] = useState(null);
+
+  const debouncedSetForm = useCallback((updates) => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+    const timer = setTimeout(() => {
+      setForm(prev => ({ ...prev, ...updates }));
+    }, 100); // 100ms debounce
+    setDebounceTimer(timer);
+  }, [debounceTimer]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+    };
+  }, [debounceTimer]);
+
   // Check if agreement is expiring within 30 days
   const today = new Date();
   const timeDiff = endDate.getTime() - today.getTime();
@@ -186,7 +208,9 @@ const AgreementForm = (props) => {
 
   // Handle editing mode - pre-fill form when editingAgreement is provided
   useEffect(() => {
+    console.log("AgreementForm useEffect - editingAgreement:", editingAgreement);
     if (editingAgreement) {
+      console.log("Setting edit mode with agreement data:", editingAgreement);
       setIsEditMode(true);
       
       // Pre-fill all form data
@@ -208,6 +232,7 @@ const AgreementForm = (props) => {
       setEndDate(editingAgreement.endDate ? new Date(editingAgreement.endDate) : new Date());
       setIsOpenAgreement(editingAgreement.isOpenAgreement || false); // Set the new state
     } else {
+      console.log("Setting normal mode (no editing)");
       setIsEditMode(false);
     }
   }, [editingAgreement]);
@@ -416,9 +441,11 @@ const AgreementForm = (props) => {
     setTimeout(() => setIsSubmitted(false), 3000);
   };
 
-  const handleChange = (e) => {
+  const handleChange = useCallback((e) => {
     const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
+    
+    // Use debounced form updates for better performance
+    debouncedSetForm({ [name]: value });
 
     // Real-time validation for phone and email fields
     let errorMsg = undefined;
@@ -438,7 +465,14 @@ const AgreementForm = (props) => {
       }
     }
     setErrors(prev => ({ ...prev, [name]: errorMsg }));
-  };
+  }, [debouncedSetForm]);
+
+  const handleClientChange = useCallback((e) => {
+    const selectedClientName = e.target.value;
+    setSelectedClient(selectedClientName);
+    setAvailableBranches(clientsData.find(c => c.name === selectedClientName)?.branches || []);
+    setSelectedBranches([]);
+  }, []);
 
   const closePopup = () => {
     setIsSubmitted(false);
@@ -563,13 +597,29 @@ const AgreementForm = (props) => {
       return;
     }
     setIsContinueClicked(true);
-    setUserRole("Approver");
+    // Only switch role if explicitly requested, not automatically
+    // setUserRole("Approver"); // Commented out to prevent automatic role switching
     setStage("approver");
   };
 
   return (
     <div className="relative max-w-5xl mx-auto p-0 bg-transparent mt-8 mb-12">
-      <div className="bg-white border-b px-8 pt-8 pb-4 rounded-t-2xl">
+      {/* Edit Mode Indicator */}
+      {isEditMode && editingAgreement && (
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">✏️</span>
+            <div>
+              <h3 className="font-bold text-blue-800">Editing Agreement</h3>
+              <p className="text-blue-600 text-sm">
+                Agreement ID: {editingAgreement.id} • Client: {editingAgreement.selectedClient}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div className="bg-white rounded-t-2xl shadow-xl border-t-4 border-blue-600">
         <h1 className="text-2xl font-bold flex items-center gap-2 mb-1">
           <span role="img" aria-label="doc">📄</span> {isEditMode ? 'Edit Agreement' : 'Legal Agreement ERP'}
         </h1>
@@ -600,11 +650,7 @@ const AgreementForm = (props) => {
               <select
                 className="w-full border rounded-md p-2.5 text-sm bg-white text-gray-700"
                 value={selectedClient}
-                onChange={e => {
-                  setSelectedClient(e.target.value);
-                  setAvailableBranches(clientsData.find(c => c.name === e.target.value)?.branches || []);
-                  setSelectedBranches([]);
-                }}
+                onChange={handleClientChange}
               >
                 <option value="" disabled>Select Client</option>
                 {clientsData.map(client => (
