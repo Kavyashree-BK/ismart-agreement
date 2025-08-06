@@ -638,10 +638,7 @@ const AgreementForm = (props) => {
         </div>
       )}
       
-      <div className="bg-white rounded-t-2xl shadow-xl border-t-4 border-blue-600">
-        <h1 className="text-2xl font-bold flex items-center gap-2 mb-1">
-          <span role="img" aria-label="doc">📄</span> {isEditMode ? 'Edit Agreement' : 'Legal Agreement ERP'}
-        </h1>
+      <div className="bg-white rounded-t-2xl shadow-xl">
         {isEditMode && (
           <div className="mt-2">
             <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
@@ -649,11 +646,6 @@ const AgreementForm = (props) => {
             </span>
           </div>
         )}
-        <div className="flex gap-3 mt-2">
-          <span className="font-semibold text-blue-600">Dashboard</span>
-          <span className="text-gray-400">|</span>
-          <span className="font-semibold text-green-600">New Agreement</span>
-        </div>
       </div>
       <form className="bg-white px-8 py-10 rounded-b-2xl shadow-xl border-t-0">
         {/* User Information */}
