@@ -622,10 +622,10 @@ const AgreementForm = (props) => {
   };
 
   return (
-    <div className="relative max-w-5xl mx-auto p-0 bg-transparent mt-8 mb-12">
+    <div className="relative max-w-6xl mx-auto p-0 bg-transparent mt-4 mb-8">
       {/* Edit Mode Indicator */}
       {isEditMode && editingAgreement && (
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
           <div className="flex items-center gap-3">
             <span className="text-2xl">✏️</span>
             <div>
@@ -638,19 +638,20 @@ const AgreementForm = (props) => {
         </div>
       )}
       
-      <div className="bg-white rounded-t-2xl shadow-xl">
-        {isEditMode && (
-          <div className="mt-2">
-            <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-              Editing Agreement ID: {editingAgreement?.id}
-            </span>
-          </div>
-        )}
-      </div>
-      <form className="bg-white px-8 py-10 rounded-b-2xl shadow-xl border-t-0">
+      <div className="bg-white rounded-lg shadow-lg border border-gray-200">
+        <div className="px-4 py-4 border-b border-gray-200 bg-gray-50">
+          {isEditMode && (
+            <div className="mt-2">
+              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                Editing Agreement ID: {editingAgreement?.id}
+              </span>
+            </div>
+          )}
+        </div>
+        <form className="px-4 py-8">
         {/* User Information */}
-                 <section className="mb-10">
-           <h2 className="text-xl font-bold mb-1 text-gray-900">User Information</h2>
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold mb-4 text-gray-800 border-b border-gray-200 pb-2">User Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">User Role</label>
@@ -1359,6 +1360,7 @@ const AgreementForm = (props) => {
         )}
       </form>
     </div>
+  </div>
   );
 };
 
