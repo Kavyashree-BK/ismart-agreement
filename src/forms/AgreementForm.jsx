@@ -639,7 +639,7 @@ const AgreementForm = (props) => {
       )}
       
       <div className="bg-white rounded-lg shadow-lg border border-gray-200">
-        <div className="px-4 py-4 border-b border-gray-200 bg-gray-50">
+        <div className=" border-gray-200 bg-gray-50">
           {isEditMode && (
             <div className="mt-2">
               <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">

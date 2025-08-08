@@ -677,7 +677,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <Header userRole={userRole} setUserRole={setUserRole} />
       <nav className="flex gap-2 px-8 pt-6 pb-2 bg-white">
         {tabs.map(tab => (
@@ -702,7 +702,7 @@ function App() {
       </nav>
       <div className={
         activeTab === "new" && (userRole !== "Approver" || editingAgreement)
-          ? "bg-white border-8 border-blue-600 rounded-xl mx-8 my-6 p-6 transition-all duration-300 text-blue-900 font-bold"
+          ? "bg-white  duration-300 text-blue-900 font-bold"
           : ""
       }>
                  {activeTab === "dashboard" && (
