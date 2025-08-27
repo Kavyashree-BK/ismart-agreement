@@ -1,6 +1,6 @@
 import React from "react";
 
-const Header = ({ userRole, setUserRole, userName }) => (
+const Header = ({ userRole, setUserRole }) => (
   <header className="flex items-center justify-between px-8 py-4 border-b bg-white sticky top-0 z-20">
     <div className="flex items-center gap-3">
       <span className="text-2xl"><span role="img" aria-label="doc">📄</span></span>

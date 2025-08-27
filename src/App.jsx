@@ -1,13 +1,13 @@
-
-
 import React, { useState } from "react";
 import AgreementForm from "./forms/AgreementForm";
 import ReportFilterForm from "./forms/ReportFilterForm";
 import AgreementTable from "./forms/AgreementTable";
+import AddendumForm from "./forms/AddendumForm";
+import AddendumTable from "./forms/AddendumTable";
 import Header from "./components/ui/Header";
 import TabNav from "./components/ui/TabNav";
 
-function Dashboard({ agreements, userRole, onStatusUpdate, setViewModal, setEditingAgreement, setActiveTab }) {
+function Dashboard({ agreements, addendums, userRole, setViewModal, setEditingAgreement, setActiveTab, handleCreateAddendum }) {
   // Show up to 5 most recent submissions
   const recentSubmissions = agreements.slice(0, 5);
 
@@ -193,10 +193,7 @@ Generated on: ${new Date().toLocaleString()}
       })
       .sort((a, b) => b.daysPending - a.daysPending);
 
-    const handleStatusUpdate = (agreementId, newStatus) => {
-      const updatedDate = new Date().toISOString().split('T')[0];
-      onStatusUpdate(agreementId, newStatus, updatedDate);
-    };
+
 
     return (
       <div className="px-8 py-6">
@@ -228,7 +225,7 @@ Generated on: ${new Date().toLocaleString()}
           </div>
         )}
 
-        <div className="grid grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-6 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <div className="text-2xl font-bold text-orange-600">{pendingApproval}</div>
             <div className="text-gray-600 mt-2 flex items-center justify-center gap-2">
@@ -262,6 +259,13 @@ Generated on: ${new Date().toLocaleString()}
             <div className="text-gray-600 mt-2 flex items-center justify-center gap-2">
               <span>Expiring Soon</span>
               <span role="img" aria-label="expiring">⏰</span>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6 text-center">
+            <div className="text-2xl font-bold text-purple-600">{addendums.length}</div>
+            <div className="text-gray-600 mt-2 flex items-center justify-center gap-2">
+              <span>Total Addendums</span>
+              <span role="img" aria-label="addendums">📝</span>
             </div>
           </div>
         </div>
@@ -352,12 +356,20 @@ Generated on: ${new Date().toLocaleString()}
                           View
                         </button>
                         {!isStatic && (
-                          <button 
-                            className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
-                            onClick={() => handleEditAgreement(agreement)}
-                          >
-                            Renew
-                          </button>
+                          <>
+                            <button 
+                              className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                              onClick={() => handleEditAgreement(agreement)}
+                            >
+                              Renew
+                            </button>
+                            <button 
+                              className="px-3 py-1 bg-purple-600 text-white rounded text-xs hover:bg-purple-700"
+                              onClick={() => handleCreateAddendum(agreement)}
+                            >
+                              Addendum
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -412,7 +424,7 @@ Generated on: ${new Date().toLocaleString()}
         </div>
       )}
 
-      <div className="grid grid-cols-5 gap-6 mb-8">
+      <div className="grid grid-cols-7 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow p-6 text-center">
           <div className="text-2xl font-bold">{agreements.length}</div>
           <div className="text-gray-600 mt-2 flex items-center justify-center gap-2">
@@ -448,6 +460,24 @@ Generated on: ${new Date().toLocaleString()}
             <span role="img" aria-label="expiring">⏰</span>
           </div>
         </div>
+        <div className="bg-white rounded-lg shadow p-6 text-center">
+          <div className="text-2xl font-bold text-purple-600">{addendums.length}</div>
+          <div className="text-gray-600 mt-2 flex items-center justify-center gap-2">
+            <span>Total Addendums</span>
+            <span role="img" aria-label="addendums">📝</span>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6 text-center">
+          <div className="text-2xl font-bold text-blue-600">
+            {agreements.filter(agreement => 
+              addendums.some(addendum => addendum.parentAgreementId === agreement.id)
+            ).length}
+          </div>
+          <div className="text-gray-600 mt-2 flex items-center justify-center gap-2">
+            <span>Contracts with Addendums</span>
+            <span role="img" aria-label="contracts-with-addendums">📎</span>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -462,7 +492,20 @@ Generated on: ${new Date().toLocaleString()}
               recentSubmissions.map((agreement, idx) => (
                 <div className="flex items-center justify-between py-3" key={agreement.id || idx}>
                   <div className="flex-1">
-                    <div className="font-semibold">{agreement.selectedClient}</div>
+                    <div className="font-semibold flex items-center gap-2">
+                      {agreement.selectedClient}
+                      {/* Addendums Count Indicator */}
+                      {(() => {
+                        const addendumsCount = addendums.filter(addendum => 
+                          addendum.parentAgreementId === agreement.id
+                        ).length;
+                        return addendumsCount > 0 ? (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium flex items-center gap-1">
+                            📎 {addendumsCount}
+                          </span>
+                        ) : null;
+                      })()}
+                    </div>
                     <div className="text-gray-500 text-sm">{(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}</div>
                     <div className="text-xs text-gray-400 mt-1">
                       Submitted: {agreement.submittedDate}
@@ -563,13 +606,22 @@ Generated on: ${new Date().toLocaleString()}
                           👁️ View
                         </button>
                         {!isStatic && (
-                          <button 
-                            className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-medium hover:bg-green-200"
-                            onClick={() => handleEditAgreement(agreement)}
-                            title="Renew Agreement"
-                          >
-                            🔄 Renew
-                          </button>
+                          <>
+                            <button 
+                              className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-medium hover:bg-green-200"
+                              onClick={() => handleEditAgreement(agreement)}
+                              title="Renew Agreement"
+                            >
+                              🔄 Renew
+                            </button>
+                            <button 
+                              className="px-3 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium hover:bg-purple-200"
+                              onClick={() => handleCreateAddendum(agreement)}
+                              title="Create Addendum"
+                            >
+                              📝 Addendum
+                            </button>
+                          </>
                         )}
                         <button 
                           className="px-3 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium hover:bg-purple-200"
@@ -604,10 +656,226 @@ Generated on: ${new Date().toLocaleString()}
 function App() {
   const [userRole, setUserRole] = useState("Checker");
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [agreements, setAgreements] = useState([]);
+  const [agreements, setAgreements] = useState([
+    {
+      id: "STATIC-001",
+      selectedClient: "TechCorp Solutions",
+      selectedDepartment: "IT Services",
+      agreementType: "LOI",
+      startDate: "2024-01-15",
+      endDate: "2024-12-31",
+      totalValue: 50000,
+      currency: "USD",
+      status: "Active",
+      submittedDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedBy: "checker",
+      entityType: "single",
+      priority: "Medium",
+      clauses: [
+        { title: "Term and termination (Duration)", placeholder: "12 months", isInitial: true },
+        { title: "Payment Terms", placeholder: "15 days", isInitial: true },
+        { title: "Penalty", placeholder: "500/-", isInitial: true },
+        { title: "Minimum Wages", placeholder: "Yearly / Not Allowed / At Actual", isInitial: true },
+        { title: "Costing - Salary Breakup", placeholder: "Yes / No", isInitial: true },
+        { title: "SLA", placeholder: "Specific Page/Clause", isInitial: true },
+        { title: "Indemnity", placeholder: "Specific Page/Clause", isInitial: true },
+        { title: "Insurance", placeholder: "Specific Page/Clause", isInitial: true }
+      ],
+      uploadStatuses: {
+        LOI: { uploaded: true, file: { name: "TechCorp_LOI.pdf", size: "2.1 MB" } },
+        WO: { uploaded: true, file: { name: "TechCorp_WO.pdf", size: "1.8 MB" } },
+        PO: { uploaded: true, file: { name: "TechCorp_PO.pdf", size: "3.2 MB" } },
+        EmailApproval: { uploaded: true, file: { name: "TechCorp_Email.pdf", size: "0.5 MB" } },
+        "clause-0": { uploaded: true, file: { name: "term_termination.pdf", size: "0.8 MB" } },
+        "clause-1": { uploaded: true, file: { name: "payment_terms.pdf", size: "0.6 MB" } },
+        "clause-2": { uploaded: true, file: { name: "penalty.pdf", size: "0.4 MB" } }
+      },
+      uploadedFiles: {
+        LOI: { name: "TechCorp_LOI.pdf", size: "2.1 MB" },
+        WO: { name: "TechCorp_WO.pdf", size: "1.8 MB" },
+        PO: { name: "TechCorp_PO.pdf", size: "3.2 MB" },
+        EmailApproval: { name: "TechCorp_Email.pdf", size: "0.5 MB" }
+      },
+      importantClauses: [
+        "Term and termination",
+        "Payment Terms",
+        "SLA",
+        "Insurance",
+        "Confidentiality"
+      ],
+      createdAt: "2024-01-10T10:00:00Z",
+      lastModified: "2024-01-15T14:30:00Z",
+      // Versioning metadata
+      version: "1.0.0",
+      versionHistory: [
+        {
+          version: "1.0.0",
+          date: "2024-01-15T14:30:00Z",
+          type: "initial",
+          description: "Original agreement creation",
+          modifiedBy: "System",
+          changes: []
+        }
+      ]
+    },
+    {
+      id: "STATIC-002",
+      selectedClient: "Global Industries",
+      selectedDepartment: "Manufacturing",
+      agreementType: "WO",
+      startDate: "2024-02-01",
+      endDate: "2025-01-31",
+      totalValue: 75000,
+      currency: "EUR",
+      status: "Active",
+      submittedDate: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedBy: "checker",
+      entityType: "single",
+      priority: "Low",
+      clauses: [
+        { title: "Quality Standards", placeholder: "ISO 9001", isInitial: true },
+        { title: "Delivery Schedule", placeholder: "30 days", isInitial: true },
+        { title: "Service Level Agreement", placeholder: "Business hours support", isInitial: true },
+        { title: "Warranty", placeholder: "1 year", isInitial: true },
+        { title: "Force Majeure", placeholder: "Standard terms", isInitial: true }
+      ],
+      uploadStatuses: {
+        WO: { uploaded: true, file: { name: "Global_WO.pdf", size: "2.5 MB" } },
+        PO: { uploaded: true, file: { name: "Global_PO.pdf", size: "4.1 MB" } },
+        "clause-0": { uploaded: true, file: { name: "quality_standards.pdf", size: "1.2 MB" } },
+        "clause-1": { uploaded: true, file: { name: "delivery_schedule.pdf", size: "0.9 MB" } },
+        "clause-2": { uploaded: true, file: { name: "service_level_agreement.pdf", size: "1.5 MB" } }
+      },
+      uploadedFiles: {
+        WO: { name: "Global_WO.pdf", size: "2.5 MB" },
+        PO: { name: "Global_PO.pdf", size: "4.1 MB" }
+      },
+      importantClauses: [
+        "Quality Standards",
+        "Delivery Schedule",
+        "Warranty",
+        "Force Majeure"
+      ],
+      createdAt: "2024-01-25T09:15:00Z",
+      lastModified: "2024-02-01T11:45:00Z",
+      // Versioning metadata
+      version: "1.0.0",
+      versionHistory: [
+        {
+          version: "1.0.0",
+          date: "2024-02-01T11:45:00Z",
+          type: "initial",
+          description: "Original agreement creation",
+          modifiedBy: "System",
+          changes: []
+        }
+      ]
+    }
+  ]);
   const [editingAgreement, setEditingAgreement] = useState(null);
   const [viewModal, setViewModal] = useState({ open: false, agreement: null });
   const [historyFilters, setHistoryFilters] = useState({ status: "approved", search: "" });
+  
+     // Addendum state - combines demo data with dynamic user-created addendums
+   const [addendums, setAddendums] = useState([
+     // Demo addendum data (for demonstration purposes)
+     {
+       id: "ADD001",
+       title: "Extension of Service Period",
+       description: "Extend the service period by 6 months due to project delays",
+       reason: "Client requested extension due to unforeseen project delays and additional requirements",
+       impact: "Service period extended from 12 months to 18 months. No change in pricing or terms.",
+       effectiveDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+       submittedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
+       submittedBy: "checker",
+       status: "Approved",
+       parentAgreementId: "STATIC-001",
+       parentAgreementTitle: "TechCorp Solutions",
+       isDemo: true, // Flag to identify demo data
+       uploadedFiles: {
+         supportingDoc: { uploaded: true, name: "extension_request.pdf", isDemo: true },
+         amendmentDoc: { uploaded: true, name: "amendment_agreement.pdf", isDemo: true }
+       },
+       clauseModifications: [
+         {
+           clauseNumber: "1",
+           clauseTitle: "Term and termination (Duration)",
+           modificationType: "Modified",
+           details: "Duration extended from 12 months to 18 months",
+           previousValue: "12 months",
+           newValue: "18 months"
+         },
+         {
+           clauseNumber: "2",
+           clauseTitle: "Payment Terms",
+           modificationType: "Modified",
+           details: "Payment terms adjusted to accommodate extended period",
+           previousValue: "15 days",
+           newValue: "30 days"
+         }
+       ],
+       // Versioning metadata
+       version: "1.0.0",
+       versionHistory: [
+         {
+           version: "1.0.0",
+           date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+           type: "initial",
+           description: "Initial addendum submission",
+           modifiedBy: "checker",
+           changes: ["Service period extension", "Payment terms adjustment"]
+         }
+       ]
+     },
+     // New demo addendum with Pending Review status for testing edit functionality
+     {
+       id: "ADD002",
+       title: "Additional Service Requirements",
+       description: "Add new service requirements for enhanced client support",
+       reason: "Client requested additional support services and monitoring capabilities",
+       impact: "Additional monthly cost of $2,000 for enhanced services. Improved client satisfaction.",
+       effectiveDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(), // 15 days from now
+       submittedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+       submittedBy: "checker",
+       status: "Pending Review", // This status allows editing
+       parentAgreementId: "STATIC-002",
+       parentAgreementTitle: "Global Industries",
+       isDemo: true,
+       uploadedFiles: {
+         supportingDoc: { uploaded: true, name: "service_requirements.pdf", isDemo: true },
+         amendmentDoc: { uploaded: true, name: "service_amendment.pdf", isDemo: true }
+       },
+       clauseModifications: [
+         {
+           clauseNumber: "3",
+           clauseTitle: "Service Level Agreement",
+           modificationType: "Modified",
+           details: "Enhanced SLA with 24/7 support and monitoring",
+           previousValue: "Business hours support",
+           newValue: "24/7 support with monitoring"
+         }
+       ],
+       version: "1.0.0",
+       versionHistory: [
+         {
+           version: "1.0.0",
+           date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+           type: "initial",
+           description: "Initial addendum submission for additional services",
+           modifiedBy: "checker",
+           changes: ["Enhanced SLA", "24/7 support", "Monitoring services"]
+         }
+       ]
+     }
+   ]);
+  const [editingAddendum, setEditingAddendum] = useState(null);
+  const [showAddendumForm, setShowAddendumForm] = useState(false);
+  const [parentAgreementForAddendum, setParentAgreementForAddendum] = useState(null);
+  const [showAddendumSuccess, setShowAddendumSuccess] = useState(false);
+  const [addendumSuccessMessage, setAddendumSuccessMessage] = useState("");
+  const [lastSubmittedAddendum, setLastSubmittedAddendum] = useState(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorModalMessage, setErrorModalMessage] = useState("");
 
   // Tabs to show based on role
   let tabs = [];
@@ -615,12 +883,14 @@ function App() {
     tabs = [
       { label: "Dashboard", value: "dashboard" },
       { label: "Agreements", value: "agreements" },
+      { label: "Addendums", value: "addendums" },
       { label: "History", value: "history" },
     ];
   } else {
     tabs = [
       { label: "Dashboard", value: "dashboard" },
       { label: "New Agreement", value: "new" },
+      { label: "Addendums", value: "addendums" },
     ];
   }
 
@@ -676,9 +946,261 @@ function App() {
     ));
   };
 
+  // Enhanced versioning system for legal compliance and audit trails
+  const createVersionEntry = (type, data, currentVersion) => {
+    const timestamp = new Date().toISOString();
+    const versionParts = currentVersion ? currentVersion.split('.').map(Number) : [1, 0, 0];
+    
+    let newVersion;
+    if (type === "addendum") {
+      // Major version bump for addendums (significant changes)
+      newVersion = `${versionParts[0] + 1}.0.0`;
+    } else if (type === "status_change") {
+      // Minor version bump for status changes
+      newVersion = `${versionParts[0]}.${versionParts[1] + 1}.0`;
+    } else if (type === "minor_update") {
+      // Patch version bump for minor updates
+      newVersion = `${versionParts[0]}.${versionParts[1]}.${versionParts[2] + 1}`;
+    } else {
+      newVersion = `${versionParts[0]}.${versionParts[1]}.${versionParts[2] + 1}`;
+    }
+
+    return {
+      version: newVersion,
+      type: type,
+      timestamp: timestamp,
+      description: type === "addendum" ? `Addendum "${data.title}" applied` : `Status changed to ${data}`,
+      addendum: type === "addendum" ? {
+        id: data.id,
+        title: data.title,
+        status: data.status,
+        submittedBy: data.submittedBy,
+        submittedDate: data.submittedDate,
+        clauseModifications: data.clauseModifications || [],
+        reason: data.reason,
+        impact: data.impact
+      } : null,
+      user: type === "addendum" ? data.submittedBy : userRole,
+      changes: type === "addendum" ? {
+        clausesModified: data.clauseModifications?.length || 0,
+        documentsAdded: Object.keys(data.uploadedFiles || {}).length,
+        effectiveDate: data.effectiveDate,
+        reason: data.reason,
+        impact: data.impact
+      } : null,
+      metadata: {
+        ipAddress: "127.0.0.1", // In real app, capture actual IP
+        userAgent: navigator.userAgent,
+        sessionId: Date.now().toString(),
+        complianceLevel: "legal_audit_trail"
+      }
+    };
+  };
+
+  const updateAgreementVersion = (agreementId, addendumData) => {
+    setAgreements(prev => prev.map(agreement => {
+      if (agreement.id === agreementId) {
+        // Ensure versionHistory exists and is an array
+        const currentVersionHistory = Array.isArray(agreement.versionHistory) ? agreement.versionHistory : [];
+        
+        // Create comprehensive version entry
+        const newVersion = createVersionEntry("addendum", addendumData, agreement.version);
+        
+        // Enhanced version tracking with legal compliance data
+        const enhancedVersion = {
+          ...newVersion,
+          legalCompliance: {
+            changeType: "addendum_application",
+            riskLevel: addendumData.impact?.toLowerCase().includes("high") ? "HIGH" : "MEDIUM",
+            requiresApproval: addendumData.status === "Pending Review",
+            auditTrail: {
+              previousVersion: agreement.version,
+              newVersion: newVersion.version,
+              changeSummary: `Addendum ${addendumData.id} applied with ${addendumData.clauseModifications?.length || 0} clause modifications`,
+              complianceCheck: "PASSED",
+              timestamp: new Date().toISOString()
+            }
+          }
+        };
+
+        return {
+          ...agreement,
+          version: newVersion.version,
+          lastModified: new Date().toISOString(),
+          versionHistory: [...currentVersionHistory, enhancedVersion],
+          addendumCount: (agreement.addendumCount || 0) + 1,
+          lastAddendumDate: addendumData.submittedDate,
+          complianceStatus: "UPDATED"
+        };
+      }
+      return agreement;
+    }));
+  };
+
+  // Addendum handlers
+  const handleAddendumSubmit = (addendumData) => {
+    console.log("=== PARENT: handleAddendumSubmit called ===");
+    
+    try {
+      if (addendumData.id) {
+        // Update existing addendum
+        const updatedAddendum = { ...addendumData, lastModified: new Date().toISOString() };
+        setAddendums(prev => prev.map(addendum => 
+          addendum.id === addendumData.id ? updatedAddendum : addendum
+        ));
+        
+        if (addendumData.parentAgreementId) {
+          updateAgreementVersion(addendumData.parentAgreementId, updatedAddendum);
+        }
+      } else {
+        // Create new addendum
+        const newAddendum = {
+          id: `ADD${Date.now()}`,
+          ...addendumData,
+          status: "Pending Review",
+          isDemo: false,
+          createdAt: new Date().toISOString(),
+          lastModified: new Date().toISOString(),
+          version: "1.0.0"
+        };
+        
+        setAddendums(prev => [newAddendum, ...prev]);
+        
+        if (addendumData.parentAgreementId) {
+          updateAgreementVersion(addendumData.parentAgreementId, newAddendum);
+        }
+      }
+      
+      // Show success message
+      setAddendumSuccessMessage(
+        addendumData.id 
+          ? `Addendum "${addendumData.title}" updated successfully!` 
+          : `Addendum "${addendumData.title}" submitted successfully for review!`
+      );
+      setShowAddendumSuccess(true);
+      
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        setShowAddendumSuccess(false);
+      }, 5000);
+      
+      // Close the modal immediately
+      setShowAddendumForm(false);
+      setEditingAddendum(null);
+      setParentAgreementForAddendum(null);
+      
+    } catch (error) {
+      console.error("Error in handleAddendumSubmit:", error);
+      setErrorModalMessage("Error submitting addendum: " + error.message);
+      setShowErrorModal(true);
+    }
+  };
+
+  const handleCreateAddendum = (agreement) => {
+    setParentAgreementForAddendum(agreement);
+    setShowAddendumForm(true);
+    setEditingAddendum(null);
+  };
+
+  const handleEditAddendum = (addendum) => {
+    setEditingAddendum(addendum);
+    setParentAgreementForAddendum(agreements.find(a => a.id === addendum.parentAgreementId));
+    setShowAddendumForm(true);
+  };
+
+  const handleAddendumStatusUpdate = (addendumId, newStatus) => {
+    setAddendums(prev => prev.map(addendum => 
+      addendum.id === addendumId 
+        ? { ...addendum, status: newStatus }
+        : addendum
+    ));
+  };
+
+  // Track status changes with versioning for audit trails
+  const trackStatusChange = (agreementId, oldStatus, newStatus, reason = "") => {
+    setAgreements(prev => prev.map(agreement => {
+      if (agreement.id === agreementId) {
+        const currentVersionHistory = Array.isArray(agreement.versionHistory) ? agreement.versionHistory : [];
+        
+        const statusVersion = createVersionEntry("status_change", newStatus, agreement.version);
+        
+        const enhancedStatusVersion = {
+          ...statusVersion,
+          legalCompliance: {
+            changeType: "status_modification",
+            riskLevel: "LOW",
+            requiresApproval: false,
+            auditTrail: {
+              previousStatus: oldStatus,
+              newStatus: newStatus,
+              changeReason: reason,
+              previousVersion: agreement.version,
+              newVersion: statusVersion.version,
+              changeSummary: `Status changed from ${oldStatus} to ${newStatus}`,
+              complianceCheck: "PASSED",
+              timestamp: new Date().toISOString()
+            }
+          }
+        };
+
+        return {
+          ...agreement,
+          version: statusVersion.version,
+          lastModified: new Date().toISOString(),
+          versionHistory: [...currentVersionHistory, enhancedStatusVersion],
+          status: newStatus,
+          complianceStatus: "STATUS_UPDATED"
+        };
+      }
+      return agreement;
+    }));
+  };
+
   return (
     <div className="min-h-screen">
       <Header userRole={userRole} setUserRole={setUserRole} />
+      
+      {/* Addendum Success Notification */}
+      {showAddendumSuccess && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[9999] bg-green-100 border border-green-400 text-green-700 px-6 py-4 rounded-lg shadow-lg flex items-center gap-3">
+          <span className="text-xl">✅</span>
+          <span className="font-medium">{addendumSuccessMessage}</span>
+          <div className="flex items-center gap-2 ml-4">
+            {lastSubmittedAddendum && (
+              <button
+                onClick={() => {
+                  setShowAddendumSuccess(false);
+                  setActiveTab("addendums");
+                }}
+                className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
+              >
+                View Addendum
+              </button>
+            )}
+            <button
+              onClick={() => setShowAddendumSuccess(false)}
+              className="text-green-700 hover:text-green-900 text-lg font-bold"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[9999] bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-lg shadow-lg flex items-center gap-3">
+          <span className="text-xl">❌</span>
+          <span className="font-medium">{errorModalMessage}</span>
+          <button
+            onClick={() => setShowErrorModal(false)}
+            className="text-red-700 hover:text-red-900 text-lg font-bold"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <nav className="flex gap-2 px-8 pt-6 pb-2 bg-white">
         {tabs.map(tab => (
           <button
@@ -708,11 +1230,12 @@ function App() {
                  {activeTab === "dashboard" && (
            <Dashboard 
              agreements={agreements} 
+             addendums={addendums}
              userRole={userRole} 
-             onStatusUpdate={handleStatusUpdate}
              setViewModal={setViewModal}
              setEditingAgreement={setEditingAgreement}
              setActiveTab={setActiveTab}
+             handleCreateAddendum={handleCreateAddendum}
            />
          )}
                  {activeTab === "new" && (userRole !== "Approver" || editingAgreement) && (
@@ -723,10 +1246,19 @@ function App() {
                        onSubmit={handleAgreementSubmit} 
                        editingAgreement={editingAgreement}
                        onEditComplete={() => setEditingAgreement(null)}
+                       onCreateAddendum={handleCreateAddendum}
                      />
                    </div>
                  )}
-         {activeTab === "agreements" && userRole === "Approver" && <AgreementTable agreements={agreements} onStatusUpdate={handleStatusUpdate} />}
+                          {activeTab === "agreements" && userRole === "Approver" && <AgreementTable agreements={agreements} addendums={addendums} onStatusUpdate={handleStatusUpdate} userRole={userRole} />}
+         {activeTab === "addendums" && (
+           <AddendumTable 
+             addendums={addendums} 
+             onStatusUpdate={handleAddendumStatusUpdate}
+             onEditAddendum={handleEditAddendum}
+             userRole={userRole}
+           />
+         )}
          {activeTab === "history" && (
            <div className="px-8 py-6">
              {/* History Tab Content */}
@@ -836,145 +1368,48 @@ function App() {
          )}
        </div>
 
-       {/* View Agreement Modal */}
-       {viewModal.open && (
-         <ViewAgreementModal 
-           agreement={viewModal.agreement} 
-           onClose={() => setViewModal({ open: false, agreement: null })} 
-         />
+               {/* View Agreement Modal - REMOVED - Now integrated into AgreementTable */}
+
+       {/* Addendum Form Modal */}
+       {showAddendumForm && (
+         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+           <div className="bg-white rounded-lg shadow-lg p-6 min-w-[800px] max-w-6xl max-h-[90vh] overflow-y-auto">
+             <div className="flex justify-between items-center mb-6">
+               <h3 className="text-2xl font-bold text-gray-900">
+                 {editingAddendum ? 'Edit Addendum' : 'Create New Addendum'}
+               </h3>
+               <button
+                 onClick={() => {
+                   setShowAddendumForm(false);
+                   setEditingAddendum(null);
+                   setParentAgreementForAddendum(null);
+                 }}
+                 className="text-gray-400 hover:text-gray-600 focus:outline-none"
+               >
+                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                 </svg>
+               </button>
+             </div>
+             
+             <AddendumForm
+               onSubmit={handleAddendumSubmit}
+               editingAddendum={editingAddendum}
+               onEditComplete={() => {
+                 setShowAddendumForm(false);
+                 setEditingAddendum(null);
+                 setParentAgreementForAddendum(null);
+               }}
+               parentAgreement={parentAgreementForAddendum}
+               userRole={userRole}
+             />
+           </div>
+         </div>
        )}
      </div>
    );
  }
 
- // View Agreement Modal Component
- function ViewAgreementModal({ agreement, onClose }) {
-   if (!agreement) return null;
-
-   return (
-     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-       <div className="bg-white rounded-lg shadow-lg p-8 min-w-[600px] max-w-4xl max-h-[90vh] overflow-y-auto">
-         <div className="flex justify-between items-center mb-6">
-           <h3 className="text-2xl font-bold text-gray-900">📄 Agreement Details</h3>
-           <button
-             onClick={onClose}
-             className="text-gray-400 hover:text-gray-600 focus:outline-none"
-           >
-             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-             </svg>
-           </button>
-         </div>
-
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-           {/* Basic Information */}
-           <div className="bg-gray-50 p-4 rounded-lg">
-             <h4 className="font-semibold text-gray-800 mb-3">📋 Basic Information</h4>
-             <div className="space-y-2 text-sm">
-               <div><span className="font-medium">Agreement ID:</span> {agreement.id}</div>
-               <div><span className="font-medium">Client:</span> {agreement.selectedClient}</div>
-               <div><span className="font-medium">Branches:</span> {(agreement.selectedBranches || []).map(branch => branch.name).join(", ")}</div>
-               <div><span className="font-medium">Entity Type:</span> {agreement.entityType}</div>
-               <div><span className="font-medium">Status:</span> 
-                 <span className={`ml-2 px-2 py-1 rounded text-xs font-medium ${
-                   agreement.status === "Approved" ? "bg-green-100 text-green-700" :
-                   agreement.status === "Rejected" ? "bg-red-100 text-red-700" :
-                   "bg-orange-100 text-orange-700"
-                 }`}>
-                   {agreement.status}
-                 </span>
-               </div>
-             </div>
-           </div>
-
-           {/* Dates */}
-           <div className="bg-blue-50 p-4 rounded-lg">
-             <h4 className="font-semibold text-gray-800 mb-3">📅 Timeline</h4>
-             <div className="space-y-2 text-sm">
-               <div><span className="font-medium">Submitted:</span> {agreement.submittedDate}</div>
-               <div><span className="font-medium">Start Date:</span> {new Date(agreement.startDate).toLocaleDateString()}</div>
-               <div><span className="font-medium">End Date:</span> {new Date(agreement.endDate).toLocaleDateString()}</div>
-               {agreement.approvedDate && (
-                 <div><span className="font-medium">Approved:</span> {agreement.approvedDate}</div>
-               )}
-             </div>
-           </div>
-         </div>
-
-         {/* Contact Information */}
-         <div className="mt-6 bg-green-50 p-4 rounded-lg">
-           <h4 className="font-semibold text-gray-800 mb-3">👥 Contact Information</h4>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-             <div>
-               <h5 className="font-medium text-gray-700 mb-2">I Smart Contact</h5>
-               <div>Name: {agreement.form?.iSmartName || 'Not provided'}</div>
-               <div>Phone: {agreement.form?.iSmartContact || 'Not provided'}</div>
-               <div>Email: {agreement.form?.iSmartEmail || 'Not provided'}</div>
-             </div>
-             <div>
-               <h5 className="font-medium text-gray-700 mb-2">Client Contact</h5>
-               <div>Name: {agreement.form?.clientName || 'Not provided'}</div>
-               <div>Phone: {agreement.form?.clientContact || 'Not provided'}</div>
-               <div>Email: {agreement.form?.clientEmail || 'Not provided'}</div>
-             </div>
-           </div>
-         </div>
-
-         {/* Important Clauses */}
-         <div className="mt-6 bg-yellow-50 p-4 rounded-lg">
-           <h4 className="font-semibold text-gray-800 mb-3">📝 Important Clauses</h4>
-           <div className="space-y-2 text-sm">
-             {(agreement.clauses || []).length > 0 ? (
-               agreement.clauses.map((clause, idx) => (
-                 <div key={idx} className="border-l-2 border-yellow-300 pl-3">
-                   <div className="font-medium">{clause.title}</div>
-                   {clause.details && <div className="text-gray-600">{clause.details}</div>}
-                 </div>
-               ))
-             ) : (
-               <div className="text-gray-500">No clauses specified</div>
-             )}
-           </div>
-         </div>
-
-         {/* Documents */}
-         <div className="mt-6 bg-purple-50 p-4 rounded-lg">
-           <h4 className="font-semibold text-gray-800 mb-3">📎 Uploaded Documents</h4>
-                       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-              {['LOI', 'WO', 'PO'].map(docType => (
-               <div key={docType} className="flex items-center gap-2">
-                 <span className={`w-3 h-3 rounded-full ${
-                   agreement.uploadStatuses?.[docType]?.uploaded ? 'bg-green-500' : 'bg-gray-300'
-                 }`}></span>
-                 <span>{docType}</span>
-               </div>
-             ))}
-           </div>
-         </div>
-
-         {/* Group Companies (if applicable) */}
-         {agreement.entityType === 'group' && agreement.underList && (
-           <div className="mt-6 bg-indigo-50 p-4 rounded-lg">
-             <h4 className="font-semibold text-gray-800 mb-3">🏢 Group Companies</h4>
-             <div className="space-y-1 text-sm">
-               {agreement.underList.map((item, idx) => (
-                 <div key={idx}>• {item.value || 'Not specified'}</div>
-               ))}
-             </div>
-           </div>
-         )}
-
-         <div className="flex justify-end mt-8">
-           <button
-             onClick={onClose}
-             className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-           >
-             Close
-           </button>
-         </div>
-       </div>
-     </div>
-   );
- }
+  // View Agreement Modal Component - REMOVED - Now integrated into AgreementTable
 
 export default App;

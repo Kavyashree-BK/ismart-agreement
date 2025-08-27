@@ -29,7 +29,7 @@ const statusOptions = [
 ];
 
 function ReportFilterForm() {
-  const { register, control, handleSubmit } = useForm({
+  const { control, handleSubmit } = useForm({
     defaultValues: {
       client: '',
       state: '',

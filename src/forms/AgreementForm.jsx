@@ -148,11 +148,11 @@ const AgreementForm = (props) => {
   const [underList, setUnderList] = useState(initialUnderList());
   const [form, setForm] = useState(initialFormData());
   const [errors, setErrors] = useState({});
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [uploadedStatus, setUploadedStatus] = useState({});
+
+
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
-  const [escalationError, setEscalationError] = useState("");
+
   const [userRole, setUserRole] = useState("checker");
   const [selectedClient, setSelectedClient] = useState("");
   const [availableBranches, setAvailableBranches] = useState([]);
@@ -167,9 +167,9 @@ const AgreementForm = (props) => {
     Agreement: { uploaded: false, status: "", remarks: "" },
     // Clause uploads will be added dynamically as clause-0, clause-1, ...
   });
-  const [stage, setStage] = useState("checker"); // checker or approver
-  const [isContinueClicked, setIsContinueClicked] = useState(false);
-  const [uploadError, setUploadError] = useState({}); // { [type]: errorMsg }
+
+
+
   const [draftSaved, setDraftSaved] = useState(false);
   const [draft, setDraft] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -345,7 +345,6 @@ const AgreementForm = (props) => {
     
     if (!hasAtLeastOneDocument) {
       const msg = "Escalation: At least one document is required (LOI, WO, PO, or Email Approval)";
-      setEscalationError(msg);
       setErrorModalMessage(msg);
       setShowErrorModal(true);
       console.log("Submission blocked:", msg);
@@ -370,14 +369,11 @@ const AgreementForm = (props) => {
     const allMissing = [...missingUserFields];
     if (allMissing.length > 0) {
       const msg = `Escalation: Missing required fields: ${allMissing.join(", ")}`;
-      setEscalationError(msg);
       setErrorModalMessage(msg);
       setShowErrorModal(true);
       console.log("Submission blocked:", msg);
       return;
     }
-
-    setEscalationError(null);
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -416,7 +412,7 @@ const AgreementForm = (props) => {
       onSubmit(agreementData);
     }
 
-    setIsSubmitted(true);
+
     setShowSuccessModal(true);
     
     // Only reset form if not in edit mode, otherwise call onEditComplete
@@ -429,7 +425,7 @@ const AgreementForm = (props) => {
       setEntityType("single");
       setAgreementDraftType("client");
       setErrors({});
-      setUploadedStatus({});
+
       setUserRole("checker");
       setSelectedClient("");
       setAvailableBranches([]);
@@ -438,7 +434,7 @@ const AgreementForm = (props) => {
       setEndDate(new Date());
       setIsOpenAgreement(false); // Reset the new state
     }
-    setTimeout(() => setIsSubmitted(false), 3000);
+
   };
 
   const handleChange = useCallback((e) => {
@@ -490,9 +486,7 @@ const AgreementForm = (props) => {
     setSelectedBranches([]);
   }, []);
 
-  const closePopup = () => {
-    setIsSubmitted(false);
-  };
+
 
   const handleUploadChange = (type, file) => {
     // Allowed types and max size
@@ -513,11 +507,8 @@ const AgreementForm = (props) => {
       }
     }
     if (error) {
-      setUploadError(prev => ({ ...prev, [type]: error }));
       // Do not update uploadStatuses
       return;
-    } else {
-      setUploadError(prev => ({ ...prev, [type]: undefined }));
     }
     setUploadStatuses(prev => ({
       ...prev,
@@ -532,94 +523,17 @@ const AgreementForm = (props) => {
     }));
   };
 
-  const handleStatusChange = (type, value) => {
-    setUploadStatuses(prev => ({
-      ...prev,
-      [type]: { ...prev[type], status: value }
-    }));
-  };
 
-  const handleRemarksChange = (type, value) => {
-    setUploadStatuses(prev => ({
-      ...prev,
-      [type]: { ...prev[type], remarks: value }
-    }));
-  };
 
-     const canUploadAgreement = () => {
-     const initialUploads = ['LOI', 'WO', 'PO', 'EmailApproval'];
-     return initialUploads.some(type => uploadStatuses[type].uploaded);
-   };
 
-  const handleDateChange1 = (date) => {
-    setStartDate(date)
-  }
-  const handleDateChange2 = (date) => {
-    setEndDate(date)
-  }
 
-  const validateUserInfo = () => {
-    const newErrors = {};
-    if (!userRole) newErrors.userRole = "User role is required";
-    if (!selectedClient) newErrors.clientName = "Client name is required";
-    if (!selectedBranches.length) newErrors.clientBranch = "At least one branch is required";
-    setUserInfoErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
 
-  const handleUserInfoChange = (field, value) => {
-    console.log(`handleUserInfoChange called - field: ${field}, value: ${value}, current userRole: ${userRole}`);
-    if (field === "userRole") {
-      console.log(`Role change detected - from ${userRole} to ${value}`);
-      setUserRole(value);
-    } else {
-      switch (field) {
-        case 'clientName':
-          setSelectedClient(value);
-          setForm(prev => ({ ...prev, clientName: value }));
-          // Update available sites and reset selected sites
-          const clientObj = clientsData.find(c => c.name === value);
-          setAvailableBranches(clientObj ? clientObj.branches : []);
-          setSelectedBranches([]);
-          break;
-        case 'clientBranch':
-          setSelectedBranches(value); // value is array
-          break;
-        default:
-          break;
-      }
-      if (userInfoErrors[field]) {
-        setUserInfoErrors(prev => ({ ...prev, [field]: null }));
-      }
-    }
-  };
 
-     // Helper to check if all required uploads are done (for checker)
-   const isCheckerUploadsComplete = () => {
-     return ["LOI", "WO", "PO", "EmailApproval"].some(type => uploadStatuses[type].uploaded);
-   };
 
-  // Helper to check if all required user info fields are filled (for checker)
-  const isCheckerUserInfoComplete = () => {
-    return userRole && selectedClient && selectedBranches.length > 0;
-  };
 
-  // Handler for Continue (checkpoint, not stage change)
-  const handleContinue = () => {
-    // Prevent continue if client name or site is missing
-    if (!selectedClient || !selectedBranches.length) {
-      setUserInfoErrors(prev => ({
-        ...prev,
-        clientName: !selectedClient ? "Client name is required" : undefined,
-        clientBranch: !selectedBranches.length ? "At least one branch is required" : undefined,
-      }));
-      return;
-    }
-    setIsContinueClicked(true);
-    // Only switch role if explicitly requested, not automatically
-    // setUserRole("Approver"); // Commented out to prevent automatic role switching
-    setStage("approver");
-  };
+
+
+
 
   return (
     <div className="relative max-w-6xl mx-auto p-0 bg-transparent mt-4 mb-8">
@@ -910,7 +824,7 @@ const AgreementForm = (props) => {
                            "WO (Work Order)", 
                            "PO (Purchase Order)",
                            "EmailApproval (Email Approval)"
-                         ].map((label, idx) => {
+                         ].map((label) => {
               const type = label.split(" ")[0];
               const upload = uploadStatuses[type] || {};
               return (
@@ -1278,6 +1192,23 @@ const AgreementForm = (props) => {
               </button>
             </div>
           )}
+          {/* Addendum Button - Only show for existing agreements */}
+          {isEditMode && editingAgreement && (
+            <button
+              type="button"
+              className="bg-purple-600 text-white px-6 py-2 rounded font-medium hover:bg-purple-700 mr-4"
+              onClick={() => {
+                // This will be handled by the parent component to show addendum form
+                if (props.onCreateAddendum) {
+                  props.onCreateAddendum(editingAgreement);
+                }
+              }}
+              title="Create Addendum for this agreement"
+            >
+              📝 Create Addendum
+            </button>
+          )}
+          
           <div className="flex flex-col gap-2">
             <button
               type="button"
