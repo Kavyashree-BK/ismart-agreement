@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -14,31 +14,30 @@ const AddendumTable = ({ addendums = [], onStatusUpdate, onEditAddendum, userRol
   const [details, setDetails] = useState({ open: false, addendum: null });
 
 
-  // Transform addendum data for table display
-  const transformedData = addendums.map((addendum, index) => {
-    return {
-      id: addendum.id || `ADD${String(index + 1).padStart(3, '0')}`,
-      title: addendum.title || "Untitled Addendum",
-      parentAgreement: addendum.parentAgreementTitle || "Unknown Agreement",
-      parentAgreementId: addendum.parentAgreementId,
-      description: addendum.description || "No description provided",
-      reason: addendum.reason || "No reason provided",
-      impact: addendum.impact || "No impact assessment",
-      effectiveDate: addendum.effectiveDate ? new Date(addendum.effectiveDate).toLocaleDateString() : "Not specified",
-      submittedDate: addendum.submittedDate ? new Date(addendum.submittedDate).toLocaleDateString() : "Not specified",
-      submittedBy: addendum.submittedBy || "Unknown",
-      status: addendum.status || "Pending Review",
-      uploadedFiles: addendum.uploadedFiles || {},
-      originalAddendum: addendum // Keep reference to original data
-    };
-  });
+  // Transform addendum data with useMemo to prevent infinite re-renders
+  const transformedData = useMemo(() => {
+    return addendums.map((addendum, index) => ({
+      id: addendum.id,
+      title: addendum.title,
+      parentAgreement: addendum.parentAgreementTitle || addendum.parentAgreementId,
+      description: addendum.description,
+      reason: addendum.reason,
+      effectiveDate: addendum.effectiveDate ? new Date(addendum.effectiveDate).toLocaleDateString() : 'Not specified',
+      submittedDate: addendum.submittedDate ? new Date(addendum.submittedDate).toLocaleDateString() : 'Not specified',
+      status: addendum.status,
+      submittedBy: addendum.submittedBy,
+      uploadedFiles: addendum.uploadedFiles,
+      clauseModifications: addendum.clauseModifications,
+      originalAddendum: addendum
+    }));
+  }, [addendums]); // Only recalculate when addendums change
 
   const [data, setData] = useState(transformedData);
 
-  // Update data when addendums prop changes
+  // Update data when addendums prop changes - fixed dependencies
   useEffect(() => {
     setData(transformedData);
-  }, [addendums, transformedData]);
+  }, [transformedData]); // Only depend on transformedData, which is memoized
 
   // Get unique values for dropdowns
   const uniqueParentAgreements = [...new Set(data.map(row => row.parentAgreement))];
@@ -481,6 +480,41 @@ const AddendumTable = ({ addendums = [], onStatusUpdate, onEditAddendum, userRol
                 <p className="text-sm text-gray-700">{details.addendum.impact}</p>
               </div>
             </div>
+
+            {/* Clause Modifications */}
+            {details.addendum.clauseModifications && details.addendum.clauseModifications.length > 0 && (
+              <div className="mt-6 bg-orange-50 p-4 rounded-lg">
+                <h4 className="font-semibold text-gray-800 mb-3">📋 Clause Modifications</h4>
+                <div className="space-y-3">
+                  {details.addendum.clauseModifications.map((mod, index) => (
+                    <div key={index} className="bg-white p-3 rounded-lg border-l-4 border-orange-400">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-gray-800 text-sm">Clause {mod.clauseNumber}: {mod.clauseTitle}</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          mod.modificationType === "Modified" ? "bg-orange-100 text-orange-700" :
+                          mod.modificationType === "New" ? "bg-green-100 text-green-700" :
+                          mod.modificationType === "Removed" ? "bg-red-100 text-red-700" :
+                          "bg-blue-100 text-blue-700"
+                        }`}>
+                          {mod.modificationType === "Modified" ? "🔄 Modified" :
+                           mod.modificationType === "New" ? "➕ New" :
+                           mod.modificationType === "Removed" ? "❌ Removed" :
+                           "📝 Changed"}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-600 mb-1">
+                        <strong>Details:</strong> {mod.details}
+                      </div>
+                      {mod.previousValue && mod.newValue && (
+                        <div className="text-xs text-gray-500">
+                          <span className="line-through">{mod.previousValue}</span> → <span className="text-green-600">{mod.newValue}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Documents */}
             <div className="mt-6 bg-indigo-50 p-4 rounded-lg">
