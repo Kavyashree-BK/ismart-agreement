@@ -1,11 +1,13 @@
 import React from "react";
 
+// Tab order: Dashboard -> New Agreement -> Agreements -> Addendums (FIXED)
 const TabNav = ({ activeTab, setActiveTab }) => (
   <nav className="flex gap-2 px-8 pt-6 pb-2 bg-white">
     {[
       { label: "Dashboard", value: "dashboard" },
       { label: "New Agreement", value: "new" },
       { label: "Agreements", value: "agreements" },
+      { label: "Addendums", value: "addendums" },
     ].map(tab => (
       <button
         key={tab.value}

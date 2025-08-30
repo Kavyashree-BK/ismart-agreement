@@ -334,13 +334,13 @@ function StatusHistoryModal({ open, onClose, history, title }) {
 }
 
 // Agreement Details Modal with Actions
-function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChange, onFinalAgreementUpload, addendums = [] }) {
+function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChange, onFinalAgreementUpload, addendums = [], userRole = "checker" }) {
   const [localPriority, setLocalPriority] = useState(agreement?.priority || "Low");
   const [localStatus, setLocalStatus] = useState(agreement?.status || "Execution Pending");
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadError, setUploadError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState("details"); // "details" or "addendums"
+  const [currentPage, setCurrentPage] = useState("agreement"); // "agreement" or "addendums"
 
   React.useEffect(() => {
     if (agreement) {
@@ -348,7 +348,7 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
       setLocalStatus(agreement.status || "Execution Pending");
       setSelectedFile(null);
       setUploadError("");
-      setActiveTab("details"); // Reset to details tab when opening
+      setCurrentPage("agreement"); // Reset to agreement page when opening
     }
   }, [agreement]);
 
@@ -436,32 +436,50 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-xl">×</button>
         </div>
         
-        {/* Tab Navigation */}
-        <div className="flex border-b border-gray-200 mb-6">
-          <button
-            onClick={() => setActiveTab("details")}
-            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-              activeTab === "details"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            📋 Agreement Details
-          </button>
-          <button
-            onClick={() => setActiveTab("addendums")}
-            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-              activeTab === "addendums"
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            📄 Addendums ({agreementAddendums.length})
-          </button>
+        {/* Page Navigation */}
+        <div className="flex items-center justify-between border-b border-gray-200 mb-6">
+          <div className="flex items-center gap-4">
+            <span className={`text-lg font-semibold ${currentPage === "agreement" ? "text-blue-600" : "text-gray-500"}`}>
+              📋 Agreement Details
+            </span>
+            {agreementAddendums.length > 0 && (
+              <span className={`text-lg font-semibold ${currentPage === "addendums" ? "text-blue-600" : "text-gray-500"}`}>
+                📄 Addendums ({agreementAddendums.length})
+              </span>
+            )}
+          </div>
+          
+          {/* Navigation Buttons */}
+          {agreementAddendums.length > 0 && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage("agreement")}
+                disabled={currentPage === "agreement"}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  currentPage === "agreement"
+                    ? "bg-blue-100 text-blue-700 cursor-default"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                ← Previous
+              </button>
+              <button
+                onClick={() => setCurrentPage("addendums")}
+                disabled={currentPage === "addendums"}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  currentPage === "addendums"
+                    ? "bg-blue-100 text-blue-700 cursor-default"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Tab Content */}
-        {activeTab === "details" && (
+        {/* Page Content */}
+        {currentPage === "agreement" && (
           <>
             <p className="text-gray-600 text-sm mb-6">Review and approve the agreement</p>
 
@@ -476,98 +494,146 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
             </div>
 
             {/* Priority and Status Controls */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
-                <select
-                  value={localPriority}
-                  onChange={(e) => setLocalPriority(e.target.value)}
-                  className="w-full border rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-300"
-                >
-                  <option value="High">High</option>
-                  <option value="Medium">Medium</option>
-                  <option value="Low">Low</option>
-                </select>
+            {/* Priority and Status - Only for Approver Role */}
+            {userRole?.toLowerCase() === "approver" && (
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                  <select
+                    value={localPriority}
+                    onChange={(e) => setLocalPriority(e.target.value)}
+                    className="w-full border rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-300"
+                  >
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <select
+                    value={localStatus}
+                    onChange={(e) => setLocalStatus(e.target.value)}
+                    className="w-full border rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-300"
+                  >
+                    <option value="Execution Pending">Execution Pending</option>
+                    <option value="Executed">Executed</option>
+                    <option value="Under Process with Client">Under Process with Client</option>
+                    <option value="Approved">Approved</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                <select
-                  value={localStatus}
-                  onChange={(e) => setLocalStatus(e.target.value)}
-                  className="w-full border rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-300"
-                >
-                  <option value="Execution Pending">Execution Pending</option>
-                  <option value="Executed">Executed</option>
-                  <option value="Under Process with Client">Under Process with Client</option>
-                  <option value="Approved">Approved</option>
-                </select>
-              </div>
-            </div>
+            )}
 
-            {/* Upload Final Agreement */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Upload Final Agreement *</label>
-              <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50">
-                <span className="text-4xl mb-2">📄</span>
-                <label className="bg-black text-white px-4 py-2 rounded mb-2 font-medium cursor-pointer hover:bg-gray-800">
-                  Choose File
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept=".pdf,.docx,.jpg,.jpeg,.png"
-                    onChange={handleFileChange}
-                  />
-                </label>
-                <p className="text-xs text-gray-500 text-center">
-                  or drag and drop your file here<br/>
-                  Max size: 10MB • Allowed: .pdf,.docx,.jpg,.jpeg,.png
-                </p>
-              </div>
-
-              {selectedFile && (
-                <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded">
-                  <div className="flex items-center gap-2">
-                    <span className="text-green-600">✓</span>
-                    <span className="text-sm font-medium text-green-800">
-                      Selected: {selectedFile.name}
-                    </span>
+            {/* Status Display for Checker Role */}
+            {userRole?.toLowerCase() === "checker" && (
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                  <div className="w-full border rounded-md p-2 text-sm bg-gray-100 text-gray-600">
+                    {agreement.priority || "Not Set"}
                   </div>
                 </div>
-              )}
-
-              {uploadError && (
-                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded">
-                  <p className="text-sm text-red-600">{uploadError}</p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                  <div className="w-full border rounded-md p-2 text-sm bg-gray-100 text-gray-600">
+                    {agreement.status || "Not Set"}
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={handleSaveChanges}
-                className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
-              >
-                Save Changes
-              </button>
-              <button
-                onClick={handleReject}
-                className="px-6 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-              >
-                Reset to Pending
-              </button>
-              <button
-                onClick={handleApprove}
-                disabled={isUploading}
-                className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {isUploading ? "Processing..." : "Move to Next Stage"}
-              </button>
-            </div>
+            {/* Upload Final Agreement - Only for Approver Role */}
+            {userRole?.toLowerCase() === "approver" && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Upload Final Agreement *</label>
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50">
+                  <span className="text-4xl mb-2">📄</span>
+                  <label className="bg-black text-white px-4 py-2 rounded mb-2 font-medium cursor-pointer hover:bg-gray-800">
+                    Choose File
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.docx,.jpg,.jpeg,.png"
+                      onChange={handleFileChange}
+                    />
+                  </label>
+                  <p className="text-xs text-gray-500 text-center">
+                    or drag and drop your file here<br/>
+                    Max size: 10MB • Allowed: .pdf,.docx,.jpg,.jpeg,.png
+                  </p>
+                </div>
+
+                {selectedFile && (
+                  <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded">
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-600">✓</span>
+                      <span className="text-sm font-medium text-green-800">
+                        Selected: {selectedFile.name}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {uploadError && (
+                  <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded">
+                    <p className="text-sm text-red-600">{uploadError}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Final Agreement Display for Checker Role */}
+            {userRole?.toLowerCase() === "checker" && agreement.finalAgreement && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Final Agreement Document</label>
+                <div className="border rounded-lg p-4 bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">📄</span>
+                    <div>
+                      <p className="font-medium text-gray-800">{agreement.finalAgreement.name}</p>
+                      <p className="text-sm text-gray-600">Uploaded by approver</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons - Only for Approver Role */}
+            {userRole?.toLowerCase() === "approver" && (
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={handleSaveChanges}
+                  className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+                >
+                  Save Changes
+                </button>
+                <button
+                  onClick={handleReject}
+                  className="px-6 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                >
+                  Reset to Pending
+                </button>
+                <button
+                  onClick={handleApprove}
+                  disabled={isUploading}
+                  className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {isUploading ? "Processing..." : "Move to Next Stage"}
+                </button>
+              </div>
+            )}
+
+            {/* Read-only Message for Checker Role */}
+            {userRole?.toLowerCase() === "checker" && (
+              <div className="text-center py-4 text-gray-600 bg-gray-50 rounded-lg border">
+                <p className="text-sm">📋 You can view agreement details and addendums, but only approvers can modify status and priority.</p>
+              </div>
+            )}
           </>
         )}
 
-        {activeTab === "addendums" && (
+        {currentPage === "addendums" && (
           <div className="space-y-4">
             <p className="text-gray-600 text-sm mb-6">View all addendums and modifications for this contract</p>
             
@@ -702,7 +768,7 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
   );
 }
 
-export default function AgreementTable({ agreements = [], addendums = [], onStatusUpdate, userRole = "checker" }) {
+export default function AgreementTable({ agreements = [], addendums = [], onStatusUpdate, userRole = "checker", onCreateAddendum }) {
   const [filters, setFilters] = useState({ 
     client: "", 
     city: "", 
@@ -924,6 +990,22 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
     }));
   };
 
+  // Handle editing agreement
+  const handleEditAgreement = (agreement) => {
+    // This will open the agreement form in edit mode
+    if (onCreateAddendum) {
+      // We'll use the same callback but pass a flag to indicate edit mode
+      onCreateAddendum(agreement, 'edit');
+    }
+  };
+
+  // Handle creating new addendum
+  const handleCreateAddendum = (agreement) => {
+    if (onCreateAddendum) {
+      onCreateAddendum(agreement, 'addendum');
+    }
+  };
+
   // Handle viewing status history
   const handleViewStatusHistory = (agreementId, clientName) => {
     const agreement = data.find(row => row.id === agreementId);
@@ -1026,6 +1108,12 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
 
   // Filtering logic (dropdowns and date range)
   const filtered = data.filter(row => {
+    // Role-based filtering - Show agreements for checker role (only their own)
+    if (userRole?.toLowerCase() === "checker") {
+      // For checker role, only show agreements they submitted
+      return row.submittedBy === "checker";
+    }
+    
     // Client, city, state filters
     const clientMatch = !filters.client || row.client === filters.client;
     const cityMatch = !filters.city || row.city === filters.city;
@@ -1123,64 +1211,68 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
-      <div className="flex gap-4 mb-6">
-        <button className="bg-white border px-4 py-2 rounded shadow-sm flex items-center gap-2" onClick={handleExportExcel}><span>⬇️</span> Export Excel</button>
-        <button className="bg-white border px-4 py-2 rounded shadow-sm flex items-center gap-2" onClick={handleExportPDF}><span>⬇️</span> Export PDF</button>
-        <div className="text-sm text-gray-600 flex items-center">
-          💡 Use date filters above to export agreements within a specific date range
+              {/* Show export buttons for all roles now that checkers can see agreements */}
+        <div className="flex gap-4 mb-6">
+          <button className="bg-white border px-4 py-2 rounded shadow-sm flex items-center gap-2" onClick={handleExportExcel}><span>⬇️</span> Export Excel</button>
+          <button className="bg-white border px-4 py-2 rounded shadow-sm flex items-center gap-2" onClick={handleExportPDF}><span>⬇️</span> Export PDF</button>
+          <div className="text-sm text-gray-600 flex items-center">
+            💡 Use date filters above to export agreements within a specific date range
+          </div>
         </div>
-      </div>
       <div className="bg-white rounded-2xl shadow p-6 mb-8">
+        {/* Show filters for all roles now that checkers can see agreements */}
+        {userRole?.toLowerCase() === "checker" && (
         <div className="flex flex-wrap gap-4 mb-4">
-          <select className="border rounded px-3 py-2 text-sm" value={filters.client} onChange={e => setFilters(f => ({ ...f, client: e.target.value }))}>
-            <option value="">All Clients</option>
-            {uniqueClients.map(client => <option key={client} value={client}>{client}</option>)}
-          </select>
-          <select className="border rounded px-3 py-2 text-sm" value={filters.city} onChange={e => setFilters(f => ({ ...f, city: e.target.value }))}>
-            <option value="">All Cities</option>
-            {uniqueCities.map(city => <option key={city} value={city}>{city}</option>)}
-          </select>
-          <select className="border rounded px-3 py-2 text-sm" value={filters.state} onChange={e => setFilters(f => ({ ...f, state: e.target.value }))}>
-            <option value="">All States</option>
-            {uniqueStates.map(state => <option key={state} value={state}>{state}</option>)}
-          </select>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">From Date:</label>
-            <input
-              type="date"
-              className="border rounded px-3 py-2 text-sm"
-              value={filters.fromDate}
-              onChange={e => setFilters(f => ({ ...f, fromDate: e.target.value }))}
-            />
+            <select className="border rounded px-3 py-2 text-sm" value={filters.client} onChange={e => setFilters(f => ({ ...f, client: e.target.value }))}>
+              <option value="">All Clients</option>
+              {uniqueClients.map(client => <option key={client} value={client}>{client}</option>)}
+            </select>
+            <select className="border rounded px-3 py-2 text-sm" value={filters.city} onChange={e => setFilters(f => ({ ...f, city: e.target.value }))}>
+              <option value="">All Cities</option>
+              {uniqueCities.map(city => <option key={city} value={city}>{city}</option>)}
+            </select>
+            <select className="border rounded px-3 py-2 text-sm" value={filters.state} onChange={e => setFilters(f => ({ ...f, state: e.target.value }))}>
+              <option value="">All States</option>
+              {uniqueStates.map(state => <option key={state} value={state}>{state}</option>)}
+            </select>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">From Date:</label>
+              <input
+                type="date"
+                className="border rounded px-3 py-2 text-sm"
+                value={filters.fromDate}
+                onChange={e => setFilters(f => ({ ...f, fromDate: e.target.value }))}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">To Date:</label>
+              <input
+                type="date"
+                className="border rounded px-3 py-2 text-sm"
+                value={filters.toDate}
+                onChange={e => setFilters(f => ({ ...f, toDate: e.target.value }))}
+              />
+            </div>
+            <select 
+              className="border rounded px-3 py-2 text-sm" 
+              value={filters.addendumsFilter} 
+              onChange={e => setFilters(f => ({ ...f, addendumsFilter: e.target.value }))}
+            >
+              <option value="all">All Contracts</option>
+              <option value="with">📎 With Addendums</option>
+              <option value="without">📄 Without Addendums</option>
+            </select>
+            
+            <button
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
+              onClick={() => setFilters({ client: "", city: "", state: "", fromDate: "", toDate: "", addendumsFilter: "all" })}
+            >
+              Clear Filters
+            </button>
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">To Date:</label>
-            <input
-              type="date"
-              className="border rounded px-3 py-2 text-sm"
-              value={filters.toDate}
-              onChange={e => setFilters(f => ({ ...f, toDate: e.target.value }))}
-            />
-          </div>
-          <select 
-            className="border rounded px-3 py-2 text-sm" 
-            value={filters.addendumsFilter} 
-            onChange={e => setFilters(f => ({ ...f, addendumsFilter: e.target.value }))}
-          >
-            <option value="all">All Contracts</option>
-            <option value="with">📎 With Addendums</option>
-            <option value="without">📄 Without Addendums</option>
-          </select>
-          
-          <button
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
-            onClick={() => setFilters({ client: "", city: "", state: "", fromDate: "", toDate: "", addendumsFilter: "all" })}
-          >
-            Clear Filters
-          </button>
-        </div>
+        )}
         
-        {/* Filter Summary */}
+        {/* Filter Summary - Show for all roles now */}
         {(filters.client || filters.city || filters.state || filters.fromDate || filters.toDate) && (
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="text-sm text-blue-800">
@@ -1221,7 +1313,28 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
           </div>
         )}
         
-        <h2 className="text-xl font-bold mb-2">Agreements ({filtered.length})</h2>
+        <h2 className="text-xl font-bold mb-2">
+          {userRole?.toLowerCase() === "checker"
+            ? `Agreements (${filtered.length} - Your Submissions)`
+            : `Agreements (${filtered.length})`
+          }
+        </h2>
+        
+        {/* Show helpful message for checker role */}
+        {userRole?.toLowerCase() === "checker" && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="text-sm text-blue-800">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-blue-600">💡</span>
+                <span className="font-medium">Information for Checker Role</span>
+              </div>
+              <p className="text-blue-700">
+                You can view your submitted agreements below. Use the <strong>"Add Addendum"</strong> button to create modifications for existing agreements, 
+                or use the <strong>"New Agreement"</strong> tab to create new agreements.
+              </p>
+            </div>
+          </div>
+        )}
         <div className="overflow-x-auto rounded-2xl border border-gray-200">
           <table className="min-w-full text-sm">
             <thead>
@@ -1243,7 +1356,10 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
               {filtered.length === 0 ? (
                                   <tr>
                     <td colSpan="11" className="px-4 py-8 text-center text-gray-500">
-                      No agreements submitted yet. Agreements submitted by checkers will appear here.
+                      {userRole?.toLowerCase() === "checker" 
+                        ? "No agreements submitted yet. Use the 'New Agreement' tab to create your first agreement."
+                        : "No agreements submitted yet. Agreements submitted by checkers will appear here."
+                      }
                     </td>
                   </tr>
                ) : (
@@ -1434,15 +1550,40 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                          )}
                        </td>
                        
-                       <td className="px-4 py-3 text-center">
-                        <button 
-                          className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition" 
-                          title="Review & Take Action" 
-                          onClick={() => setDetails({ open: true, agreement: row })}
-                        >
-                          Review
-                        </button>
-                      </td>
+                                               <td className="px-4 py-3 text-center">
+                          <div className="flex flex-col gap-2">
+                            {/* Review Button - For both roles */}
+                            <button 
+                              className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition" 
+                              title="Review & Take Action" 
+                              onClick={() => setDetails({ open: true, agreement: row })}
+                            >
+                              Review
+                            </button>
+                            
+                            {/* Edit Agreement Button - Only for Checker role */}
+                            {userRole === "checker" && (
+                              <button 
+                                className="bg-orange-600 text-white px-3 py-1 rounded text-xs hover:bg-orange-700 transition" 
+                                title="Edit Agreement" 
+                                onClick={() => handleEditAgreement(row.originalAgreement)}
+                              >
+                                ✏️ Edit
+                              </button>
+                            )}
+                            
+                            {/* Add Addendum Button - Only for Checker role */}
+                            {userRole === "checker" && (
+                              <button 
+                                className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition" 
+                                title="Create New Addendum" 
+                                onClick={() => handleCreateAddendum(row.originalAgreement)}
+                              >
+                                + Add Addendum
+                              </button>
+                            )}
+                          </div>
+                        </td>
                    </tr>
                  ))
                )}
@@ -1469,6 +1610,7 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
          onStatusChange={handleStatusChange}
          onFinalAgreementUpload={handleFinalAgreementUploadFromModal}
          addendums={addendums}
+         userRole={userRole}
        />
        
        <StatusHistoryModal

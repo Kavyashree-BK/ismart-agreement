@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import AgreementForm from "./forms/AgreementForm";
 import ReportFilterForm from "./forms/ReportFilterForm";
 import AgreementTable from "./forms/AgreementTable";
+import AgreementCards from "./forms/AgreementCards";
 import AddendumForm from "./forms/AddendumForm";
 import AddendumTable from "./forms/AddendumTable";
 import Header from "./components/ui/Header";
@@ -356,20 +357,12 @@ Generated on: ${new Date().toLocaleString()}
                           View
                         </button>
                         {!isStatic && (
-                          <>
-                            <button 
-                              className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
-                              onClick={() => handleEditAgreement(agreement)}
-                            >
-                              Renew
-                            </button>
-                            <button 
-                              className="px-3 py-1 bg-purple-600 text-white rounded text-xs hover:bg-purple-700"
-                              onClick={() => handleCreateAddendum(agreement)}
-                            >
-                              Addendum
-                            </button>
-                          </>
+                          <button 
+                            className="px-3 py-1 bg-purple-600 text-white rounded text-xs hover:bg-purple-700"
+                            onClick={() => handleCreateAddendum(agreement)}
+                          >
+                            Addendum
+                          </button>
                         )}
                       </div>
                     </div>
@@ -533,15 +526,15 @@ Generated on: ${new Date().toLocaleString()}
                       >
                         👁️ View
                       </button>
-                      {agreement.status === "Pending Review" && (
-                        <button 
-                          className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-medium hover:bg-yellow-200"
-                          onClick={() => handleEditAgreement(agreement)}
-                          title="Edit Agreement"
-                        >
-                          ✏️ Edit
-                        </button>
-                      )}
+
+                      <button 
+                        className="px-3 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium hover:bg-orange-200"
+                        onClick={() => handleEditAgreement(agreement)}
+                        title="Edit Agreement"
+                      >
+                        ✏️ Edit
+                      </button>
+
                       <button 
                         className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-medium hover:bg-green-200"
                         onClick={() => handleDownloadAgreement(agreement)}
@@ -606,23 +599,21 @@ Generated on: ${new Date().toLocaleString()}
                           👁️ View
                         </button>
                         {!isStatic && (
-                          <>
-                            <button 
-                              className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-medium hover:bg-green-200"
-                              onClick={() => handleEditAgreement(agreement)}
-                              title="Renew Agreement"
-                            >
-                              🔄 Renew
-                            </button>
-                            <button 
-                              className="px-3 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium hover:bg-purple-200"
-                              onClick={() => handleCreateAddendum(agreement)}
-                              title="Create Addendum"
-                            >
-                              📝 Addendum
-                            </button>
-                          </>
+                          <button 
+                            className="px-3 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium hover:bg-purple-200"
+                            onClick={() => handleCreateAddendum(agreement)}
+                            title="Create Addendum"
+                          >
+                            📝 Addendum
+                          </button>
                         )}
+                        <button 
+                          className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-medium hover:bg-green-200"
+                          onClick={() => handleEditAgreement(agreement)}
+                          title="Renew Agreement"
+                        >
+                          🔄 Renew
+                        </button>
                         <button 
                           className="px-3 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium hover:bg-purple-200"
                           onClick={() => handleDownloadAgreement(agreement)}
@@ -666,7 +657,7 @@ function App() {
       endDate: "2024-12-31",
       totalValue: 50000,
       currency: "USD",
-      status: "Active",
+      status: "Execution Pending",
       submittedDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
       submittedBy: "checker",
       entityType: "single",
@@ -703,9 +694,12 @@ function App() {
         "Insurance",
         "Confidentiality"
       ],
+      selectedBranches: [
+        { name: "Mumbai Central", id: "branch-001" },
+        { name: "Andheri West", id: "branch-002" }
+      ],
       createdAt: "2024-01-10T10:00:00Z",
       lastModified: "2024-01-15T14:30:00Z",
-      // Versioning metadata
       version: "1.0.0",
       versionHistory: [
         {
@@ -727,7 +721,7 @@ function App() {
       endDate: "2025-01-31",
       totalValue: 75000,
       currency: "EUR",
-      status: "Active",
+      status: "Executed",
       submittedDate: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
       submittedBy: "checker",
       entityType: "single",
@@ -756,14 +750,391 @@ function App() {
         "Warranty",
         "Force Majeure"
       ],
+      selectedBranches: [
+        { name: "Pune Industrial", id: "branch-003" }
+      ],
       createdAt: "2024-01-25T09:15:00Z",
       lastModified: "2024-02-01T11:45:00Z",
-      // Versioning metadata
       version: "1.0.0",
       versionHistory: [
         {
           version: "1.0.0",
           date: "2024-02-01T11:45:00Z",
+          type: "initial",
+          description: "Original agreement creation",
+          modifiedBy: "System",
+          changes: []
+        }
+      ]
+    },
+    {
+      id: "STATIC-003",
+      selectedClient: "Healthcare Plus",
+      selectedDepartment: "Medical Services",
+      agreementType: "PO",
+      startDate: "2024-03-01",
+      endDate: "2024-08-31",
+      totalValue: 120000,
+      currency: "USD",
+      status: "Under Process with Client",
+      submittedDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedBy: "checker",
+      entityType: "multiple",
+      priority: "High",
+      clauses: [
+        { title: "Medical Standards", placeholder: "FDA Approved", isInitial: true },
+        { title: "Compliance Requirements", placeholder: "HIPAA Standards", isInitial: true },
+        { title: "Emergency Response", placeholder: "24/7 Support", isInitial: true },
+        { title: "Quality Assurance", placeholder: "Monthly Reviews", isInitial: true }
+      ],
+      uploadStatuses: {
+        PO: { uploaded: true, file: { name: "Healthcare_PO.pdf", size: "3.8 MB" } },
+        LOI: { uploaded: true, file: { name: "Healthcare_LOI.pdf", size: "2.2 MB" } },
+        "clause-0": { uploaded: true, file: { name: "medical_standards.pdf", size: "1.5 MB" } },
+        "clause-1": { uploaded: true, file: { name: "compliance_requirements.pdf", size: "2.1 MB" } }
+      },
+      uploadedFiles: {
+        PO: { name: "Healthcare_PO.pdf", size: "3.8 MB" },
+        LOI: { name: "Healthcare_LOI.pdf", size: "2.2 MB" }
+      },
+      importantClauses: [
+        "Medical Standards",
+        "Compliance Requirements",
+        "Emergency Response",
+        "Quality Assurance"
+      ],
+      selectedBranches: [
+        { name: "Delhi Medical", id: "branch-004" },
+        { name: "Bangalore Health", id: "branch-005" }
+      ],
+      createdAt: "2024-02-15T08:30:00Z",
+      lastModified: "2024-03-01T16:20:00Z",
+      version: "1.0.0",
+      versionHistory: [
+        {
+          version: "1.0.0",
+          date: "2024-03-01T16:20:00Z",
+          type: "initial",
+          description: "Original agreement creation",
+          modifiedBy: "System",
+          changes: []
+        }
+      ]
+    },
+    {
+      id: "STATIC-004",
+      selectedClient: "EduTech Solutions",
+      selectedDepartment: "Education Technology",
+      agreementType: "LOI",
+      startDate: "2024-01-20",
+      endDate: "2024-06-30",
+      totalValue: 35000,
+      currency: "USD",
+      status: "Approved",
+      submittedDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedBy: "checker",
+      entityType: "single",
+      priority: "Medium",
+      clauses: [
+        { title: "Platform Access", placeholder: "Unlimited Users", isInitial: true },
+        { title: "Data Security", placeholder: "Encryption Standards", isInitial: true },
+        { title: "Support Hours", placeholder: "Business Days 9-5", isInitial: true },
+        { title: "Training Sessions", placeholder: "2 Free Sessions", isInitial: true }
+      ],
+      uploadStatuses: {
+        LOI: { uploaded: true, file: { name: "EduTech_LOI.pdf", size: "1.9 MB" } },
+        WO: { uploaded: true, file: { name: "EduTech_WO.pdf", size: "2.3 MB" } },
+        "clause-0": { uploaded: true, file: { name: "platform_access.pdf", size: "0.9 MB" } },
+        "clause-1": { uploaded: true, file: { name: "data_security.pdf", size: "1.3 MB" } }
+      },
+      uploadedFiles: {
+        LOI: { name: "EduTech_LOI.pdf", size: "1.9 MB" },
+        WO: { name: "EduTech_WO.pdf", size: "2.3 MB" }
+      },
+      importantClauses: [
+        "Platform Access",
+        "Data Security",
+        "Support Hours",
+        "Training Sessions"
+      ],
+      selectedBranches: [
+        { name: "Hyderabad Tech", id: "branch-006" }
+      ],
+      createdAt: "2024-01-20T11:00:00Z",
+      lastModified: "2024-01-25T14:15:00Z",
+      version: "1.0.0",
+      versionHistory: [
+        {
+          version: "1.0.0",
+          date: "2024-01-25T14:15:00Z",
+          type: "initial",
+          description: "Original agreement creation",
+          modifiedBy: "System",
+          changes: []
+        }
+      ]
+    },
+    {
+      id: "STATIC-005",
+      selectedClient: "Green Energy Corp",
+      selectedDepartment: "Renewable Energy",
+      agreementType: "WO",
+      startDate: "2024-04-01",
+      endDate: "2025-03-31",
+      totalValue: 200000,
+      currency: "EUR",
+      status: "Execution Pending",
+      submittedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedBy: "checker",
+      entityType: "multiple",
+      priority: "High",
+      clauses: [
+        { title: "Environmental Compliance", placeholder: "ISO 14001", isInitial: true },
+        { title: "Safety Protocols", placeholder: "OSHA Standards", isInitial: true },
+        { title: "Performance Metrics", placeholder: "Efficiency Targets", isInitial: true },
+        { title: "Maintenance Schedule", placeholder: "Quarterly Reviews", isInitial: true }
+      ],
+      uploadStatuses: {
+        WO: { uploaded: true, file: { name: "GreenEnergy_WO.pdf", size: "4.2 MB" } },
+        PO: { uploaded: true, file: { name: "GreenEnergy_PO.pdf", size: "3.7 MB" } },
+        "clause-0": { uploaded: true, file: { name: "environmental_compliance.pdf", size: "2.8 MB" } },
+        "clause-1": { uploaded: true, file: { name: "safety_protocols.pdf", size: "1.9 MB" } }
+      },
+      uploadedFiles: {
+        WO: { name: "GreenEnergy_WO.pdf", size: "4.2 MB" },
+        PO: { name: "GreenEnergy_PO.pdf", size: "3.7 MB" }
+      },
+      importantClauses: [
+        "Environmental Compliance",
+        "Safety Protocols",
+        "Performance Metrics",
+        "Maintenance Schedule"
+      ],
+      selectedBranches: [
+        { name: "Chennai Energy", id: "branch-007" },
+        { name: "Kolkata Power", id: "branch-008" }
+      ],
+      createdAt: "2024-03-25T09:45:00Z",
+      lastModified: "2024-04-01T12:30:00Z",
+      version: "1.0.0",
+      versionHistory: [
+        {
+          version: "1.0.0",
+          date: "2024-04-01T12:30:00Z",
+          type: "initial",
+          description: "Original agreement creation",
+          modifiedBy: "System",
+          changes: []
+        }
+      ]
+    },
+    {
+      id: "STATIC-006",
+      selectedClient: "Retail Solutions Inc",
+      selectedDepartment: "Retail Technology",
+      agreementType: "PO",
+      startDate: "2024-02-15",
+      endDate: "2024-11-30",
+      totalValue: 85000,
+      currency: "USD",
+      status: "Executed",
+      submittedDate: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedBy: "checker",
+      entityType: "single",
+      priority: "Medium",
+      clauses: [
+        { title: "System Integration", placeholder: "API Compatibility", isInitial: true },
+        { title: "Uptime Guarantee", placeholder: "99.9% Availability", isInitial: true },
+        { title: "Data Backup", placeholder: "Daily Automated", isInitial: true },
+        { title: "User Training", placeholder: "On-site Sessions", isInitial: true }
+      ],
+      uploadStatuses: {
+        PO: { uploaded: true, file: { name: "RetailSolutions_PO.pdf", size: "2.9 MB" } },
+        LOI: { uploaded: true, file: { name: "RetailSolutions_LOI.pdf", size: "1.7 MB" } },
+        "clause-0": { uploaded: true, file: { name: "system_integration.pdf", size: "1.4 MB" } },
+        "clause-1": { uploaded: true, file: { name: "uptime_guarantee.pdf", size: "0.8 MB" } }
+      },
+      uploadedFiles: {
+        PO: { name: "RetailSolutions_PO.pdf", size: "2.9 MB" },
+        LOI: { name: "RetailSolutions_LOI.pdf", size: "1.7 MB" }
+      },
+      importantClauses: [
+        "System Integration",
+        "Uptime Guarantee",
+        "Data Backup",
+        "User Training"
+      ],
+      selectedBranches: [
+        { name: "Ahmedabad Retail", id: "branch-009" }
+      ],
+      createdAt: "2024-02-15T10:20:00Z",
+      lastModified: "2024-02-20T15:45:00Z",
+      version: "1.0.0",
+      versionHistory: [
+        {
+          version: "1.0.0",
+          date: "2024-02-20T15:45:00Z",
+          type: "initial",
+          description: "Original agreement creation",
+          modifiedBy: "System",
+          changes: []
+        }
+      ]
+    },
+    {
+      id: "STATIC-007",
+      selectedClient: "Healthcare Plus",
+      selectedDepartment: "Medical Services",
+      agreementType: "LOI",
+      startDate: "2024-03-10",
+      endDate: "2025-03-09",
+      totalValue: 150000,
+      currency: "USD",
+      status: "Pending Review",
+      submittedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedBy: "checker",
+      entityType: "multiple",
+      priority: "High",
+      clauses: [
+        { title: "Medical Standards", placeholder: "FDA Approved", isInitial: true },
+        { title: "Compliance Requirements", placeholder: "HIPAA Standards", isInitial: true },
+        { title: "Emergency Response", placeholder: "24/7 Support", isInitial: true },
+        { title: "Quality Assurance", placeholder: "Monthly Reviews", isInitial: true }
+      ],
+      uploadStatuses: {
+        LOI: { uploaded: true, file: { name: "HealthcarePlus_LOI.pdf", size: "3.1 MB" } },
+        WO: { uploaded: true, file: { name: "HealthcarePlus_WO.pdf", size: "2.8 MB" } },
+        "clause-0": { uploaded: true, file: { name: "medical_standards.pdf", size: "1.6 MB" } },
+        "clause-1": { uploaded: true, file: { name: "compliance_requirements.pdf", size: "2.2 MB" } }
+      },
+      uploadedFiles: {
+        LOI: { name: "HealthcarePlus_LOI.pdf", size: "3.1 MB" },
+        WO: { name: "HealthcarePlus_WO.pdf", size: "2.8 MB" }
+      },
+      importantClauses: [
+        "Medical Standards",
+        "Compliance Requirements",
+        "Emergency Response",
+        "Quality Assurance"
+      ],
+      selectedBranches: [
+        { name: "Delhi Medical", id: "branch-010" },
+        { name: "Bangalore Health", id: "branch-011" }
+      ],
+      createdAt: "2024-03-10T08:30:00Z",
+      lastModified: "2024-03-12T16:20:00Z",
+      version: "1.0.0",
+      versionHistory: [
+        {
+          version: "1.0.0",
+          date: "2024-03-12T16:20:00Z",
+          type: "initial",
+          description: "Original agreement creation",
+          modifiedBy: "System",
+          changes: []
+        }
+      ]
+    },
+    {
+      id: "STATIC-008",
+      selectedClient: "Digital Marketing Pro",
+      selectedDepartment: "Marketing Services",
+      agreementType: "WO",
+      startDate: "2024-01-05",
+      endDate: "2024-12-31",
+      totalValue: 45000,
+      currency: "USD",
+      status: "Under Review",
+      submittedDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedBy: "checker",
+      entityType: "single",
+      priority: "Medium",
+      clauses: [
+        { title: "Campaign Performance", placeholder: "KPI Targets", isInitial: true },
+        { title: "Content Creation", placeholder: "Monthly Deliverables", isInitial: true },
+        { title: "Analytics Reporting", placeholder: "Weekly Reports", isInitial: true },
+        { title: "Brand Guidelines", placeholder: "Style Guide Compliance", isInitial: true }
+      ],
+      uploadStatuses: {
+        WO: { uploaded: true, file: { name: "DigitalMarketing_WO.pdf", size: "2.4 MB" } },
+        PO: { uploaded: true, file: { name: "DigitalMarketing_PO.pdf", size: "1.9 MB" } },
+        "clause-0": { uploaded: true, file: { name: "campaign_performance.pdf", size: "1.1 MB" } },
+        "clause-1": { uploaded: true, file: { name: "content_creation.pdf", size: "0.9 MB" } }
+      },
+      uploadedFiles: {
+        WO: { name: "DigitalMarketing_WO.pdf", size: "2.4 MB" },
+        PO: { name: "DigitalMarketing_PO.pdf", size: "1.9 MB" }
+      },
+      importantClauses: [
+        "Campaign Performance",
+        "Content Creation",
+        "Analytics Reporting",
+        "Brand Guidelines"
+      ],
+      selectedBranches: [
+        { name: "Mumbai Marketing", id: "branch-012" }
+      ],
+      createdAt: "2024-01-05T14:15:00Z",
+      lastModified: "2024-01-20T11:30:00Z",
+      version: "1.0.0",
+      versionHistory: [
+        {
+          version: "1.0.0",
+          date: "2024-01-20T11:30:00Z",
+          type: "initial",
+          description: "Original agreement creation",
+          modifiedBy: "System",
+          changes: []
+        }
+      ]
+    },
+    {
+      id: "STATIC-009",
+      selectedClient: "Logistics Express",
+      selectedDepartment: "Supply Chain",
+      agreementType: "PO",
+      startDate: "2024-02-20",
+      endDate: "2025-02-19",
+      totalValue: 180000,
+      currency: "EUR",
+      status: "Rejected",
+      submittedDate: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedBy: "checker",
+      entityType: "multiple",
+      priority: "Low",
+      clauses: [
+        { title: "Delivery Timeline", placeholder: "48-hour Delivery", isInitial: true },
+        { title: "Quality Control", placeholder: "Inspection Points", isInitial: true },
+        { title: "Insurance Coverage", placeholder: "Full Value Coverage", isInitial: true },
+        { title: "Return Policy", placeholder: "30-day Returns", isInitial: true }
+      ],
+      uploadStatuses: {
+        PO: { uploaded: true, file: { name: "LogisticsExpress_PO.pdf", size: "3.5 MB" } },
+        LOI: { uploaded: true, file: { name: "LogisticsExpress_LOI.pdf", size: "2.1 MB" } },
+        "clause-0": { uploaded: true, file: { name: "delivery_timeline.pdf", size: "1.8 MB" } },
+        "clause-1": { uploaded: true, file: { name: "quality_control.pdf", size: "1.2 MB" } }
+      },
+      uploadedFiles: {
+        PO: { name: "LogisticsExpress_PO.pdf", size: "3.5 MB" },
+        LOI: { name: "LogisticsExpress_LOI.pdf", size: "2.1 MB" }
+      },
+      importantClauses: [
+        "Delivery Timeline",
+        "Quality Control",
+        "Insurance Coverage",
+        "Return Policy"
+      ],
+      selectedBranches: [
+        { name: "Chennai Logistics", id: "branch-013" },
+        { name: "Pune Warehouse", id: "branch-014" }
+      ],
+      createdAt: "2024-02-20T09:45:00Z",
+      lastModified: "2024-03-05T13:20:00Z",
+      version: "1.0.0",
+      versionHistory: [
+        {
+          version: "1.0.0",
+          date: "2024-03-05T13:20:00Z",
           type: "initial",
           description: "Original agreement creation",
           modifiedBy: "System",
@@ -874,6 +1245,8 @@ function App() {
   const [showAddendumSuccess, setShowAddendumSuccess] = useState(false);
   const [addendumSuccessMessage, setAddendumSuccessMessage] = useState("");
   const [lastSubmittedAddendum, setLastSubmittedAddendum] = useState(null);
+  const [showAgreementSuccess, setShowAgreementSuccess] = useState(false);
+  const [agreementSuccessMessage, setAgreementSuccessMessage] = useState("");
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState("");
 
@@ -883,14 +1256,13 @@ function App() {
     tabs = [
       { label: "Dashboard", value: "dashboard" },
       { label: "Agreements", value: "agreements" },
-      { label: "Addendums", value: "addendums" },
       { label: "History", value: "history" },
     ];
   } else {
     tabs = [
       { label: "Dashboard", value: "dashboard" },
       { label: "New Agreement", value: "new" },
-      { label: "Addendums", value: "addendums" },
+      { label: "Agreements", value: "agreements" },
     ];
   }
 
@@ -919,15 +1291,40 @@ function App() {
         ...agreementData,
         status: "Pending Review",
         submittedDate: new Date().toISOString().split('T')[0],
-        submittedBy: "Current User", // You can get this from user context
+        submittedBy: userRole, // Use the actual user role
         approvedDate: null,
-        approvedBy: null
+        approvedBy: null,
+        // Add missing fields that might be needed for display
+        createdAt: new Date().toISOString(),
+        lastModified: new Date().toISOString(),
+        version: "1.0.0",
+        versionHistory: [
+          {
+            version: "1.0.0",
+            date: new Date().toISOString(),
+            type: "initial",
+            description: "Original agreement creation",
+            modifiedBy: userRole,
+            changes: []
+          }
+        ]
       };
       
       setAgreements(prev => [newAgreement, ...prev]);
+      
+      // Show success message
+      setAgreementSuccessMessage(`✅ Agreement "${agreementData.selectedClient}" created successfully!`);
+      setShowAgreementSuccess(true);
+      
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        setShowAgreementSuccess(false);
+        setAgreementSuccessMessage("");
+      }, 5000);
     }
     
-    setActiveTab("dashboard");
+    // Stay on the agreements tab to see the newly created agreement
+    setActiveTab("agreements");
   };
 
   // Handler for status updates by approvers
@@ -1096,10 +1493,18 @@ function App() {
     }
   };
 
-  const handleCreateAddendum = (agreement) => {
-    setParentAgreementForAddendum(agreement);
-    setShowAddendumForm(true);
-    setEditingAddendum(null);
+  const handleCreateAddendum = (agreement, mode = 'addendum') => {
+    if (mode === 'edit') {
+      // Open agreement form in edit mode
+      setEditingAgreement(agreement);
+      setShowAgreementForm(true);
+      setActiveTab("newAgreement");
+    } else {
+      // Open addendum form (default behavior)
+      setParentAgreementForAddendum(agreement);
+      setShowAddendumForm(true);
+      setEditingAddendum(null);
+    }
   };
 
   const handleEditAddendum = (addendum) => {
@@ -1187,6 +1592,22 @@ function App() {
         </div>
       )}
       
+      {/* Agreement Success Notification */}
+      {showAgreementSuccess && (
+        <div className="fixed top-32 left-1/2 transform -translate-x-1/2 z-[9999] bg-blue-100 border border-blue-400 text-blue-700 px-6 py-4 rounded-lg shadow-lg flex items-center gap-3">
+          <span className="text-xl">📄</span>
+          <span className="font-medium">{agreementSuccessMessage}</span>
+          <div className="flex items-center gap-2 ml-4">
+            <button
+              onClick={() => setShowAgreementSuccess(false)}
+              className="text-blue-700 hover:text-blue-900 text-lg font-bold"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Error Modal */}
       {showErrorModal && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[9999] bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-lg shadow-lg flex items-center gap-3">
@@ -1250,7 +1671,13 @@ function App() {
                      />
                    </div>
                  )}
-                          {activeTab === "agreements" && userRole === "Approver" && <AgreementTable agreements={agreements} addendums={addendums} onStatusUpdate={handleStatusUpdate} userRole={userRole} />}
+                          {activeTab === "agreements" && (
+                            userRole === "Approver" ? (
+                              <AgreementTable agreements={agreements} addendums={addendums} onStatusUpdate={handleStatusUpdate} userRole={userRole} onCreateAddendum={handleCreateAddendum} />
+                            ) : (
+                              <AgreementCards agreements={agreements} addendums={addendums} onStatusUpdate={handleStatusUpdate} userRole={userRole} onCreateAddendum={handleCreateAddendum} onEditAgreement={setEditingAgreement} editingAgreement={editingAgreement} onEditComplete={() => setEditingAgreement(null)} onAddendumSubmit={handleAddendumSubmit} />
+                            )
+                          )}
          {activeTab === "addendums" && (
            <AddendumTable 
              addendums={addendums} 
