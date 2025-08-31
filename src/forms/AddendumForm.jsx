@@ -409,6 +409,65 @@ const AddendumForm = ({
             </div>
           </section>
 
+          {/* Branch Management Section - Only for Checkers */}
+          {userRole?.toLowerCase() === "checker" && (
+            <section className="mb-8">
+              <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-800 mb-4">
+                  Branches
+                </h2>
+                
+                {/* Current Branches Display */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Current Branches:</h4>
+                  {form.branches.length === 0 ? (
+                    <p className="text-gray-500 text-sm italic bg-white p-3 rounded border border-gray-200">
+                      No branches added yet. Add your first branch to get started!
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {form.branches.map((branch) => (
+                        <div key={branch.id} className="flex items-center justify-between bg-white p-4 rounded border border-gray-200">
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-800">{branch.name}</div>
+                            <div className="text-sm text-gray-600 mt-1">{branch.description}</div>
+                            <div className="text-xs text-gray-500 mt-2">
+                              Created: {branch.createdAt} • Status: {branch.status}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEditBranch(branch.id)}
+                              className="px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleRemoveBranch(branch.id)}
+                              className="px-3 py-2 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Add New Branch Button - Made Smaller */}
+                <div className="flex justify-start">
+                  <button
+                    onClick={() => setShowBranchModal(true)}
+                    className="px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                  >
+                    Add Branch
+                  </button>
+                </div>
+              </div>
+            </section>
+          )}
+
           {/* Clause Modifications */}
           <section className="mb-8">
             <div className="flex items-center justify-between mb-4">
@@ -712,66 +771,7 @@ const AddendumForm = ({
             </div>
           </section>
 
-          {/* Branch Management Section - Only for Checkers */}
-          {userRole?.toLowerCase() === "checker" && (
-            <section className="mb-8">
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200">
-                <h2 className="text-lg font-semibold text-green-800 mb-4 flex items-center gap-2">
-                  <span className="text-green-600">🌿</span>
-                  Manage Addendum Branches
-                </h2>
-                
-                {/* Current Branches Display */}
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-green-700 mb-3">Current Branches:</h4>
-                  {form.branches.length === 0 ? (
-                    <p className="text-gray-500 text-sm italic bg-white p-3 rounded-lg border border-green-200">
-                      No branches added yet. Add your first branch to get started!
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {form.branches.map((branch) => (
-                        <div key={branch.id} className="flex items-center justify-between bg-white p-4 rounded-lg border border-green-200 shadow-sm">
-                          <div className="flex-1">
-                            <div className="font-medium text-green-800 text-lg">{branch.name}</div>
-                            <div className="text-sm text-gray-600 mt-1">{branch.description}</div>
-                            <div className="text-xs text-gray-500 mt-2">
-                              Created: {branch.createdAt} • Status: {branch.status}
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleEditBranch(branch.id)}
-                              className="px-3 py-2 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1"
-                            >
-                              <span>✏️</span>
-                              <span>Edit</span>
-                            </button>
-                            <button
-                              onClick={() => handleRemoveBranch(branch.id)}
-                              className="px-3 py-2 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-colors flex items-center gap-1"
-                            >
-                              <span>❌</span>
-                              <span>Remove</span>
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                
-                {/* Add New Branch Button */}
-                <button
-                  onClick={() => setShowBranchModal(true)}
-                  className="w-full px-4 py-3 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
-                >
-                  <span className="text-lg">➕</span>
-                  <span>Add New Branch</span>
-                </button>
-              </div>
-            </section>
-          )}
+
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-4 mt-8">
