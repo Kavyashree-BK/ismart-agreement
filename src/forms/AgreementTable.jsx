@@ -334,13 +334,14 @@ function StatusHistoryModal({ open, onClose, history, title }) {
 }
 
 // Agreement Details Modal with Actions
-function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChange, onFinalAgreementUpload, addendums = [], userRole = "checker" }) {
+function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChange, onFinalAgreementUpload, addendums = [], userRole = "checker", onAddendumStatusUpdate }) {
   const [localPriority, setLocalPriority] = useState(agreement?.priority || "Low");
   const [localStatus, setLocalStatus] = useState(agreement?.status || "Execution Pending");
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadError, setUploadError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [currentPage, setCurrentPage] = useState("agreement"); // "agreement" or "addendums"
+  const [pendingStatusChanges, setPendingStatusChanges] = useState({}); // Track pending status changes for each addendum
 
   React.useEffect(() => {
     if (agreement) {
@@ -491,6 +492,23 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
               <div><b>State:</b><br/>Maharashtra</div>
               <div><b>Checker:</b><br/>{agreement.checker}</div>
               <div><b>Entity Type:</b><br/>{agreement.entityType}</div>
+            </div>
+
+            {/* Important Clauses Section */}
+            <div className="mb-6">
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">Important Clauses</h4>
+              <div className="space-y-2">
+                {agreement.originalAgreement?.importantClauses && agreement.originalAgreement.importantClauses.length > 0 ? (
+                  agreement.originalAgreement.importantClauses.map((clause, idx) => (
+                    <div key={idx} className="flex items-center gap-2 bg-blue-50 rounded-lg p-3">
+                      <span className="text-blue-600">📋</span>
+                      <span className="text-gray-800 text-sm">{clause}</span>
+                    </div>
+                  ))
+                ) : (
+                  <span className="text-gray-500 text-sm">No important clauses specified</span>
+                )}
+              </div>
             </div>
 
             {/* Priority and Status Controls */}
@@ -747,6 +765,73 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
                       </div>
                     )}
                     
+                    {/* Status Change Section - Only for Approvers */}
+                    {userRole?.toLowerCase() === "approver" && (
+                      <div className="border-t border-gray-200 pt-4 mb-4">
+                        <h5 className="font-semibold text-gray-800 mb-3 text-sm">Change Status</h5>
+                        
+                        <div className="space-y-3 mb-3">
+                          <div className="flex items-center gap-3">
+                            <select
+                              className="border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-300 min-w-[140px]"
+                              value={pendingStatusChanges[addendum.id] || addendum.status}
+                              onChange={(e) => {
+                                // Just update the local state, don't submit yet
+                                setPendingStatusChanges(prev => ({
+                                  ...prev,
+                                  [addendum.id]: e.target.value
+                                }));
+                              }}
+                            >
+                              <option value="Pending">⏳ Pending</option>
+                              <option value="Approved">✅ Approved</option>
+                              <option value="Rejected">❌ Rejected</option>
+                            </select>
+                            
+                            {pendingStatusChanges[addendum.id] && pendingStatusChanges[addendum.id] !== addendum.status && (
+                              <button
+                                onClick={() => {
+                                  const addendumId = addendum.id;
+                                  const newStatus = pendingStatusChanges[addendum.id];
+                                  console.log('Status change confirmed:', addendumId, newStatus);
+                                  if (onAddendumStatusUpdate) {
+                                    onAddendumStatusUpdate(addendumId, newStatus);
+                                    // Clear pending change
+                                    setPendingStatusChanges(prev => {
+                                      const updated = { ...prev };
+                                      delete updated[addendum.id];
+                                      return updated;
+                                    });
+                                    // Modal stays open - user must manually close
+                                  }
+                                }}
+                                className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
+                              >
+                                Save Status
+                              </button>
+                            )}
+                            
+                            <button
+                              onClick={onClose}
+                              className="px-4 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
+                            >
+                              Close
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="text-xs text-gray-600 mb-2">
+                          Current Status: <span className="font-semibold">{addendum.status}</span>
+                        </div>
+                        
+                        <div className="bg-blue-50 border border-blue-200 rounded p-2">
+                          <p className="text-blue-800 text-xs">
+                            💡 Select a new status from the dropdown above, then click "Save Status" to apply the change. Use "Close" to exit.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Action Buttons */}
                     <div className="flex justify-end pt-4 border-t border-gray-200">
                       <button
@@ -768,7 +853,7 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
   );
 }
 
-export default function AgreementTable({ agreements = [], addendums = [], onStatusUpdate, userRole = "checker", onCreateAddendum }) {
+export default function AgreementTable({ agreements = [], addendums = [], onStatusUpdate, onAddendumStatusUpdate, userRole = "checker", onCreateAddendum }) {
   const [filters, setFilters] = useState({ 
     client: "", 
     city: "", 
@@ -846,8 +931,8 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
     const woPoLoiText = woPoLoiInfo.length > 0 ? woPoLoiInfo.join(" / ") : "None uploaded";
     
     // Extract important clauses (first 3 clauses as summary)
-    const importantClauses = agreement.clauses 
-      ? agreement.clauses.slice(0, 3).map(clause => clause.title).join(", ")
+    const importantClauses = agreement.importantClauses && agreement.importantClauses.length > 0
+      ? agreement.importantClauses.slice(0, 3).join(", ")
       : "No clauses";
     
     // Join all selected branches with commas to display all branches
@@ -1259,7 +1344,7 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
               onChange={e => setFilters(f => ({ ...f, addendumsFilter: e.target.value }))}
             >
               <option value="all">All Contracts</option>
-              <option value="with">📎 With Addendums</option>
+              <option value="with">With Addendums</option>
               <option value="without">📄 Without Addendums</option>
             </select>
             
@@ -1295,7 +1380,7 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                 )}
                 {filters.addendumsFilter !== "all" && (
                   <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                    {filters.addendumsFilter === "with" ? "📎 With Addendums" : "📄 Without Addendums"}
+                    {filters.addendumsFilter === "with" ? "With Addendums" : "📄 Without Addendums"}
                   </span>
                 )}
                 {filters.fromDate && (
@@ -1348,7 +1433,7 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                  <th className="px-4 py-3 font-semibold text-left">Important Clauses</th>
                  <th className="px-4 py-3 font-semibold text-left">Priority</th>
                  <th className="px-4 py-3 font-semibold text-left">Status</th>
-                 <th className="px-4 py-3 font-semibold text-left">📎 Addendums</th>
+                 <th className="px-4 py-3 font-semibold text-left">Addendums</th>
                  <th className="px-4 py-3 font-semibold text-left">Actions</th>
               </tr>
             </thead>
@@ -1461,7 +1546,7 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                                <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
                                  {row.addendumsCount}
                                </span>
-                               <span className="text-xs text-gray-500">📎</span>
+
                                
                                {/* View Button - Shows dropdown for multiple addendums */}
                                {row.addendumsCount > 1 ? (
@@ -1611,6 +1696,7 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
          onFinalAgreementUpload={handleFinalAgreementUploadFromModal}
          addendums={addendums}
          userRole={userRole}
+         onAddendumStatusUpdate={onAddendumStatusUpdate}
        />
        
        <StatusHistoryModal
@@ -1880,6 +1966,71 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                 </div>
               )}
 
+              {/* Status Change Section - For Approvers */}
+              {userRole?.toLowerCase() === "approver" && (
+                <div className="mb-6 border-t border-gray-200 pt-6">
+                  <h4 className="font-semibold text-gray-800 mb-3">Change Addendum Status</h4>
+                  
+                  <div className="flex items-center gap-3 mb-4">
+                    <select
+                      className="border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-300 min-w-[140px]"
+                      value={pendingStatusChanges[addendumDetailsModal.addendum.id] || addendumDetailsModal.addendum.status}
+                      onChange={(e) => {
+                        // Just update the local state, don't submit yet
+                        setPendingStatusChanges(prev => ({
+                          ...prev,
+                          [addendumDetailsModal.addendum.id]: e.target.value
+                        }));
+                      }}
+                    >
+                      <option value="Pending">⏳ Pending</option>
+                      <option value="Approved">✅ Approved</option>
+                      <option value="Rejected">❌ Rejected</option>
+                    </select>
+                    
+                    {pendingStatusChanges[addendumDetailsModal.addendum.id] && pendingStatusChanges[addendumDetailsModal.addendum.id] !== addendumDetailsModal.addendum.status && (
+                      <button
+                        onClick={() => {
+                          const addendumId = addendumDetailsModal.addendum.id;
+                          const newStatus = pendingStatusChanges[addendumId];
+                          console.log('Status change confirmed:', addendumId, newStatus);
+                          if (onAddendumStatusUpdate) {
+                            onAddendumStatusUpdate(addendumId, newStatus);
+                            // Clear pending change
+                            setPendingStatusChanges(prev => {
+                              const updated = { ...prev };
+                              delete updated[addendumId];
+                              return updated;
+                            });
+                            // Modal stays open - user must manually close
+                          }
+                        }}
+                        className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
+                      >
+                        Save Status
+                      </button>
+                    )}
+                    
+                    <button
+                      onClick={() => setAddendumDetailsModal({ open: false, addendum: null })}
+                      className="px-4 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                  
+                  <div className="text-sm text-gray-600 mb-2">
+                    Current Status: <span className="font-semibold">{addendumDetailsModal.addendum.status}</span>
+                  </div>
+                  
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-blue-800 text-sm">
+                      💡 Select a new status from the dropdown above, then click "Save Status" to apply the change. Use "Close" to exit.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex justify-end gap-3">
                 {(userRole?.toLowerCase() === "checker" || userRole?.toLowerCase() === "checker") && 
@@ -1974,3 +2125,4 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
      </div>
    );
  }
+ 

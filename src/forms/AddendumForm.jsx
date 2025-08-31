@@ -15,7 +15,8 @@ const AddendumForm = ({
     effectiveDate: new Date(),
     reason: "",
     impact: "",
-    additionalDocuments: []
+    additionalDocuments: [],
+    branches: [] // Add this line
   });
   
   const [errors, setErrors] = useState({});
@@ -29,6 +30,12 @@ const AddendumForm = ({
   // Clause modification tracking
   const [clauseModifications, setClauseModifications] = useState([]);
   const [showClauseModificationForm, setShowClauseModificationForm] = useState(false);
+  
+  // Add branch management state
+  const [showBranchModal, setShowBranchModal] = useState(false);
+  const [newBranchName, setNewBranchName] = useState("");
+  const [newBranchDescription, setNewBranchDescription] = useState("");
+  const [editingBranchId, setEditingBranchId] = useState(null);
 
   // Handle editing mode - pre-fill form when editingAddendum is provided
   useEffect(() => {
@@ -40,7 +47,8 @@ const AddendumForm = ({
         effectiveDate: editingAddendum.effectiveDate ? new Date(editingAddendum.effectiveDate) : new Date(),
         reason: editingAddendum.reason || "",
         impact: editingAddendum.impact || "",
-        additionalDocuments: editingAddendum.additionalDocuments || []
+        additionalDocuments: editingAddendum.additionalDocuments || [],
+        branches: editingAddendum.branches || [] // Pre-fill branches
       });
       setUploadedFiles(editingAddendum.uploadedFiles || {});
       // Load clause modifications for editing
@@ -74,6 +82,75 @@ const AddendumForm = ({
     return errs;
   };
 
+  // Branch management functions
+  const handleAddBranch = () => {
+    if (!newBranchName.trim()) {
+      alert("Branch name is required!");
+      return;
+    }
+    
+    const newBranch = {
+      id: editingBranchId || Date.now(),
+      name: newBranchName.trim(),
+      description: newBranchDescription.trim() || "No description provided",
+      createdAt: new Date().toISOString().split('T')[0],
+      status: "Active"
+    };
+    
+    if (editingBranchId) {
+      // Update existing branch
+      setForm(prev => ({
+        ...prev,
+        branches: prev.branches.map(b => b.id === editingBranchId ? newBranch : b)
+      }));
+      setEditingBranchId(null);
+    } else {
+      // Add new branch
+      setForm(prev => ({
+        ...prev,
+        branches: [...prev.branches, newBranch]
+      }));
+    }
+    
+    // Reset form
+    setNewBranchName("");
+    setNewBranchDescription("");
+    setShowBranchModal(false);
+    
+    alert(`Branch "${newBranch.name}" ${editingBranchId ? 'updated' : 'added'} successfully!`);
+  };
+
+  const handleRemoveBranch = (branchId) => {
+    const branchToRemove = form.branches.find(b => b.id === branchId);
+    if (branchToRemove) {
+      const confirmRemove = confirm(`Are you sure you want to remove the branch "${branchToRemove.name}"?`);
+      if (confirmRemove) {
+        setForm(prev => ({
+          ...prev,
+          branches: prev.branches.filter(b => b.id !== branchId)
+        }));
+        alert(`Branch "${branchToRemove.name}" removed successfully!`);
+      }
+    }
+  };
+
+  const handleEditBranch = (branchId) => {
+    const branch = form.branches.find(b => b.id === branchId);
+    if (branch) {
+      setNewBranchName(branch.name);
+      setNewBranchDescription(branch.description);
+      setEditingBranchId(branchId);
+      setShowBranchModal(true);
+    }
+  };
+
+  const handleCancelBranchEdit = () => {
+    setShowBranchModal(false);
+    setNewBranchName("");
+    setNewBranchDescription("");
+    setEditingBranchId(null);
+  };
+
     const handleSubmit = () => {
     console.log("=== ADDENDUM SUBMISSION STARTED ===");
     
@@ -102,16 +179,17 @@ const AddendumForm = ({
       const addendumData = {
         title: form.title,
         description: form.description,
-        effectiveDate: form.effectiveDate.toISOString(),
+        effectiveDate: form.effectiveDate.toISOString().split('Z')[0],
         reason: form.reason,
         impact: form.impact,
         uploadedFiles: uploadedFiles,
         clauseModifications: clauseModifications,
         parentAgreementId: parentAgreement?.id,
         parentAgreementTitle: parentAgreement?.selectedClient,
-        submittedDate: new Date().toISOString(),
+        submittedDate: new Date().toISOString().split('Z')[0],
         submittedBy: userRole,
-        status: "Pending Review"
+        status: "Pending Review",
+        branches: form.branches // Include branches in the submission data
       };
       
       if (isEditMode && editingAddendum) {
@@ -134,7 +212,8 @@ const AddendumForm = ({
         effectiveDate: new Date(),
         reason: "",
         impact: "",
-        additionalDocuments: []
+        additionalDocuments: [],
+        branches: [] // Reset branches
       });
       setUploadedFiles({});
       // Only clear clause modifications if not editing
@@ -633,6 +712,67 @@ const AddendumForm = ({
             </div>
           </section>
 
+          {/* Branch Management Section - Only for Checkers */}
+          {userRole?.toLowerCase() === "checker" && (
+            <section className="mb-8">
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200">
+                <h2 className="text-lg font-semibold text-green-800 mb-4 flex items-center gap-2">
+                  <span className="text-green-600">🌿</span>
+                  Manage Addendum Branches
+                </h2>
+                
+                {/* Current Branches Display */}
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-green-700 mb-3">Current Branches:</h4>
+                  {form.branches.length === 0 ? (
+                    <p className="text-gray-500 text-sm italic bg-white p-3 rounded-lg border border-green-200">
+                      No branches added yet. Add your first branch to get started!
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {form.branches.map((branch) => (
+                        <div key={branch.id} className="flex items-center justify-between bg-white p-4 rounded-lg border border-green-200 shadow-sm">
+                          <div className="flex-1">
+                            <div className="font-medium text-green-800 text-lg">{branch.name}</div>
+                            <div className="text-sm text-gray-600 mt-1">{branch.description}</div>
+                            <div className="text-xs text-gray-500 mt-2">
+                              Created: {branch.createdAt} • Status: {branch.status}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEditBranch(branch.id)}
+                              className="px-3 py-2 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-1"
+                            >
+                              <span>✏️</span>
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              onClick={() => handleRemoveBranch(branch.id)}
+                              className="px-3 py-2 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-colors flex items-center gap-1"
+                            >
+                              <span>❌</span>
+                              <span>Remove</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Add New Branch Button */}
+                <button
+                  onClick={() => setShowBranchModal(true)}
+                  className="w-full px-4 py-3 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
+                >
+                  <span className="text-lg">➕</span>
+                  <span>Add New Branch</span>
+                </button>
+              </div>
+            </section>
+          )}
+
           {/* Action Buttons */}
           <div className="flex justify-end gap-4 mt-8">
             {isEditMode && (
@@ -662,6 +802,61 @@ const AddendumForm = ({
           </div>
         </div>
       </div>
+
+      {/* Branch Management Modal */}
+      {showBranchModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl max-w-md w-full mx-4 shadow-2xl">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <span className="text-green-600">🌿</span>
+              {editingBranchId ? 'Edit Branch' : 'Add New Branch'}
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Branch Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newBranchName}
+                  onChange={(e) => setNewBranchName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="Enter branch name"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={newBranchDescription}
+                  onChange={(e) => setNewBranchDescription(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  rows="3"
+                  placeholder="Enter branch description (optional)"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleCancelBranchEdit}
+                className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddBranch}
+                className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              >
+                {editingBranchId ? 'Update' : 'Add'} Branch
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error Modal */}
       {showErrorModal && (

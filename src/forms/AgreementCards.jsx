@@ -5,6 +5,7 @@ const AgreementCards = ({
   agreements, 
   addendums, 
   onStatusUpdate, 
+  onAddendumStatusUpdate,
   userRole, 
   onCreateAddendum,
   onEditAgreement,
@@ -16,6 +17,9 @@ const AgreementCards = ({
   const [selectedAgreement, setSelectedAgreement] = useState(null);
   const [editingAddendum, setEditingAddendum] = useState(null);
   const [viewingAgreement, setViewingAgreement] = useState(null);
+  const [selectedAddendum, setSelectedAddendum] = useState(null);
+  const [showAddendumModal, setShowAddendumModal] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState(null);
 
   // Sort agreements by submission date (newest first)
   const sortedAgreements = [...agreements].sort((a, b) => 
@@ -54,6 +58,31 @@ const AgreementCards = ({
 
   const handleCloseView = () => {
     setViewingAgreement(null);
+  };
+
+  // Handle status change for addendums
+  const handleStatusChange = (addendumId, newStatus) => {
+    console.log('Status change requested:', addendumId, newStatus);
+    
+    // First close the modal to prevent state conflicts
+    setShowAddendumModal(false);
+    setSelectedAddendum(null);
+    
+    // Then update the status after a short delay
+    setTimeout(() => {
+      if (onAddendumStatusUpdate) {
+        console.log('Calling onAddendumStatusUpdate:', addendumId, newStatus);
+        onAddendumStatusUpdate(addendumId, newStatus);
+      } else {
+        console.log('onAddendumStatusUpdate is not available');
+      }
+    }, 100);
+  };
+
+  // Handle review addendum
+  const handleReviewAddendum = (addendum) => {
+    setSelectedAddendum(addendum);
+    setShowAddendumModal(true);
   };
 
   const getStatusColor = (status) => {
@@ -142,7 +171,8 @@ const AgreementCards = ({
                 <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(viewingAgreement.status)}`}>
                   {viewingAgreement.status}
                 </span>
-                {viewingAgreement.priority && (
+                {/* Priority Badge - Only for Approver Role */}
+                {userRole?.toLowerCase() !== "checker" && viewingAgreement.priority && (
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getPriorityColor(viewingAgreement.priority)}`}>
                     {viewingAgreement.priority}
                   </span>
@@ -279,9 +309,17 @@ const AgreementCards = ({
                                 <span className="text-purple-600">📝</span>
                                 <span className="font-medium text-gray-800">{addendum.title}</span>
                               </div>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(addendum.status)}`}>
-                                {addendum.status}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(addendum.status)}`}>
+                                  {addendum.status}
+                                </span>
+                                <button
+                                  onClick={() => handleReviewAddendum(addendum)}
+                                  className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors"
+                                >
+                                  👁️ Review
+                                </button>
+                              </div>
                             </div>
                             <div className="text-sm text-gray-600">{addendum.description}</div>
                             <div className="text-xs text-gray-500 mt-2">
@@ -385,7 +423,8 @@ const AgreementCards = ({
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(agreement.status)}`}>
                         {agreement.status}
                       </span>
-                      {agreement.priority && (
+                      {/* Priority Badge - Only for Approver Role */}
+                      {userRole?.toLowerCase() !== "checker" && agreement.priority && (
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getPriorityColor(agreement.priority)}`}>
                           {agreement.priority}
                         </span>
@@ -526,6 +565,124 @@ const AgreementCards = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Addendum Review Modal */}
+      {showAddendumModal && selectedAddendum && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 min-w-[600px] max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold">Review Addendum - {selectedAddendum.title}</h3>
+              <button 
+                onClick={() => setShowAddendumModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            {/* Addendum Details */}
+            <div className="space-y-4 mb-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="font-semibold text-gray-700">Title:</span>
+                  <p className="text-gray-800 mt-1">{selectedAddendum.title}</p>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-700">Current Status:</span>
+                  <p className="text-gray-800 mt-1">{selectedAddendum.status}</p>
+                </div>
+              </div>
+              
+              <div>
+                <span className="font-semibold text-gray-700">Description:</span>
+                <p className="text-gray-800 mt-1">{selectedAddendum.description}</p>
+              </div>
+              
+              <div>
+                <span className="font-semibold text-gray-700">Submitted By:</span>
+                <p className="text-gray-800 mt-1">{selectedAddendum.submittedBy}</p>
+              </div>
+              
+              <div>
+                <span className="font-semibold text-gray-700">Effective Date:</span>
+                <p className="text-gray-800 mt-1">
+                  {selectedAddendum.effectiveDate ? new Date(selectedAddendum.effectiveDate).toLocaleDateString() : 'Not specified'}
+                </p>
+              </div>
+            </div>
+
+            {/* Status Change Section - Only for Approvers */}
+            {userRole?.toLowerCase() === "approver" && (
+              <div className="border-t border-gray-200 pt-4">
+                <h4 className="font-semibold text-gray-800 mb-3">Change Status</h4>
+                
+                <div className="flex items-center gap-3 mb-4">
+                  <select
+                    className="border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-300 min-w-[140px]"
+                    value={pendingStatusChange || selectedAddendum.status}
+                    onChange={(e) => {
+                      // Just update the local state, don't submit yet
+                      setPendingStatusChange(e.target.value);
+                    }}
+                  >
+                    <option value="Pending">⏳ Pending</option>
+                    <option value="Approved">✅ Approved</option>
+                    <option value="Rejected">❌ Rejected</option>
+                  </select>
+                  
+                  {pendingStatusChange && pendingStatusChange !== selectedAddendum.status && (
+                    <button
+                      onClick={() => {
+                        console.log('Status change confirmed:', selectedAddendum.id, pendingStatusChange);
+                        if (onAddendumStatusUpdate) {
+                          onAddendumStatusUpdate(selectedAddendum.id, pendingStatusChange);
+                          // Clear pending change but keep modal open
+                          setPendingStatusChange(null);
+                          // Modal stays open - user must manually close
+                        }
+                      }}
+                      className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
+                    >
+                      Save Status
+                    </button>
+                  )}
+                  
+                  <button
+                    onClick={() => {
+                      setPendingStatusChange(null);
+                      setShowAddendumModal(false);
+                      setSelectedAddendum(null);
+                    }}
+                    className="px-4 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+                
+                <div className="text-sm text-gray-600 mb-2">
+                  Current Status: <span className="font-semibold">{selectedAddendum.status}</span>
+                </div>
+                
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-blue-800 text-sm">
+                    💡 Select a new status from the dropdown above, then click "Save Status" to apply the change. Use "Close" to exit.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Close Button */}
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowAddendumModal(false)}
+                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

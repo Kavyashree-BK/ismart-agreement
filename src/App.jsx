@@ -8,6 +8,19 @@ import AddendumTable from "./forms/AddendumTable";
 import Header from "./components/ui/Header";
 import TabNav from "./components/ui/TabNav";
 
+// Helper function to format date without timezone
+const formatDateWithoutTimezone = (date) => {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  const milliseconds = String(d.getMilliseconds()).padStart(3, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}`;
+};
+
 function Dashboard({ agreements, addendums, userRole, setViewModal, setEditingAgreement, setActiveTab, handleCreateAddendum }) {
   // Show up to 5 most recent submissions
   const recentSubmissions = agreements.slice(0, 5);
@@ -40,7 +53,7 @@ function Dashboard({ agreements, addendums, userRole, setViewModal, setEditingAg
       id: "STATIC-001",
       selectedClient: "TechCorp Solutions",
       selectedBranches: [{ name: "Mumbai Central" }, { name: "Pune" }],
-      endDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days
+      endDate: formatDateWithoutTimezone(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)), // 3 days
       status: "Approved",
       submittedDate: "2024-01-15",
       submittedBy: "John Doe"
@@ -49,7 +62,7 @@ function Dashboard({ agreements, addendums, userRole, setViewModal, setEditingAg
       id: "STATIC-002", 
       selectedClient: "Global Industries Ltd",
       selectedBranches: [{ name: "Delhi" }, { name: "Gurgaon" }, { name: "Noida" }],
-      endDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString(), // 8 days
+      endDate: formatDateWithoutTimezone(new Date(Date.now() + 8 * 24 * 60 * 60 * 1000)), // 8 days
       status: "Approved",
       submittedDate: "2024-01-10",
       submittedBy: "Jane Smith"
@@ -58,7 +71,7 @@ function Dashboard({ agreements, addendums, userRole, setViewModal, setEditingAg
       id: "STATIC-003",
       selectedClient: "Innovation Systems",
       selectedBranches: [{ name: "Bangalore" }],
-      endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(), // 15 days
+      endDate: formatDateWithoutTimezone(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)), // 15 days
       status: "Approved", 
       submittedDate: "2024-01-05",
       submittedBy: "Mike Johnson"
@@ -67,7 +80,7 @@ function Dashboard({ agreements, addendums, userRole, setViewModal, setEditingAg
       id: "STATIC-004",
       selectedClient: "Digital Solutions Pvt Ltd",
       selectedBranches: [{ name: "Chennai" }, { name: "Coimbatore" }],
-      endDate: new Date(Date.now() + 22 * 24 * 60 * 60 * 1000).toISOString(), // 22 days
+      endDate: formatDateWithoutTimezone(new Date(Date.now() + 22 * 24 * 60 * 60 * 1000)), // 22 days
       status: "Approved",
       submittedDate: "2024-01-01", 
       submittedBy: "Sarah Wilson"
@@ -76,7 +89,7 @@ function Dashboard({ agreements, addendums, userRole, setViewModal, setEditingAg
       id: "STATIC-005",
       selectedClient: "Future Technologies",
       selectedBranches: [{ name: "Hyderabad" }],
-      endDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString(), // 28 days
+      endDate: formatDateWithoutTimezone(new Date(Date.now() + 28 * 24 * 60 * 60 * 1000)), // 28 days
       status: "Approved",
       submittedDate: "2023-12-28",
       submittedBy: "David Brown"
@@ -290,6 +303,8 @@ Generated on: ${new Date().toLocaleString()}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
+                      {/* Priority Badge - Only for Approver Role */}
+                      {userRole?.toLowerCase() !== "checker" && (
                       <span className={`px-2 py-1 rounded-full text-xs font-bold ${
                         agreement.priority === "High" ? "bg-red-100 text-red-700" :
                         agreement.priority === "Medium" ? "bg-yellow-100 text-yellow-700" :
@@ -297,6 +312,7 @@ Generated on: ${new Date().toLocaleString()}
                       }`}>
                         {agreement.priority}
                       </span>
+                      )}
                       <button 
                         className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
                         onClick={() => setViewModal({ open: true, agreement })}
@@ -357,12 +373,12 @@ Generated on: ${new Date().toLocaleString()}
                           View
                         </button>
                         {!isStatic && (
-                          <button 
-                            className="px-3 py-1 bg-purple-600 text-white rounded text-xs hover:bg-purple-700"
-                            onClick={() => handleCreateAddendum(agreement)}
-                          >
-                            Addendum
-                          </button>
+                            <button 
+                              className="px-3 py-1 bg-purple-600 text-white rounded text-xs hover:bg-purple-700"
+                              onClick={() => handleCreateAddendum(agreement)}
+                            >
+                              Addendum
+                            </button>
                         )}
                       </div>
                     </div>
@@ -527,13 +543,13 @@ Generated on: ${new Date().toLocaleString()}
                         👁️ View
                       </button>
 
-                      <button 
+                        <button 
                         className="px-3 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium hover:bg-orange-200"
-                        onClick={() => handleEditAgreement(agreement)}
-                        title="Edit Agreement"
-                      >
-                        ✏️ Edit
-                      </button>
+                          onClick={() => handleEditAgreement(agreement)}
+                          title="Edit Agreement"
+                        >
+                          ✏️ Edit
+                        </button>
 
                       <button 
                         className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-medium hover:bg-green-200"
@@ -599,13 +615,13 @@ Generated on: ${new Date().toLocaleString()}
                           👁️ View
                         </button>
                         {!isStatic && (
-                          <button 
-                            className="px-3 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium hover:bg-purple-200"
-                            onClick={() => handleCreateAddendum(agreement)}
-                            title="Create Addendum"
-                          >
-                            📝 Addendum
-                          </button>
+                            <button 
+                              className="px-3 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium hover:bg-purple-200"
+                              onClick={() => handleCreateAddendum(agreement)}
+                              title="Create Addendum"
+                            >
+                              📝 Addendum
+                            </button>
                         )}
                         <button 
                           className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-medium hover:bg-green-200"
@@ -658,7 +674,7 @@ function App() {
       totalValue: 50000,
       currency: "USD",
       status: "Execution Pending",
-      submittedDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)),
       submittedBy: "checker",
       entityType: "single",
       priority: "Medium",
@@ -698,13 +714,13 @@ function App() {
         { name: "Mumbai Central", id: "branch-001" },
         { name: "Andheri West", id: "branch-002" }
       ],
-      createdAt: "2024-01-10T10:00:00Z",
-      lastModified: "2024-01-15T14:30:00Z",
+      createdAt: "2024-01-10T10:00:00",
+      lastModified: "2024-01-15T14:30:00",
       version: "1.0.0",
       versionHistory: [
         {
           version: "1.0.0",
-          date: "2024-01-15T14:30:00Z",
+          date: "2024-01-15T14:30:00",
           type: "initial",
           description: "Original agreement creation",
           modifiedBy: "System",
@@ -722,7 +738,7 @@ function App() {
       totalValue: 75000,
       currency: "EUR",
       status: "Executed",
-      submittedDate: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)),
       submittedBy: "checker",
       entityType: "single",
       priority: "Low",
@@ -753,13 +769,13 @@ function App() {
       selectedBranches: [
         { name: "Pune Industrial", id: "branch-003" }
       ],
-      createdAt: "2024-01-25T09:15:00Z",
-      lastModified: "2024-02-01T11:45:00Z",
+      createdAt: "2024-01-25T09:15:00",
+      lastModified: "2024-02-01T11:45:00",
       version: "1.0.0",
       versionHistory: [
         {
           version: "1.0.0",
-          date: "2024-02-01T11:45:00Z",
+          date: "2024-02-01T11:45:00",
           type: "initial",
           description: "Original agreement creation",
           modifiedBy: "System",
@@ -777,7 +793,7 @@ function App() {
       totalValue: 120000,
       currency: "USD",
       status: "Under Process with Client",
-      submittedDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)),
       submittedBy: "checker",
       entityType: "multiple",
       priority: "High",
@@ -807,13 +823,13 @@ function App() {
         { name: "Delhi Medical", id: "branch-004" },
         { name: "Bangalore Health", id: "branch-005" }
       ],
-      createdAt: "2024-02-15T08:30:00Z",
-      lastModified: "2024-03-01T16:20:00Z",
+      createdAt: "2024-02-15T08:30:00",
+      lastModified: "2024-03-01T16:20:00",
       version: "1.0.0",
       versionHistory: [
         {
           version: "1.0.0",
-          date: "2024-03-01T16:20:00Z",
+          date: "2024-03-01T16:20:00",
           type: "initial",
           description: "Original agreement creation",
           modifiedBy: "System",
@@ -831,7 +847,7 @@ function App() {
       totalValue: 35000,
       currency: "USD",
       status: "Approved",
-      submittedDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 20 * 24 * 60 * 60 * 1000)),
       submittedBy: "checker",
       entityType: "single",
       priority: "Medium",
@@ -860,13 +876,13 @@ function App() {
       selectedBranches: [
         { name: "Hyderabad Tech", id: "branch-006" }
       ],
-      createdAt: "2024-01-20T11:00:00Z",
-      lastModified: "2024-01-25T14:15:00Z",
+      createdAt: "2024-01-20T11:00:00",
+      lastModified: "2024-01-25T14:15:00",
       version: "1.0.0",
       versionHistory: [
         {
           version: "1.0.0",
-          date: "2024-01-25T14:15:00Z",
+          date: "2024-01-25T14:15:00",
           type: "initial",
           description: "Original agreement creation",
           modifiedBy: "System",
@@ -884,7 +900,7 @@ function App() {
       totalValue: 200000,
       currency: "EUR",
       status: "Execution Pending",
-      submittedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)),
       submittedBy: "checker",
       entityType: "multiple",
       priority: "High",
@@ -914,13 +930,13 @@ function App() {
         { name: "Chennai Energy", id: "branch-007" },
         { name: "Kolkata Power", id: "branch-008" }
       ],
-      createdAt: "2024-03-25T09:45:00Z",
-      lastModified: "2024-04-01T12:30:00Z",
+      createdAt: "2024-03-25T09:45:00",
+      lastModified: "2024-04-01T12:30:00",
       version: "1.0.0",
       versionHistory: [
         {
           version: "1.0.0",
-          date: "2024-04-01T12:30:00Z",
+          date: "2024-04-01T12:30:00",
           type: "initial",
           description: "Original agreement creation",
           modifiedBy: "System",
@@ -938,7 +954,7 @@ function App() {
       totalValue: 85000,
       currency: "USD",
       status: "Executed",
-      submittedDate: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 12 * 24 * 60 * 60 * 1000)),
       submittedBy: "checker",
       entityType: "single",
       priority: "Medium",
@@ -967,13 +983,13 @@ function App() {
       selectedBranches: [
         { name: "Ahmedabad Retail", id: "branch-009" }
       ],
-      createdAt: "2024-02-15T10:20:00Z",
-      lastModified: "2024-02-20T15:45:00Z",
+      createdAt: "2024-02-15T10:20:00",
+      lastModified: "2024-02-20T15:45:00",
       version: "1.0.0",
       versionHistory: [
         {
           version: "1.0.0",
-          date: "2024-02-20T15:45:00Z",
+          date: "2024-02-20T15:45:00",
           type: "initial",
           description: "Original agreement creation",
           modifiedBy: "System",
@@ -991,7 +1007,7 @@ function App() {
       totalValue: 150000,
       currency: "USD",
       status: "Pending Review",
-      submittedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)),
       submittedBy: "checker",
       entityType: "multiple",
       priority: "High",
@@ -1021,13 +1037,13 @@ function App() {
         { name: "Delhi Medical", id: "branch-010" },
         { name: "Bangalore Health", id: "branch-011" }
       ],
-      createdAt: "2024-03-10T08:30:00Z",
-      lastModified: "2024-03-12T16:20:00Z",
+      createdAt: "2024-03-10T08:30:00",
+      lastModified: "2024-03-12T16:20:00",
       version: "1.0.0",
       versionHistory: [
         {
           version: "1.0.0",
-          date: "2024-03-12T16:20:00Z",
+          date: "2024-03-12T16:20:00",
           type: "initial",
           description: "Original agreement creation",
           modifiedBy: "System",
@@ -1045,7 +1061,7 @@ function App() {
       totalValue: 45000,
       currency: "USD",
       status: "Under Review",
-      submittedDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)),
       submittedBy: "checker",
       entityType: "single",
       priority: "Medium",
@@ -1074,13 +1090,13 @@ function App() {
       selectedBranches: [
         { name: "Mumbai Marketing", id: "branch-012" }
       ],
-      createdAt: "2024-01-05T14:15:00Z",
-      lastModified: "2024-01-20T11:30:00Z",
+      createdAt: "2024-01-05T14:15:00",
+      lastModified: "2024-01-20T11:30:00",
       version: "1.0.0",
       versionHistory: [
         {
           version: "1.0.0",
-          date: "2024-01-20T11:30:00Z",
+          date: "2024-01-20T11:30:00",
           type: "initial",
           description: "Original agreement creation",
           modifiedBy: "System",
@@ -1098,7 +1114,7 @@ function App() {
       totalValue: 180000,
       currency: "EUR",
       status: "Rejected",
-      submittedDate: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
+      submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 25 * 24 * 60 * 60 * 1000)),
       submittedBy: "checker",
       entityType: "multiple",
       priority: "Low",
@@ -1128,13 +1144,13 @@ function App() {
         { name: "Chennai Logistics", id: "branch-013" },
         { name: "Pune Warehouse", id: "branch-014" }
       ],
-      createdAt: "2024-02-20T09:45:00Z",
-      lastModified: "2024-03-05T13:20:00Z",
+      createdAt: "2024-02-20T09:45:00",
+      lastModified: "2024-03-05T13:20:00",
       version: "1.0.0",
       versionHistory: [
         {
           version: "1.0.0",
-          date: "2024-03-05T13:20:00Z",
+          date: "2024-03-05T13:20:00",
           type: "initial",
           description: "Original agreement creation",
           modifiedBy: "System",
@@ -1156,8 +1172,8 @@ function App() {
        description: "Extend the service period by 6 months due to project delays",
        reason: "Client requested extension due to unforeseen project delays and additional requirements",
        impact: "Service period extended from 12 months to 18 months. No change in pricing or terms.",
-       effectiveDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
-       submittedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
+       effectiveDate: formatDateWithoutTimezone(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)), // 30 days from now
+       submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)), // 5 days ago
        submittedBy: "checker",
        status: "Approved",
        parentAgreementId: "STATIC-001",
@@ -1190,7 +1206,7 @@ function App() {
        versionHistory: [
          {
            version: "1.0.0",
-           date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+           date: formatDateWithoutTimezone(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)),
            type: "initial",
            description: "Initial addendum submission",
            modifiedBy: "checker",
@@ -1205,8 +1221,8 @@ function App() {
        description: "Add new service requirements for enhanced client support",
        reason: "Client requested additional support services and monitoring capabilities",
        impact: "Additional monthly cost of $2,000 for enhanced services. Improved client satisfaction.",
-       effectiveDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(), // 15 days from now
-       submittedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+       effectiveDate: formatDateWithoutTimezone(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)), // 15 days from now
+       submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)), // 2 days ago
        submittedBy: "checker",
        status: "Pending Review", // This status allows editing
        parentAgreementId: "STATIC-002",
@@ -1230,7 +1246,7 @@ function App() {
        versionHistory: [
          {
            version: "1.0.0",
-           date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+           date: formatDateWithoutTimezone(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)),
            type: "initial",
            description: "Initial addendum submission for additional services",
            modifiedBy: "checker",
@@ -1295,13 +1311,13 @@ function App() {
         approvedDate: null,
         approvedBy: null,
         // Add missing fields that might be needed for display
-        createdAt: new Date().toISOString(),
-        lastModified: new Date().toISOString(),
+        createdAt: formatDateWithoutTimezone(new Date()),
+        lastModified: formatDateWithoutTimezone(new Date()),
         version: "1.0.0",
         versionHistory: [
           {
             version: "1.0.0",
-            date: new Date().toISOString(),
+            date: formatDateWithoutTimezone(new Date()),
             type: "initial",
             description: "Original agreement creation",
             modifiedBy: userRole,
@@ -1345,7 +1361,7 @@ function App() {
 
   // Enhanced versioning system for legal compliance and audit trails
   const createVersionEntry = (type, data, currentVersion) => {
-    const timestamp = new Date().toISOString();
+    const timestamp = formatDateWithoutTimezone(new Date());
     const versionParts = currentVersion ? currentVersion.split('.').map(Number) : [1, 0, 0];
     
     let newVersion;
@@ -1415,7 +1431,7 @@ function App() {
               newVersion: newVersion.version,
               changeSummary: `Addendum ${addendumData.id} applied with ${addendumData.clauseModifications?.length || 0} clause modifications`,
               complianceCheck: "PASSED",
-              timestamp: new Date().toISOString()
+              timestamp: formatDateWithoutTimezone(new Date())
             }
           }
         };
@@ -1423,7 +1439,7 @@ function App() {
         return {
           ...agreement,
           version: newVersion.version,
-          lastModified: new Date().toISOString(),
+          lastModified: formatDateWithoutTimezone(new Date()),
           versionHistory: [...currentVersionHistory, enhancedVersion],
           addendumCount: (agreement.addendumCount || 0) + 1,
           lastAddendumDate: addendumData.submittedDate,
@@ -1441,7 +1457,7 @@ function App() {
     try {
       if (addendumData.id) {
         // Update existing addendum
-        const updatedAddendum = { ...addendumData, lastModified: new Date().toISOString() };
+        const updatedAddendum = { ...addendumData, lastModified: formatDateWithoutTimezone(new Date()) };
         setAddendums(prev => prev.map(addendum => 
           addendum.id === addendumData.id ? updatedAddendum : addendum
         ));
@@ -1456,8 +1472,8 @@ function App() {
           ...addendumData,
           status: "Pending Review",
           isDemo: false,
-          createdAt: new Date().toISOString(),
-          lastModified: new Date().toISOString(),
+          createdAt: formatDateWithoutTimezone(new Date()),
+          lastModified: formatDateWithoutTimezone(new Date()),
           version: "1.0.0"
         };
         
@@ -1543,7 +1559,7 @@ function App() {
               newVersion: statusVersion.version,
               changeSummary: `Status changed from ${oldStatus} to ${newStatus}`,
               complianceCheck: "PASSED",
-              timestamp: new Date().toISOString()
+              timestamp: formatDateWithoutTimezone(new Date())
             }
           }
         };
@@ -1551,7 +1567,7 @@ function App() {
         return {
           ...agreement,
           version: statusVersion.version,
-          lastModified: new Date().toISOString(),
+          lastModified: formatDateWithoutTimezone(new Date()),
           versionHistory: [...currentVersionHistory, enhancedStatusVersion],
           status: newStatus,
           complianceStatus: "STATUS_UPDATED"
@@ -1673,9 +1689,9 @@ function App() {
                  )}
                           {activeTab === "agreements" && (
                             userRole === "Approver" ? (
-                              <AgreementTable agreements={agreements} addendums={addendums} onStatusUpdate={handleStatusUpdate} userRole={userRole} onCreateAddendum={handleCreateAddendum} />
+                              <AgreementTable agreements={agreements} addendums={addendums} onStatusUpdate={handleStatusUpdate} onAddendumStatusUpdate={handleAddendumStatusUpdate} userRole={userRole} onCreateAddendum={handleCreateAddendum} />
                             ) : (
-                              <AgreementCards agreements={agreements} addendums={addendums} onStatusUpdate={handleStatusUpdate} userRole={userRole} onCreateAddendum={handleCreateAddendum} onEditAgreement={setEditingAgreement} editingAgreement={editingAgreement} onEditComplete={() => setEditingAgreement(null)} onAddendumSubmit={handleAddendumSubmit} />
+                              <AgreementCards agreements={agreements} addendums={addendums} onStatusUpdate={handleStatusUpdate} onAddendumStatusUpdate={handleAddendumStatusUpdate} userRole={userRole} onCreateAddendum={handleCreateAddendum} onEditAgreement={setEditingAgreement} editingAgreement={editingAgreement} onEditComplete={() => setEditingAgreement(null)} onAddendumSubmit={handleAddendumSubmit} />
                             )
                           )}
          {activeTab === "addendums" && (
