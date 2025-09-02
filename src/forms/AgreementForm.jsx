@@ -1,1296 +1,887 @@
-import React, { useState, useEffect, useCallback } from "react";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import Select from "react-select";
+import React, { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { setEditingAgreement, setActiveTab } from '../slice/uiSlice';
+import { createAgreement, updateAgreement } from '../slice/agreementsSlice';
 
-// Hardcoded clients and their branches
-const clientsData = [
-  {
-    name: "ABC Corp",
-    branches: [
-      {
-        id: "BR001",
-        name: "Mumbai Branch",
-        code: "MUM",
-        type: "Regional",
-        status: "Active",
-        address: "Mumbai, Maharashtra",
-        manager: "John Doe"
-      },
-      {
-        id: "BR002",
-        name: "Pune Branch", 
-        code: "PUN",
-        type: "Regional",
-        status: "Active",
-        address: "Pune, Maharashtra",
-        manager: "Jane Smith"
-      },
-      {
-        id: "BR003",
-        name: "Delhi Branch",
-        code: "DEL",
-        type: "Regional", 
-        status: "Active",
-        address: "Delhi, NCR",
-        manager: "Mike Johnson"
-      }
-    ]
-  },
-  {
-    name: "XYZ Ltd",
-    branches: [
-      {
-        id: "BR004",
-        name: "Chennai Branch",
-        code: "CHE",
-        type: "Regional",
-        status: "Active", 
-        address: "Chennai, Tamil Nadu",
-        manager: "Sarah Wilson"
-      },
-      {
-        id: "BR005",
-        name: "Hyderabad Branch",
-        code: "HYD",
-        type: "Regional",
-        status: "Active",
-        address: "Hyderabad, Telangana", 
-        manager: "David Brown"
-      }
-    ]
-  },
-  {
-    name: "Tech Solutions",
-    branches: [
-      {
-        id: "BR006",
-        name: "Bangalore HQ",
-        code: "BLR",
-        type: "Headquarters",
-        status: "Active",
-        address: "Bangalore, Karnataka",
-        manager: "Lisa Anderson"
-      },
-      {
-        id: "BR007",
-        name: "Kolkata Branch",
-        code: "KOL",
-        type: "Regional",
-        status: "Active",
-        address: "Kolkata, West Bengal",
-        manager: "Robert Taylor"
-      }
-    ]
-  },
-  {
-    name: "CC Ltd",
-    branches: [
-      {
-        id: "BR008",
-        name: "Lucknow Branch",
-        code: "LKO",
-        type: "Regional",
-        status: "Active",
-        address: "Lucknow, Uttar Pradesh",
-        manager: "Priya Sharma"
-      },
-      {
-        id: "BR009",
-        name: "Kanpur Branch",
-        code: "KNP",
-        type: "Regional",
-        status: "Active",
-        address: "Kanpur, Uttar Pradesh",
-        manager: "Amit Kumar"
-      }
-    ]
-  },
-  {
-    name: "Delta Inc",
-    branches: [
-      {
-        id: "BR010",
-        name: "Ahmedabad Branch",
-        code: "AMD",
-        type: "Regional",
-        status: "Active",
-        address: "Ahmedabad, Gujarat",
-        manager: "Rajesh Patel"
-      },
-      {
-        id: "BR011",
-        name: "Surat Branch",
-        code: "SUR",
-        type: "Regional",
-        status: "Active",
-        address: "Surat, Gujarat",
-        manager: "Meera Shah"
-      },
-      {
-        id: "BR012",
-        name: "Vadodara Branch",
-        code: "VAD",
-        type: "Regional",
-        status: "Active",
-        address: "Vadodara, Gujarat",
-        manager: "Vikram Singh"
-      }
-    ]
-  }
-];
+const AgreementForm = () => {
+  const dispatch = useDispatch();
+  const editingAgreement = useSelector(state => state.ui.editingAgreement);
+  const isEditing = !!editingAgreement;
 
-const AgreementForm = (props) => {
-  const { onSubmit, editingAgreement, onEditComplete } = props;
-  const [entityType, setEntityType] = useState("single");
-  const [agreementDraftType, setAgreementDraftType] = useState("client");
-  const [clauses, setClauses] = useState(initialClauses());
-  const [underList, setUnderList] = useState(initialUnderList());
-  const [form, setForm] = useState(initialFormData());
-  const [errors, setErrors] = useState({});
-
-
-  const [startDate, setStartDate] = useState(new Date());
-  const [endDate, setEndDate] = useState(new Date());
-
-  const [userRole, setUserRole] = useState("checker");
-  const [selectedClient, setSelectedClient] = useState("");
-  const [availableBranches, setAvailableBranches] = useState([]);
-  const [selectedBranches, setSelectedBranches] = useState([]);
-  const [branchDropdownOpen, setBranchDropdownOpen] = useState(false);
-  const [userInfoErrors, setUserInfoErrors] = useState({});
-  const [uploadStatuses, setUploadStatuses] = useState({
-    LOI: { uploaded: false, status: "", remarks: "" },
-    WO: { uploaded: false, status: "", remarks: "" },
-    PO: { uploaded: false, status: "", remarks: "" },
-    EmailApproval: { uploaded: false, status: "", remarks: "" },
-    Agreement: { uploaded: false, status: "", remarks: "" },
-    // Clause uploads will be added dynamically as clause-0, clause-1, ...
+  // Form state
+  const [showBranchDropdown, setShowBranchDropdown] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
+  const [formData, setFormData] = useState({
+    selectedClient: '',
+    selectedDepartment: '',
+    selectedBranches: [],
+    agreementType: '',
+    startDate: '',
+    endDate: '',
+    openAgreement: false,
+    remarks: '',
+    entityType: 'single',
+    groupCompanies: [''],
+    importantClauses: [
+      { title: 'Term and termination (Duration)', content: '', file: null },
+      { title: 'Payment Terms', content: '', file: null },
+      { title: 'Penalty', content: '', file: null },
+      { title: 'Minimum Wages', content: '', file: null },
+      { title: 'Costing - Salary Breakup', content: '', file: null },
+      { title: 'SLA', content: '', file: null },
+      { title: 'Indemnity', content: '', file: null },
+      { title: 'Insurance', content: '', file: null }
+    ],
+    contactInfo: {
+      name: '',
+      email: '',
+      phone: '',
+      clientName: '',
+      clientEmail: '',
+      clientPhone: ''
+    },
+    uploadStatuses: {
+      LOI: { uploaded: false, file: null },
+      WO: { uploaded: false, file: null },
+      PO: { uploaded: false, file: null },
+      EmailApproval: { uploaded: false, file: null }
+    }
   });
 
+  // Demo data
+  const clientOptions = [
+    'Tech Solutions',
+    'ABC Corp',
+    'XYZ Ltd',
+    'Global Industries',
+    'Innovation Labs'
+  ];
 
+  const branchOptions = [
+    'Pan India',
+    'Mumbai',
+    'Delhi',
+    'Bangalore',
+    'Pune',
+    'Chennai',
+    'Hyderabad',
+    'Kolkata'
+  ];
 
-  const [draftSaved, setDraftSaved] = useState(false);
-  const [draft, setDraft] = useState(null);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorModalMessage, setErrorModalMessage] = useState("");
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [isOpenAgreement, setIsOpenAgreement] = useState(false);
+  const agreementTypeOptions = ['Client Draft', 'iSmart Draft'];
 
-  // Debounce mechanism to prevent excessive re-renders
-  const [debounceTimer, setDebounceTimer] = useState(null);
-
-  const debouncedSetForm = useCallback((updates) => {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-    }
-    const timer = setTimeout(() => {
-      setForm(prev => ({ ...prev, ...updates }));
-    }, 100); // 100ms debounce
-    setDebounceTimer(timer);
-  }, [debounceTimer]);
-
-  // Cleanup timer on unmount
+  // Load editing data
   useEffect(() => {
-    return () => {
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-      }
-    };
-  }, [debounceTimer]);
-
-  // Check if agreement is expiring within 30 days
-  const today = new Date();
-  const timeDiff = endDate.getTime() - today.getTime();
-  const daysToExpiry = Math.ceil(timeDiff / (1000 * 3600 * 24));
-  const isExpiringSoon = daysToExpiry > 0 && daysToExpiry <= 30;
-
-  // Handle editing mode - pre-fill form when editingAgreement is provided
-  useEffect(() => {
-    console.log("AgreementForm useEffect - editingAgreement:", editingAgreement);
-    if (editingAgreement) {
-      console.log("Setting edit mode with agreement data:", editingAgreement);
-      setIsEditMode(true);
-      
-      // Pre-fill all form data
-      setForm(editingAgreement.form || initialFormData());
-      setClauses(editingAgreement.clauses || initialClauses());
-      setUnderList(editingAgreement.underList || initialUnderList());
-      setEntityType(editingAgreement.entityType || "single");
-      setAgreementDraftType(editingAgreement.agreementDraftType || "client");
-      setUserRole(editingAgreement.userRole || "checker");
-      setSelectedClient(editingAgreement.selectedClient || "");
-      
-      // Update available sites based on selected client
-      const clientObj = clientsData.find(c => c.name === editingAgreement.selectedClient);
-      setAvailableBranches(clientObj ? clientObj.branches : []);
-      setSelectedBranches(editingAgreement.selectedBranches || []);
-      
-      setUploadStatuses(editingAgreement.uploadStatuses || {});
-      setStartDate(editingAgreement.startDate ? new Date(editingAgreement.startDate) : new Date());
-      setEndDate(editingAgreement.endDate ? new Date(editingAgreement.endDate) : new Date());
-      setIsOpenAgreement(editingAgreement.isOpenAgreement || false); // Set the new state
-    } else {
-      console.log("Setting normal mode (no editing)");
-      setIsEditMode(false);
+    if (isEditing && editingAgreement) {
+      setFormData(editingAgreement);
     }
-  }, [editingAgreement]);
+  }, [isEditing, editingAgreement]);
 
-  // Handle click outside to close branch dropdown
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (branchDropdownOpen && !event.target.closest('.branch-dropdown')) {
-        setBranchDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [branchDropdownOpen]);
-
-  function initialClauses() {
-    return [
-      { title: "Term and termination (Duration)", placeholder: "30 days", isInitial: true },
-      { title: "Payment Terms", placeholder: "15", isInitial: true },
-      { title: "Penalty", placeholder: "500/-", isInitial: true },
-      { title: "Minimum Wages", placeholder: "Yearly / Not Allowed / At Actual", isInitial: true },
-      { title: "Costing - Salary Breakup", placeholder: "Yes / No", isInitial: true },
-      { title: "SLA", placeholder: "Specific Page/Clause", isInitial: true },
-      { title: "Indemnity", placeholder: "Specific Page/Clause", isInitial: true },
-      { title: "Insurance", placeholder: "Specific Page/Clause", isInitial: true },
-    ];
-  }
-
-  function initialUnderList() {
-    return [
-      {
-        type: "text",
-        placeholder: "Under list / annexure",
-        className: "border border-gray-300 p-2 rounded text-sm",
-      },
-    ];
-  }
-
-  function initialFormData() {
-    return {
-      iSmartName: "",
-      iSmartContact: "",
-      iSmartEmail: "",
-      clientName: "",
-      clientContact: "",
-      clientEmail: "",
-    };
-  }
-
-     const handleAddClause = () => {
-     setClauses(prevClauses => {
-       const newClauses = [...prevClauses, { title: "", placeholder: "Enter clause details", isInitial: false }];
-       // Initialize uploadStatuses for the new clause
-       setUploadStatuses(prevStatuses => ({
-         ...prevStatuses,
-         [`clause-${newClauses.length - 1}`]: { uploaded: false, file: undefined }
-       }));
-       return newClauses;
-     });
-   };
-
-  const handleRemoveClause = (index) => {
-    const updatedClauses = clauses.filter((_, i) => i !== index);
-    setClauses(updatedClauses);
+  // Handle input changes
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
-  const duplicateElement = () => {
-    setUnderList([...underList, ...initialUnderList()]);
+  // Handle branch selection
+  const toggleBranch = (branch) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedBranches: prev.selectedBranches.includes(branch)
+        ? prev.selectedBranches.filter(b => b !== branch)
+        : [...prev.selectedBranches, branch]
+    }));
   };
 
-  const handleRemoveUnderList = (index) => {
-    setUnderList(prev => prev.filter((_, i) => i !== index));
+  // Handle group companies
+  const addGroupCompany = () => {
+    setFormData(prev => ({
+      ...prev,
+      groupCompanies: [...prev.groupCompanies, '']
+    }));
   };
 
-  const validateForm = () => {
-    const errs = {};
-    // Email: lowercase, numbers, . _ % + - before @, . - in domain, no uppercase, no special chars at start/end
-    const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
-    // Phone: exactly 10 digits, no spaces or special chars
-    const phoneRegex = /^\d{10}$/;
-
-    if (!phoneRegex.test(form.iSmartContact)) {
-      errs.iSmartContact = "Phone number must be exactly 10 digits, no spaces or special characters.";
-    }
-
-    if (!phoneRegex.test(form.clientContact)) {
-      errs.clientContact = "Phone number must be exactly 10 digits, no spaces or special characters.";
-    }
-
-    if (!emailRegex.test(form.iSmartEmail)) {
-      errs.iSmartEmail = "Invalid email address. Only lowercase letters, numbers, and . _ % + - allowed before @. No uppercase or other special characters.";
-    }
-
-    if (!emailRegex.test(form.clientEmail)) {
-      errs.clientEmail = "Invalid email address. Only lowercase letters, numbers, and . _ % + - allowed before @. No uppercase or other special characters.";
-    }
-
-    return errs;
+  const removeGroupCompany = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      groupCompanies: prev.groupCompanies.filter((_, i) => i !== index)
+    }));
   };
 
-  const handleSubmit = () => {
-    console.log("Submit clicked");
-    const errs = validateForm();
-    // Require at least one document from: LOI, WO, PO, or Email Approval
-    const requiredDocumentTypes = ["WO", "PO", "LOI", "EmailApproval"];
-    const hasAtLeastOneDocument = requiredDocumentTypes.some(type => uploadStatuses[type]?.uploaded);
+  const updateGroupCompany = (index, value) => {
+    setFormData(prev => ({
+      ...prev,
+      groupCompanies: prev.groupCompanies.map((company, i) => 
+        i === index ? value : company
+      )
+    }));
+  };
+
+  // Validation functions
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePhone = (phone) => {
+    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+    return phoneRegex.test(phone.replace(/[\s\-\(\)]/g, ''));
+  };
+
+  const validateContactInfo = () => {
+    const errors = {};
     
-    if (!hasAtLeastOneDocument) {
-      const msg = "Escalation: At least one document is required (LOI, WO, PO, or Email Approval)";
-      setErrorModalMessage(msg);
-      setShowErrorModal(true);
-      console.log("Submission blocked:", msg);
-      return;
+    if (formData.contactInfo.email && !validateEmail(formData.contactInfo.email)) {
+      errors.email = 'Please enter a valid email address';
     }
+    
+    if (formData.contactInfo.phone && !validatePhone(formData.contactInfo.phone)) {
+      errors.phone = 'Please enter a valid phone number';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
-    // Check missing user info fields
-    const missingUserFields = [];
-    if (!selectedClient) missingUserFields.push("Client Name");
-    if (!selectedBranches.length) missingUserFields.push("Client Branch(s)");
-    if (!userRole) missingUserFields.push("User Role");
+  // Handle clause changes
+  const updateClause = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      importantClauses: prev.importantClauses.map((clause, i) => 
+        i === index ? { ...clause, [field]: value } : clause
+      )
+    }));
+  };
 
-    // Show error messages for missing client name/site
-    if (!selectedClient || !selectedBranches.length) {
-      setUserInfoErrors(prev => ({
+  const addClause = () => {
+    setFormData(prev => ({
+      ...prev,
+      importantClauses: [...prev.importantClauses, { title: '', content: '', file: null }]
+    }));
+  };
+
+  const removeClause = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      importantClauses: prev.importantClauses.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Handle file uploads
+  const handleFileUpload = (type, file) => {
+    if (file) {
+      setFormData(prev => ({
         ...prev,
-        clientName: !selectedClient ? "Client name is required" : undefined,
-        clientSite: !selectedBranches.length ? "At least one branch is required" : undefined,
+        uploadStatuses: {
+          ...prev.uploadStatuses,
+          [type]: { uploaded: true, file }
+        }
       }));
     }
+  };
 
-    const allMissing = [...missingUserFields];
-    if (allMissing.length > 0) {
-      const msg = `Escalation: Missing required fields: ${allMissing.join(", ")}`;
-      setErrorModalMessage(msg);
-      setShowErrorModal(true);
-      console.log("Submission blocked:", msg);
-      return;
-    }
+  const handleClauseFileUpload = (clauseIndex, file) => {
+    updateClause(clauseIndex, 'file', file);
+  };
 
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      setErrorModalMessage("Please fix the highlighted errors in the form.");
-      setShowErrorModal(true);
-      console.log("Submission blocked: field errors", errs);
+  // Handle form submission
+  const handleSubmit = (action) => {
+    // Validate contact information before submission
+    if (!validateContactInfo()) {
+      alert('Please fix the validation errors before submitting.');
       return;
     }
 
     const agreementData = {
-      form,
-      clauses,
-      underList,
-      entityType,
-      agreementDraftType,
-      userRole,
-      selectedClient,
-      selectedBranches,
-      uploadStatuses,
-      startDate,
-      endDate,
-      isOpenAgreement // Add the new state to the data
+      ...formData,
+      status: action === 'submit' ? 'Under Review' : 'Draft',
+      submittedDate: new Date().toISOString(),
+      submittedBy: 'checker'
     };
 
-    // If in edit mode, preserve the original ID and add it to the data
-    if (isEditMode && editingAgreement) {
-      agreementData.id = editingAgreement.id;
-      agreementData.submittedDate = editingAgreement.submittedDate; // Keep original submission date
-      agreementData.submittedBy = editingAgreement.submittedBy; // Keep original submitter
-    }
-
-    console.log("Form data submitted:", agreementData);
-
-    // Call the onSubmit prop to add to dashboard
-    if (onSubmit) {
-      onSubmit(agreementData);
-    }
-
-
-    setShowSuccessModal(true);
-    
-    // Only reset form if not in edit mode, otherwise call onEditComplete
-    if (isEditMode) {
-      if (onEditComplete) onEditComplete();
+    if (isEditing) {
+      dispatch(updateAgreement({ id: editingAgreement.id, updates: agreementData }));
     } else {
-      setForm(initialFormData());
-      setClauses(initialClauses());
-      setUnderList(initialUnderList());
-      setEntityType("single");
-      setAgreementDraftType("client");
-      setErrors({});
-
-      setUserRole("checker");
-      setSelectedClient("");
-      setAvailableBranches([]);
-      setSelectedBranches([]);
-      setStartDate(new Date());
-      setEndDate(new Date());
-      setIsOpenAgreement(false); // Reset the new state
+      dispatch(createAgreement(agreementData));
     }
 
-  };
-
-  const handleChange = useCallback((e) => {
-    const { name, value } = e.target;
-    console.log(`handleChange called - field: ${name}, value: ${value}, current userRole: ${userRole}`);
-    
-    // Special debugging for contact fields
-    if (name.includes('Contact') || name.includes('Email') || name.includes('Name')) {
-      console.log(`Contact field change - ${name}: "${value}" (length: ${value.length})`);
-    }
-    
-    // Use direct form updates for contact fields to avoid debouncing issues with fake fillers
-    if (name.includes('Contact') || name.includes('Email') || name.includes('Name')) {
-      setForm(prev => ({ ...prev, [name]: value }));
-    } else {
-      // Use debounced form updates for better performance on other fields
-      debouncedSetForm(prev => ({ ...prev, [name]: value }));
-    }
-
-    // Real-time validation for phone and email fields - made less strict for fake filler compatibility
-    let errorMsg = undefined;
-    
-    // Only validate if the field has content (allow empty fields for fake filler)
-    if (value && value.trim() !== '') {
-      // Phone validation - allow any format for fake filler, but suggest proper format
-      if (name === "iSmartContact" || name === "clientContact") {
-        const cleanPhone = value.replace(/\D/g, ''); // Remove non-digits
-        if (cleanPhone.length !== 10) {
-          errorMsg = "Phone number should be 10 digits. Current: " + cleanPhone.length + " digits.";
-        }
+    // Reset form and navigate
+    setFormData({
+      selectedClient: '',
+      selectedDepartment: '',
+      selectedBranches: [],
+      agreementType: '',
+      startDate: '',
+      endDate: '',
+      openAgreement: false,
+      remarks: '',
+      entityType: 'single',
+      groupCompanies: [''],
+      importantClauses: [
+        { title: 'Term and termination (Duration)', content: '', file: null },
+        { title: 'Payment Terms', content: '', file: null },
+        { title: 'Penalty', content: '', file: null },
+        { title: 'Minimum Wages', content: '', file: null },
+        { title: 'Costing - Salary Breakup', content: '', file: null },
+        { title: 'SLA', content: '', file: null },
+        { title: 'Indemnity', content: '', file: null },
+        { title: 'Insurance', content: '', file: null }
+      ],
+      contactInfo: {
+        name: '',
+        email: '',
+        phone: '',
+        clientName: '',
+        clientEmail: '',
+        clientPhone: ''
+      },
+      uploadStatuses: {
+        LOI: { uploaded: false, file: null },
+        WO: { uploaded: false, file: null },
+        PO: { uploaded: false, file: null },
+        EmailApproval: { uploaded: false, file: null }
       }
-      
-      // Email validation - allow any format for fake filler, but suggest proper format
-      if (name === "iSmartEmail" || name === "clientEmail") {
-        const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
-        if (!emailRegex.test(value.toLowerCase())) {
-          errorMsg = "Email should be in lowercase format: example@domain.com";
-        }
-      }
-    }
-    
-    setErrors(prev => ({ ...prev, [name]: errorMsg }));
-  }, [debouncedSetForm, userRole]);
+    });
 
-  const handleClientChange = useCallback((e) => {
-    const selectedClientName = e.target.value;
-    setSelectedClient(selectedClientName);
-    setAvailableBranches(clientsData.find(c => c.name === selectedClientName)?.branches || []);
-    setSelectedBranches([]);
-  }, []);
-
-
-
-  const handleUploadChange = (type, file) => {
-    // Allowed types and max size
-    const allowedTypes = [
-      'application/pdf',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-      'image/jpeg',
-      'image/png',
-      'image/jpg',
-    ];
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    let error = '';
-    if (file) {
-      if (!allowedTypes.includes(file.type)) {
-        error = 'Invalid file type. Only PDF, DOCX, JPG, JPEG, PNG allowed.';
-      } else if (file.size > maxSize) {
-        error = 'File size exceeds 10MB.';
-      }
-    }
-    if (error) {
-      // Do not update uploadStatuses
-      return;
-    }
-    setUploadStatuses(prev => ({
-      ...prev,
-      [type]: { ...prev[type], uploaded: true, file }
-    }));
+    dispatch(setEditingAgreement(null));
+    dispatch(setActiveTab('agreements'));
   };
-
-  const handleRemoveUpload = (type) => {
-    setUploadStatuses(prev => ({
-      ...prev,
-      [type]: { ...prev[type], uploaded: false, file: undefined }
-    }));
-  };
-
-
-
-
-
-
-
-
-
-
-
-
 
   return (
-    <div className="relative max-w-6xl mx-auto p-0 bg-transparent mt-4 mb-8">
-      {/* Edit Mode Indicator */}
-      {isEditMode && editingAgreement && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">✏️</span>
-            <div>
-              <h3 className="font-bold text-blue-800">Editing Agreement</h3>
-              <p className="text-blue-600 text-sm">
-                Agreement ID: {editingAgreement.id} • Client: {editingAgreement.selectedClient}
+    <div className="max-w-4xl mx-auto p-6 bg-gray-100 min-h-screen">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">
+          {isEditing ? 'Edit Agreement' : 'New Agreement'}
+        </h1>
+        <p className="text-gray-600 mt-1">
+          {isEditing ? 'Update agreement details' : 'Create a new agreement'}
               </p>
             </div>
-          </div>
-        </div>
-      )}
-      
-      <div className="bg-white rounded-lg shadow-lg border border-gray-200">
-        <div className=" border-gray-200 bg-gray-50">
-          {isEditMode && (
-            <div className="mt-2">
-              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                Editing Agreement ID: {editingAgreement?.id}
-              </span>
-            </div>
-          )}
-        </div>
-        <form className="px-4 py-8">
+
+      <form className="space-y-6">
         {/* User Information */}
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold mb-4 text-gray-800 border-b border-gray-200 pb-2">User Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">User Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">User Role</label>
-              <input className="w-full border rounded-md p-2.5 text-sm bg-gray-100 text-gray-700" value={userRole || 'checker'} disabled readOnly />
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                User Role
+              </label>
+              <input
+                type="text"
+                value="checker"
+                readOnly
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600"
+              />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Client Name *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Client Name *
+              </label>
               <select
-                className="w-full border rounded-md p-2.5 text-sm bg-white text-gray-700"
-                value={selectedClient}
-                onChange={handleClientChange}
+                value={formData.selectedClient}
+                onChange={(e) => handleInputChange('selectedClient', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
               >
-                <option value="" disabled>Select Client</option>
-                {clientsData.map(client => (
-                  <option key={client.name} value={client.name}>{client.name}</option>
+                <option value="">Select Client</option>
+                {clientOptions.map(client => (
+                  <option key={client} value={client}>{client}</option>
                 ))}
               </select>
-              {userInfoErrors.clientName && (
-                <div className="text-red-600 text-xs mt-1">{userInfoErrors.clientName}</div>
-              )}
             </div>
-          </div>
-          <div className="mt-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Client Branch(s) *</label>
-            <div className="relative branch-dropdown">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Client Branch(s) *
+              </label>
+              {!formData.selectedClient ? (
+                <input
+                  type="text"
+                  value="Please select a client first"
+                  readOnly
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
+                />
+              ) : (
+                <div className="relative">
               <button
                 type="button"
-                onClick={() => setBranchDropdownOpen(!branchDropdownOpen)}
-                className={`w-full border rounded-md p-2.5 text-sm text-left flex items-center justify-between ${
-                  userInfoErrors.clientBranch ? 'border-red-500' : 'border-gray-300'
-                } ${!selectedClient ? 'bg-gray-100 text-gray-500' : 'bg-white text-gray-700'}`}
-                disabled={!selectedClient}
-              >
-                <span className={selectedBranches.length > 0 ? 'text-gray-700' : 'text-gray-500'}>
-                  {selectedBranches.length > 0 
-                    ? selectedBranches.length === availableBranches.length && availableBranches.length > 0
-                      ? "🌏 Pan India (All Branches)"
-                      : `${selectedBranches.length} branch${selectedBranches.length !== 1 ? 'es' : ''} selected`
-                    : selectedClient ? "Select client branches..." : "Please select a client first"
+                    onClick={() => setShowBranchDropdown(!showBranchDropdown)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-left flex justify-between items-center"
+                  >
+                    <span className="font-medium text-gray-900">
+                      {formData.selectedBranches.length === 0 
+                        ? 'Select client branches...' 
+                        : formData.selectedBranches.length === branchOptions.length
+                        ? 'Pan India (All Branches)'
+                        : `${formData.selectedBranches.length} branch${formData.selectedBranches.length === 1 ? '' : 'es'} selected`
                   }
                 </span>
-                <svg className={`w-4 h-4 transition-transform ${branchDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
               
-              {branchDropdownOpen && selectedClient && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                  <div className="p-2">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">Select Branches</span>
+                  {/* Selected Branch Tags */}
+                  {formData.selectedBranches.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {formData.selectedBranches.map(branch => (
+                        <div key={branch} className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                          <span className="mr-1">
+                            {branch === 'Pan India' ? 'Pan India' : 
+                             branch === 'Mumbai' ? 'Mumbai Branch (MUM)' :
+                             branch === 'Delhi' ? 'Delhi Branch (DEL)' :
+                             branch === 'Bangalore' ? 'Bangalore Branch (BLR)' :
+                             branch === 'Pune' ? 'Pune Branch (PUN)' :
+                             branch === 'Chennai' ? 'Chennai Branch (CHE)' :
+                             branch === 'Hyderabad' ? 'Hyderabad Branch (HYD)' :
+                             branch === 'Kolkata' ? 'Kolkata Branch (KOL)' :
+                             branch}
+                          </span>
                       <button
                         type="button"
-                        onClick={() => setBranchDropdownOpen(false)}
-                        className="text-gray-400 hover:text-gray-600"
+                            onClick={() => toggleBranch(branch)}
+                            className="ml-1 text-blue-600 hover:text-blue-800 focus:outline-none"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                            ×
                       </button>
                     </div>
-                    
-                    <div className="space-y-1">
-                      {/* Pan India Option */}
-                      <label className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer border-b border-gray-200">
-                        <input
-                          type="checkbox"
-                          checked={selectedBranches.length === availableBranches.length && availableBranches.length > 0}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedBranches([...availableBranches]);
-                              if (userInfoErrors.clientBranch) {
-                                setUserInfoErrors(prev => ({ ...prev, clientBranch: null }));
-                              }
-                            } else {
-                              setSelectedBranches([]);
-                            }
-                          }}
-                          className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <div className="flex-1">
-                          <div className="text-sm font-medium text-blue-700">🌏 Pan India</div>
-                          <div className="text-xs text-gray-500">Apply to all branches nationwide</div>
+                      ))}
                         </div>
-                      </label>
-                      
-                      {/* Individual Branches */}
-                      {availableBranches.map((branch) => {
-                        const isSelected = selectedBranches.some(selected => selected.id === branch.id);
-                        return (
-                          <label key={branch.id} className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
+                  )}
+                  
+                  {showBranchDropdown && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
+                      <div className="max-h-60 overflow-y-auto">
+                        {branchOptions.map(branch => (
+                          <label key={branch} className="flex items-center p-3 hover:bg-gray-50 cursor-pointer">
                             <input
                               type="checkbox"
-                              checked={isSelected}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  const newSelectedBranches = [...selectedBranches, branch];
-                                  setSelectedBranches(newSelectedBranches);
-                                  if (userInfoErrors.clientBranch) {
-                                    setUserInfoErrors(prev => ({ ...prev, clientBranch: null }));
-                                  }
-                                } else {
-                                  const newSelectedBranches = selectedBranches.filter(b => b.id !== branch.id);
-                                  setSelectedBranches(newSelectedBranches);
-                                }
-                              }}
+                              checked={formData.selectedBranches.includes(branch)}
+                              onChange={() => toggleBranch(branch)}
                               className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                             />
-                            <div className="flex-1">
-                              <div className="text-sm font-medium text-gray-700">{branch.name}</div>
-                              <div className="text-xs text-gray-500">{branch.code} • {branch.type}</div>
-                            </div>
+                            <div className="text-sm font-medium text-gray-900">{branch}</div>
                           </label>
-                        );
-                      })}
+                        ))}
                     </div>
-                    
-                    <div className="border-t pt-2 mt-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-500">
-                          {selectedBranches.length} of {availableBranches.length} selected
+                      <div className="border-t border-gray-200 p-3">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-sm text-gray-600">
+                            {formData.selectedBranches.length} of {branchOptions.length} selected
                         </span>
-                        <div className="space-x-2">
+                        </div>
+                        <div className="flex justify-end space-x-2">
                           <button
                             type="button"
                             onClick={() => {
-                              if (selectedBranches.length === availableBranches.length) {
-                                setSelectedBranches([]);
+                              if (formData.selectedBranches.length === branchOptions.length) {
+                                // If all are selected, deselect all
+                                setFormData(prev => ({
+                                  ...prev,
+                                  selectedBranches: []
+                                }));
                               } else {
-                                setSelectedBranches([...availableBranches]);
+                                // Select all branches
+                                setFormData(prev => ({
+                                  ...prev,
+                                  selectedBranches: [...branchOptions]
+                                }));
                               }
                             }}
-                            className="text-xs text-blue-600 hover:text-blue-800"
+                            className="px-3 py-1 border border-gray-300 text-gray-700 bg-white rounded text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
-                            {selectedBranches.length === availableBranches.length ? 'Deselect All' : 'Select All'}
+                            {formData.selectedBranches.length === branchOptions.length ? 'Deselect All' : 'Select All'}
                           </button>
                           <button
                             type="button"
-                            onClick={() => setBranchDropdownOpen(false)}
-                            className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+                            onClick={() => setShowBranchDropdown(false)}
+                            className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
                             Done
                           </button>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>
               )}
             </div>
-            
-            {/* Selected Branches Display */}
-            {selectedBranches.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {selectedBranches.length === availableBranches.length && availableBranches.length > 0 ? (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    🌏 Pan India (All Branches)
-                    <button
-                      type="button"
-                      onClick={() => setSelectedBranches([])}
-                      className="ml-1 text-green-600 hover:text-green-800"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ) : (
-                  selectedBranches.map((branch) => (
-                    <span
-                      key={branch.id}
-                      className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                    >
-                      {branch.name} ({branch.code})
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newSelectedBranches = selectedBranches.filter(b => b.id !== branch.id);
-                          setSelectedBranches(newSelectedBranches);
-                        }}
-                        className="ml-1 text-blue-600 hover:text-blue-800"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))
                 )}
               </div>
-            )}
-            
-            {userInfoErrors.clientBranch && (
-              <div className="text-red-600 text-xs mt-1">{userInfoErrors.clientBranch}</div>
-            )}
           </div>
-        </section>
+        </div>
 
         {/* Document Uploads */}
-        {isExpiringSoon && (
-          <div className="mb-4 p-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 rounded">
-            <strong>Alert:</strong> This agreement is expiring in {daysToExpiry} day{daysToExpiry !== 1 ? 's' : ''}. Please ensure at least one required document (LOI, WO, PO, or Email Approval) is uploaded for renewal/escalation.
-            {!["WO", "LOI", "PO", "EmailApproval"].some(type => uploadStatuses[type]?.uploaded) && (
-              <div className="mt-2 text-red-700">
-                <strong>Escalation:</strong> At least one document is required (LOI, WO, PO, or Email Approval)
-              </div>
-            )}
-          </div>
-        )}
-        <section className="mb-10">
-          <h2 className="text-xl font-bold mb-1 text-gray-900">Document Uploads</h2>
-                     <p className="text-gray-500 mb-6">Upload at least one of the following documents: LOI, WO, PO, or Email Approval</p>
-          {/* Agreement Date Section */}
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
+                    {/* Alert Message */}
+          {(() => {
+            // Only show alerts if BOTH dates are selected (not on fresh page) and not open agreement
+            if (!formData.startDate || !formData.endDate || formData.openAgreement) {
+              return null;
+            }
+            
+            const today = new Date();
+            const toDate = new Date(formData.endDate + 'T00:00:00'); // Ensure consistent timezone
+            const daysUntilExpiry = Math.ceil((toDate - today) / (1000 * 60 * 60 * 24));
+            const noDocumentsUploaded = Object.values(formData.uploadStatuses).every(status => !status.uploaded);
+            
+            // Show alert if within 30 days or expired, AND no documents uploaded
+            if (((daysUntilExpiry <= 30 && daysUntilExpiry > 0) || daysUntilExpiry <= 0) && noDocumentsUploaded) {
+              let alertMessage = '';
+              let alertColor = 'yellow';
+              
+              if (daysUntilExpiry <= 0) {
+                alertMessage = `This agreement has expired ${Math.abs(daysUntilExpiry)} day${Math.abs(daysUntilExpiry) !== 1 ? 's' : ''} ago. Please ensure at least one required document (LOI, WO, PO, or Email Approval) is uploaded for renewal/escalation.`;
+                alertColor = 'red';
+              } else if (daysUntilExpiry <= 30) {
+                alertMessage = `This agreement is expiring in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}. Please ensure at least one required document (LOI, WO, PO, or Email Approval) is uploaded for renewal/escalation.`;
+                alertColor = 'yellow';
+              }
+              
+              return (
+                <div className={`mb-6 p-4 ${alertColor === 'red' ? 'bg-red-50 border-l-4 border-red-400' : 'bg-yellow-50 border-l-4 border-yellow-400'} rounded-md`}>
+                  <div className="flex">
+                    <div className="ml-3">
+                      <p className={`text-sm ${alertColor === 'red' ? 'text-red-800' : 'text-yellow-800'}`}>
+                        <strong>Alert:</strong> {alertMessage}
+                      </p>
+                      <p className="text-sm text-red-600 mt-1">
+                        <strong>Escalation:</strong> At least one document is required (LOI, WO, PO, or Email Approval)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
+          
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Document Uploads</h2>
+          <p className="text-sm text-gray-600 mb-4">Upload at least one of the following documents: LOI, WO, PO, or Email Approval</p>
+          
+                    {/* Agreement Duration */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Agreement Duration</label>
-            <div className="flex items-center gap-4 mb-2">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={isOpenAgreement}
-                  onChange={e => setIsOpenAgreement(e.target.checked)}
-                  className="mr-2"
-                />
-                Open Agreement (No End Date)
-              </label>
-              <span className="text-xs text-gray-500">
-                {isOpenAgreement
-                  ? "Only 'From Date' is required"
-                  : "Both 'From Date' and 'To Date' are required"}
-              </span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <h3 className="text-sm font-medium text-gray-700 mb-4">Agreement Duration</h3>
+            <label className="flex items-center mb-4">
+              <input
+                type="checkbox"
+                checked={formData.openAgreement}
+                onChange={(e) => handleInputChange('openAgreement', e.target.checked)}
+                className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <span className="text-sm font-medium text-gray-700">Open Agreement (No End Date)</span>
+            </label>
+            <p className="text-xs text-gray-500 mb-4">
+              {formData.openAgreement ? "Only 'From Date' is required" : "Both 'From Date' and 'To Date' are required"}
+            </p>
+
+            {/* Date Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">From Date *</label>
-                <DatePicker
-                  className="w-full border rounded-md p-2.5 text-sm"
-                  selected={startDate}
-                  onChange={date => setStartDate(date)}
-                  dateFormat="dd-MM-yyyy"
-                  placeholderText="dd-mm-yyyy"
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  From Date *
+                </label>
+                <input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => handleInputChange('startDate', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
                 />
               </div>
-              {!isOpenAgreement && (
+              {!formData.openAgreement && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">To Date *</label>
-                  <DatePicker
-                    className="w-full border rounded-md p-2.5 text-sm"
-                    selected={endDate}
-                    onChange={date => setEndDate(date)}
-                    dateFormat="dd-MM-yyyy"
-                    placeholderText="dd-mm-yyyy"
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    To Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) => handleInputChange('endDate', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
                   />
                 </div>
               )}
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8">
-                         {[
-                           "LOI (Letter of Intent)", 
-                           "WO (Work Order)", 
-                           "PO (Purchase Order)",
-                           "EmailApproval (Email Approval)"
-                         ].map((label) => {
-              const type = label.split(" ")[0];
-              const upload = uploadStatuses[type] || {};
-              return (
-                <div key={label} className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50">
-                    <span className="text-4xl mb-2" role="img" aria-label="upload">⬆️</span>
-                    <label className="bg-white border px-4 py-2 rounded mb-2 font-medium cursor-pointer">
-                      Choose File
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept=".pdf,.docx,.jpg,.jpeg,.png"
-                        onChange={e => handleUploadChange(type, e.target.files[0])}
-                      />
-                    </label>
-                    {upload.uploaded && upload.file && (
-                      <div className="flex flex-col items-center gap-2 mt-2">
-                        <span className="text-xs text-gray-700">{upload.file.name}</span>
-                        <div className="flex gap-2">
+
+          {/* Upload Areas */}
+          <div className="grid grid-cols-2 gap-4">
+            {Object.entries(formData.uploadStatuses).map(([type, status]) => (
+              <div key={type} className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <div className="flex flex-col items-center">
+                  <svg className="w-8 h-8 text-blue-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <div className="text-sm font-medium text-gray-700 mb-2">
+                    {type === 'LOI' ? 'LOI (Letter of Intent)' :
+                     type === 'WO' ? 'WO (Work Order)' :
+                     type === 'PO' ? 'PO (Purchase Order)' :
+                     type === 'EmailApproval' ? 'Email Approval (Email Approval)' : type}
+                  </div>
+                  {status.uploaded ? (
+                    <div className="space-y-3">
+                      <div className="text-green-600 text-sm font-medium">
+                        ✓ {status.file?.name || 'File uploaded'}
+                      </div>
+                      <div className="flex justify-center space-x-2">
                           <button
                             type="button"
-                            className="text-blue-600 underline text-xs"
                             onClick={() => {
-                              const url = URL.createObjectURL(upload.file);
+                            if (status.file) {
+                              const url = URL.createObjectURL(status.file);
                               window.open(url, '_blank');
+                            }
                             }}
+                          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           >
                             View
                           </button>
                           <button
                             type="button"
-                            className="text-red-600 text-xs"
-                            onClick={() => handleRemoveUpload(type)}
-                            title="Remove uploaded file"
+                          onClick={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              uploadStatuses: {
+                                ...prev.uploadStatuses,
+                                [type]: { uploaded: false, file: null }
+                              }
+                            }));
+                          }}
+                          className="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
                           >
                             Delete
                           </button>
                         </div>
                       </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <input
+                        type="file"
+                        onChange={(e) => handleFileUpload(type, e.target.files[0])}
+                        className="hidden"
+                        id={`upload-${type}`}
+                        accept=".pdf,.docx,.jpg,.jpeg,.png"
+                      />
+                      <label
+                        htmlFor={`upload-${type}`}
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                      >
+                        Choose File
+                      </label>
+                      <p className="text-xs text-gray-500 mt-2">
+                        or drag and drop your file here
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        Max size: 10MB - Allowed: pdf, docx, jpg, jpeg, png
+                      </p>
+                      </div>
                     )}
-                    <span className="text-gray-400 text-sm mb-2">or drag and drop your file here</span>
-                    <span className="text-xs text-gray-400">Max size: 10MB • Allowed: .pdf, .docx, .jpg, .jpeg, .png</span>
                   </div>
                 </div>
-              );
-            })}
+            ))}
           </div>
-        </section>
+        </div>
 
         {/* Remarks */}
-        <section className="mb-10">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Remarks</label>
-          <textarea className="w-full border rounded-md p-2.5 text-sm min-h-[80px]" placeholder="Add any additional remarks..." />
-        </section>
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Remarks</h2>
+          <textarea
+            value={formData.remarks}
+            onChange={(e) => handleInputChange('remarks', e.target.value)}
+            rows={4}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Add any additional remarks..."
+          />
+        </div>
 
         {/* Entity Type */}
-        <section className="mb-10">
-          <h2 className="text-xl font-bold mb-1 text-gray-900">Entity Type</h2>
-          <p className="text-gray-500 mb-6">Specify if this is a single entity or group agreement</p>
-          <div className="flex gap-8 mb-4 items-start">
-            <label className="flex items-center gap-2">
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Entity Type</h2>
+          <p className="text-sm text-gray-500 mb-4">Specify if this is a single entity or group agreement.</p>
+          <div className="flex space-x-6">
+            <label className="flex items-center">
               <input
                 type="radio"
-                checked={entityType === "single"}
-                onChange={() => setEntityType("single")}
+                value="single"
+                checked={formData.entityType === 'single'}
+                onChange={(e) => handleInputChange('entityType', e.target.value)}
+                className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
               />
-              Single Entity
+              <span className="text-sm font-medium text-gray-700">Single Entity</span>
             </label>
-            <div className="flex flex-col">
-              <label className="flex items-center gap-2">
+            <label className="flex items-center">
                 <input
                   type="radio"
-                  checked={entityType === "group"}
-                  onChange={() => setEntityType("group")}
-                />
-                Single Entity with Group Companies
+                value="multiple"
+                checked={formData.entityType === 'multiple'}
+                onChange={(e) => handleInputChange('entityType', e.target.value)}
+                className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+              />
+              <span className="text-sm font-medium text-gray-700">Single Entity with Group Companies</span>
               </label>
-              {entityType === "group" && (
-                <div className="flex flex-col gap-2 max-w-md mt-2 ml-6">
-                  {underList.map((input, key) => (
-                    <div key={key} className="flex items-center gap-2">
+          </div>
+
+          {/* Group Companies section */}
+          {formData.entityType === 'multiple' && (
+            <div className="mt-4">
+              {formData.groupCompanies.map((company, index) => (
+                <div key={index} className="flex items-center mb-2">
                       <input
-                        type={input.type}
-                        placeholder={input.placeholder}
-                        className={input.className}
-                        value={input.value || ""}
-                        onChange={e => {
-                          const updated = [...underList];
-                          updated[key].value = e.target.value;
-                          setUnderList(updated);
-                        }}
-                      />
-                      {underList.length > 1 && (
+                    type="text"
+                    value={company}
+                    onChange={(e) => updateGroupCompany(index, e.target.value)}
+                    placeholder="Under list/annexure"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {formData.groupCompanies.length > 1 && (
                         <button
                           type="button"
-                          className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-100"
-                          title="Remove"
-                          onClick={() => handleRemoveUnderList(key)}
+                      onClick={() => removeGroupCompany(index)}
+                      className="ml-2 w-6 h-6 bg-red-600 text-white rounded flex items-center justify-center hover:bg-red-700"
                         >
-                          <span className="text-lg font-bold">&#10060;</span>
+                      ×
                         </button>
                       )}
                     </div>
                   ))}
-                  <div className="">
                     <button
                       type="button"
-                      className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 mt-2"
-                      onClick={duplicateElement}
+                onClick={addGroupCompany}
+                className="mt-2 px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       +
                     </button>
-                  </div>
                 </div>
               )}
             </div>
-          </div>
-        </section>
 
         {/* Agreement Type Selection */}
-        <section className="mb-10">
-          <h2 className="text-xl font-bold mb-1 text-gray-900">Agreement Type Selection</h2>
-          <p className="text-gray-500 mb-6">Identify the origin of the agreement draft</p>
-          <div className="flex gap-8 mb-4 items-start">
-            <label className="flex items-center gap-2">
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Agreement Type Selection</h2>
+          <p className="text-sm text-gray-500 mb-4">Identify the origin of the agreement draft.</p>
+          <div className="flex space-x-6">
+            {agreementTypeOptions.map(type => (
+              <label key={type} className="flex items-center">
               <input
                 type="radio"
-                checked={agreementDraftType === "client"}
-                onChange={() => setAgreementDraftType("client")}
-              />
-              Client Draft
+                  name="agreementType"
+                  value={type}
+                  checked={formData.agreementType === type}
+                  onChange={(e) => handleInputChange('agreementType', e.target.value)}
+                  className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                />
+                <span className="text-sm font-medium text-gray-700">{type}</span>
             </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="radio"
-                checked={agreementDraftType === "ismart"}
-                onChange={() => setAgreementDraftType("ismart")}
-              />
-              iSmart Draft
-            </label>
+            ))}
           </div>
-        </section>
+        </div>
 
         {/* Important Clauses */}
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold mb-1 text-gray-900">Important Clauses</h2>
-          <p className="text-gray-500 mb-4 text-sm">Add important clauses and supporting documents</p>
-          <div className="space-y-3">
-            {clauses.map((clause, idx) => (
-              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50" key={idx}>
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Important Clauses</h2>
+          <p className="text-sm text-gray-500 mb-4">Add important clauses and supporting documents</p>
+          <div className="space-y-4">
+            {formData.importantClauses.map((clause, index) => (
+              <div key={index} className="bg-white p-4 rounded-lg border">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-gray-700">Clause {idx + 1}</span>
+                  <h3 className="text-sm font-medium text-gray-700">Clause {index + 1}</h3>
                   <button
                     type="button"
-                    className="focus:outline-none text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900"
-                    onClick={() => handleRemoveClause(idx)}
+                    onClick={() => removeClause(index)}
+                    className="w-6 h-6 bg-red-600 text-white rounded flex items-center justify-center hover:bg-red-700"
                   >
-                    ✕
+                    ×
                   </button>
                 </div>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                  {/* Title Input */}
-                  <div className="lg:col-span-2">
+                                {/* Clause Title Input */}
+                <div className="mb-3">
                     <input
-                      className="w-full border rounded-md p-2 text-sm bg-white"
-                      placeholder="Enter clause title"
+                    type="text"
                       value={clause.title}
-                      onChange={e => {
-                        const newClauses = [...clauses];
-                        newClauses[idx].title = e.target.value;
-                        setClauses(newClauses);
-                      }}
+                    onChange={(e) => updateClause(index, 'title', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter clause title..."
                     />
                   </div>
                   
-                  {/* File Upload */}
-                  <div className="flex flex-col">
-                    <label className="bg-white border border-gray-300 px-3 py-2 rounded text-sm cursor-pointer hover:bg-gray-50 text-center">
-                      📎 {uploadStatuses[`clause-${idx}`]?.uploaded ? 'Change File' : 'Upload File'}
+                {/* File Management Section */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    {!clause.file ? (
+                      <div>
                       <input
                         type="file"
+                          onChange={(e) => handleClauseFileUpload(index, e.target.files[0])}
                         className="hidden"
-                        accept=".pdf,.docx,.jpg,.jpeg,.png"
-                        onChange={e => handleUploadChange(`clause-${idx}`, e.target.files[0])}
-                      />
+                          id={`clause-file-${index}`}
+                          accept=".pdf,.doc,.docx"
+                        />
+                        <label
+                          htmlFor={`clause-file-${index}`}
+                          className="inline-flex items-center px-3 py-1 text-sm text-blue-600 hover:text-blue-800 cursor-pointer"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                          </svg>
+                          Upload File
                     </label>
-                    {uploadStatuses[`clause-${idx}`]?.uploaded && uploadStatuses[`clause-${idx}`].file && (
-                      <div className="mt-1 text-xs text-gray-600">
-                        <div className="flex items-center gap-1">
-                          <span className="truncate">{uploadStatuses[`clause-${idx}`].file.name}</span>
                         </div>
-                        <div className="flex gap-2 mt-1">
+                    ) : (
+                      <div>
                           <button
                             type="button"
-                            className="text-blue-600 hover:underline"
                             onClick={() => {
-                              const url = URL.createObjectURL(uploadStatuses[`clause-${idx}`].file);
+                            const input = document.getElementById(`clause-file-${index}`);
+                            input.click();
+                          }}
+                          className="inline-flex items-center px-3 py-1 text-sm text-blue-600 hover:text-blue-800"
+                        >
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                          </svg>
+                          Change File
+                        </button>
+                        <div className="mt-1">
+                          <p className="text-xs text-gray-500 truncate max-w-xs">{clause.file.name}</p>
+                          <div className="flex space-x-2 mt-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const url = URL.createObjectURL(clause.file);
                               window.open(url, '_blank');
                             }}
+                              className="text-xs text-blue-600 hover:text-blue-800"
                           >
                             View
                           </button>
                           <button
                             type="button"
-                            className="text-red-600 hover:underline"
-                            onClick={() => handleRemoveUpload(`clause-${idx}`)}
+                              onClick={() => updateClause(index, 'file', null)}
+                              className="text-xs text-red-600 hover:text-red-800"
                           >
                             Delete
                           </button>
+                          </div>
                         </div>
                       </div>
                     )}
                   </div>
                 </div>
                 
-                {/* Clause Details */}
-                <div className="mt-3">
+                {/* Clause Details Input */}
                   <textarea
-                    className="w-full border rounded-md p-2 text-sm resize-none"
-                    rows="2"
+                  value={clause.content}
+                  onChange={(e) => updateClause(index, 'content', e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Enter clause details..."
-                    value={clause.details || ''}
-                    onChange={e => {
-                      const newClauses = [...clauses];
-                      newClauses[idx].details = e.target.value;
-                      setClauses(newClauses);
-                    }}
-                  />
-                </div>
+                />
               </div>
             ))}
-            
+          </div>
             <button
               type="button"
-              className="w-full border-2 border-dashed border-gray-300 px-4 py-2 rounded-lg font-medium flex items-center justify-center gap-2 hover:border-gray-400 hover:bg-gray-50 text-gray-600"
-              onClick={handleAddClause}
+            onClick={addClause}
+            className="mt-4 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
             >
-              <span className="text-lg">＋</span> Add Clause
+            + Add Clause
             </button>
           </div>
-        </section>
 
         {/* Contact Information */}
-        <section className="mb-10">
-          <h2 className="text-xl font-bold mb-1 text-gray-900">Contact Information</h2>
-          <p className="text-gray-500 mb-6">Contact details for I Smart and Client</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <button className="border px-4 py-1 rounded-full font-medium mb-2">I Smart</button>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Contact Name
+              </label>
               <input
-                className="w-full border rounded-md p-2.5 text-sm mb-2"
-                placeholder="Enter name"
-                name="iSmartName"
-                value={form.iSmartName}
-                onChange={handleChange}
-                onFocus={() => console.log('iSmartName field focused')}
-                onBlur={() => console.log('iSmartName field blurred')}
-              />
-                             <input
                 type="text"
-                className="w-full border rounded-md p-2.5 text-sm mb-2"
-                placeholder="Enter phone number"
-                name="iSmartContact"
-                value={form.iSmartContact}
-                onChange={handleChange}
-                onFocus={() => console.log('iSmartContact field focused')}
-                onBlur={() => console.log('iSmartContact field blurred')}
+                value={formData.contactInfo.name}
+                onChange={(e) => handleInputChange('contactInfo', { ...formData.contactInfo, name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter name"
               />
-              {errors.iSmartContact && (
-                <div className="text-red-600 text-xs mb-2">{errors.iSmartContact}</div>
-              )}
-              <input
-                className="w-full border rounded-md p-2.5 text-sm mb-2"
-                placeholder="Enter email"
-                name="iSmartEmail"
-                value={form.iSmartEmail}
-                onChange={handleChange}
-                onFocus={() => console.log('iSmartEmail field focused')}
-                onBlur={() => console.log('iSmartEmail field blurred')}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email
+              </label>
+                             <input
+                type="email"
+                value={formData.contactInfo.email}
+                onChange={(e) => {
+                  handleInputChange('contactInfo', { ...formData.contactInfo, email: e.target.value });
+                  if (validationErrors.email) {
+                    setValidationErrors(prev => ({ ...prev, email: '' }));
+                  }
+                }}
+                onBlur={() => {
+                  if (formData.contactInfo.email && !validateEmail(formData.contactInfo.email)) {
+                    setValidationErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  validationErrors.email ? 'border-red-500' : 'border-gray-300'
+                }`}
+                placeholder="Enter email address"
               />
-              {errors.iSmartEmail && (
-                <div className="text-red-600 text-xs mb-2">{errors.iSmartEmail}</div>
+              {validationErrors.email && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
               )}
             </div>
             <div>
-              <button className="border px-4 py-1 rounded-full font-medium mb-2">Client</button>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Phone
+              </label>
               <input
-                className="w-full border rounded-md p-2.5 text-sm mb-2"
-                placeholder="Enter name"
-                name="clientName"
-                value={form.clientName}
-                onChange={handleChange}
-                onFocus={() => console.log('clientName field focused')}
-                onBlur={() => console.log('clientName field blurred')}
-              />
-                             <input
-                type="text"
-                className="w-full border rounded-md p-2.5 text-sm mb-2"
+                type="tel"
+                value={formData.contactInfo.phone}
+                onChange={(e) => {
+                  handleInputChange('contactInfo', { ...formData.contactInfo, phone: e.target.value });
+                  if (validationErrors.phone) {
+                    setValidationErrors(prev => ({ ...prev, phone: '' }));
+                  }
+                }}
+                onBlur={() => {
+                  if (formData.contactInfo.phone && !validatePhone(formData.contactInfo.phone)) {
+                    setValidationErrors(prev => ({ ...prev, phone: 'Please enter a valid phone number' }));
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  validationErrors.phone ? 'border-red-500' : 'border-gray-300'
+                }`}
                 placeholder="Enter phone number"
-                name="clientContact"
-                value={form.clientContact}
-                onChange={handleChange}
-                onFocus={() => console.log('clientContact field focused')}
-                onBlur={() => console.log('clientContact field blurred')}
               />
-              {errors.clientContact && (
-                <div className="text-red-600 text-xs mb-2">{errors.clientContact}</div>
-              )}
-              <input
-                className="w-full border rounded-md p-2.5 text-sm mb-2"
-                placeholder="Enter email"
-                name="clientEmail"
-                value={form.clientEmail}
-                onChange={handleChange}
-                onFocus={() => console.log('clientEmail field focused')}
-                onBlur={() => console.log('clientEmail field blurred')}
-              />
-              {errors.clientEmail && (
-                <div className="text-red-600 text-xs mb-2">{errors.clientEmail}</div>
+              {validationErrors.phone && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.phone}</p>
               )}
             </div>
           </div>
-        </section>
+        </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-end gap-4 mt-8 items-start">
-          {/* Draft chip to the left */}
-          {draft && (
-            <div className="flex items-center mr-4">
+        <div className="flex justify-end space-x-4">
               <button
                 type="button"
-                className="flex items-center bg-gray-100 border border-gray-300 rounded-full px-4 py-1 text-sm font-medium text-gray-800 hover:bg-gray-200 transition mr-2 shadow"
-                onClick={() => {
-                  // Load draft into form
-                  setForm(draft.form);
-                  setClauses(draft.clauses);
-                  setUnderList(draft.underList);
-                  setEntityType(draft.entityType);
-                  setAgreementDraftType(draft.agreementDraftType || "client");
-                  // Don't automatically change user role from draft to prevent fake filler issues
-                  // setUserRole(draft.userRole);
-                  setSelectedClient(draft.selectedClient);
-                  // Update availableSites based on selectedClient
-                  const clientObj = clientsData.find(c => c.name === draft.selectedClient);
-                  setAvailableBranches(clientObj ? clientObj.branches : []);
-                  setSelectedBranches(draft.selectedBranches);
-                  setUploadStatuses(draft.uploadStatuses);
-                  setStartDate(new Date(draft.startDate));
-                  setEndDate(new Date(draft.endDate));
-                  setIsOpenAgreement(draft.isOpenAgreement || false); // Set the new state from draft
-                }}
-                title="Open draft for editing"
-              >
-                <span className="truncate max-w-[120px]">Draft</span>
-              </button>
-              <button
-                type="button"
-                className="ml-1 text-gray-400 hover:text-red-500 focus:outline-none"
-                onClick={() => setDraft(null)}
-                title="Remove draft"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-          )}
-          {/* Addendum Button - Only show for existing agreements */}
-          {isEditMode && editingAgreement && (
-            <button
-              type="button"
-              className="bg-purple-600 text-white px-6 py-2 rounded font-medium hover:bg-purple-700 mr-4"
-              onClick={() => {
-                // This will be handled by the parent component to show addendum form
-                if (props.onCreateAddendum) {
-                  props.onCreateAddendum(editingAgreement);
-                }
-              }}
-              title="Create Addendum for this agreement"
-            >
-              📝 Create Addendum
-            </button>
-          )}
-          
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              className="border px-6 py-2 rounded font-medium bg-white hover:bg-gray-100"
-              onClick={() => {
-                // Save draft to state
-                const draftData = {
-                  form,
-                  clauses,
-                  underList,
-                  entityType,
-                  agreementDraftType,
-                  userRole,
-                  selectedClient,
-                  selectedBranches,
-                  uploadStatuses,
-                  startDate,
-                  endDate,
-                  isOpenAgreement // Add the new state to the draft
-                };
-                setDraft(draftData);
-                setDraftSaved(true);
-                setTimeout(() => setDraftSaved(false), 2000);
-              }}
+            onClick={() => handleSubmit('draft')}
+            className="px-6 py-2 border border-blue-600 text-blue-600 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               Save Draft
             </button>
-            {draftSaved && (
-              <div className="text-green-700 bg-green-100 border-l-4 border-green-500 p-2 rounded text-xs">Draft saved successfully!</div>
-            )}
-          </div>
           <button
             type="button"
-            className="bg-black text-white px-6 py-2 rounded font-medium hover:bg-gray-900"
-            onClick={handleSubmit}
+            onClick={() => handleSubmit('submit')}
+            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            {isEditMode ? 'Update Agreement' : 'Submit for Review'}
+            Submit for Review
           </button>
-          {isEditMode && (
-            <button
-              type="button"
-              className="bg-gray-500 text-white px-6 py-2 rounded font-medium hover:bg-gray-600 ml-2"
-              onClick={() => {
-                if (onEditComplete) onEditComplete();
-              }}
-            >
-              Cancel Edit
-            </button>
-          )}
         </div>
-        {/* Submission Success Modal */}
-        {showSuccessModal && (
-          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-30">
-            <div className="bg-white p-8 rounded shadow-xl flex flex-col items-center">
-              <div className="text-2xl font-bold mb-2 text-green-700">Submission Successful!</div>
-              <div className="mb-4 text-gray-700">Your agreement has been submitted for review.</div>
-              <button
-                className="mt-2 px-6 py-2 rounded bg-blue-600 text-white font-medium hover:bg-blue-700"
-                onClick={() => setShowSuccessModal(false)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        )}
-        {/* Submission Error Modal */}
-        {showErrorModal && (
-          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-30">
-            <div className="bg-white p-8 rounded shadow-xl flex flex-col items-center">
-              <div className="text-2xl font-bold mb-2 text-red-700">Submission Blocked</div>
-              <div className="mb-4 text-gray-700">{errorModalMessage}</div>
-              <button
-                className="mt-2 px-6 py-2 rounded bg-blue-600 text-white font-medium hover:bg-blue-700"
-                onClick={() => setShowErrorModal(false)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        )}
       </form>
-    </div>
   </div>
   );
 };

@@ -115,8 +115,28 @@ const AgreementCards = ({
 
   // Get addendums for a specific agreement
   const getAgreementAddendums = (agreementId) => {
-    return addendums.filter(addendum => addendum.parentAgreementId === agreementId);
+    return (addendums || []).filter(addendum => addendum.parentAgreementId === agreementId);
   };
+
+  // Component is ready to render
+
+  // Show loading state if agreements are not yet loaded
+  if (!agreements || agreements.length === 0) {
+    return (
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="bg-white rounded-lg shadow-lg border border-gray-200">
+          <div className="p-6 border-b border-gray-200">
+            <h1 className="text-3xl font-bold text-gray-900">Agreements</h1>
+            <p className="text-sm text-gray-600 mt-2">Manage and review all agreements in chronological order</p>
+          </div>
+          <div className="p-6 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading agreements...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (showAddendumForm) {
     return (

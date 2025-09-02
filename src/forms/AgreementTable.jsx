@@ -766,7 +766,7 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
                     )}
                     
                     {/* Status Change Section - Only for Approvers */}
-                    {userRole?.toLowerCase() === "approver" && (
+                      {userRole?.toLowerCase() === "approver" && (
                       <div className="border-t border-gray-200 pt-4 mb-4">
                         <h5 className="font-semibold text-gray-800 mb-3 text-sm">Change Status</h5>
                         
@@ -789,7 +789,7 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
                             </select>
                             
                             {pendingStatusChanges[addendum.id] && pendingStatusChanges[addendum.id] !== addendum.status && (
-                              <button
+                          <button
                                 onClick={() => {
                                   const addendumId = addendum.id;
                                   const newStatus = pendingStatusChanges[addendum.id];
@@ -808,15 +808,15 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
                                 className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
                               >
                                 Save Status
-                              </button>
+                          </button>
                             )}
-                            
-                            <button
+                          
+                          <button
                               onClick={onClose}
                               className="px-4 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
                             >
                               Close
-                            </button>
+                          </button>
                           </div>
                         </div>
                         
@@ -834,18 +834,18 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
 
                     {/* Action Buttons */}
                     <div className="flex justify-end pt-4 border-t border-gray-200">
-                      <button
+                          <button
                         onClick={() => handleViewAddendum(addendum)}
                         className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded hover:bg-blue-200 cursor-pointer transition-colors"
                         title="Click to view full addendum details"
                       >
                         👁️ View Full Details
-                      </button>
+                          </button>
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
+                        </div>
+                      )}
           </div>
         )}
       </div>
@@ -1294,6 +1294,90 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
      doc.save(filename);
    };
 
+  // Update data when agreements prop changes
+  React.useEffect(() => {
+    setData(transformedData);
+  }, [agreements]);
+
+  // Missing state variables that were removed
+  const [progressNotes, setProgressNotes] = useState({});
+  const [statusDates, setStatusDates] = useState({});
+
+  // Missing helper functions that were removed
+  const getAllBranches = (agreement) => {
+    if (!agreement.selectedBranches || agreement.selectedBranches.length === 0) {
+      return "Not specified";
+    }
+    return agreement.selectedBranches.map(branch => branch.name).join(", ");
+  };
+
+  const getDocumentStatus = (agreement, docType) => {
+    if (!agreement.uploadStatuses || !agreement.uploadStatuses[docType] || !agreement.uploadStatuses[docType].uploaded) {
+      return null;
+    }
+    
+    return (
+      <span className="text-blue-600 hover:text-blue-800 underline text-xs font-medium cursor-pointer transition-colors">
+        {docType}
+      </span>
+    );
+  };
+
+  const getImportantClauses = (agreement) => {
+    if (!agreement.importantClauses || agreement.importantClauses.length === 0) {
+      return <span className="text-gray-400 text-xs">No clauses specified</span>;
+    }
+    
+    return (
+      <div className="space-y-1">
+        {agreement.importantClauses.slice(0, 3).map((clause, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <span className="text-blue-600 hover:text-blue-800 underline text-xs font-medium cursor-pointer transition-colors">
+              {clause.title || clause}
+            </span>
+            {/* Addendum modification indicator */}
+            {clause.modified && (
+              <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700 border border-orange-200">
+                🔄 Modified
+              </span>
+            )}
+            {/* Document icon */}
+            <span className="text-gray-500 text-xs">📋</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Handlers for progress notes and status dates
+  const handleProgressNoteChange = (agreementId, value) => {
+    setProgressNotes(prev => ({
+      ...prev,
+      [agreementId]: value
+    }));
+  };
+
+  const handleStatusDateChange = (agreementId, value) => {
+    setStatusDates(prev => ({
+      ...prev,
+      [agreementId]: value
+    }));
+  };
+
+  const handleSaveProgress = (agreementId) => {
+    console.log("Saving progress for agreement:", agreementId, {
+      notes: progressNotes[agreementId],
+      date: statusDates[agreementId]
+    });
+    alert("Progress saved successfully!");
+  };
+
+  // Handle addendum status updates
+  const handleAddendumStatusUpdate = (addendumId, newStatus) => {
+    console.log("Updating addendum status:", addendumId, "to:", newStatus);
+    alert(`Addendum status updated to ${newStatus} successfully!`);
+   };
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
               {/* Show export buttons for all roles now that checkers can see agreements */}
@@ -1439,15 +1523,15 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                                  <tr>
+                <tr>
                     <td colSpan="11" className="px-4 py-8 text-center text-gray-500">
-                      {userRole?.toLowerCase() === "checker" 
-                        ? "No agreements submitted yet. Use the 'New Agreement' tab to create your first agreement."
-                        : "No agreements submitted yet. Agreements submitted by checkers will appear here."
-                      }
-                    </td>
-                  </tr>
-               ) : (
+                    {userRole?.toLowerCase() === "checker" 
+                      ? "No agreements submitted yet. Use the 'New Agreement' tab to create your first agreement."
+                      : "No agreements submitted yet. Agreements submitted by checkers will appear here."
+                    }
+                  </td>
+                </tr>
+              ) : (
                  filtered.map((row, i) => (
                    <tr key={row.id} className={`${i % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-blue-50 border-b border-gray-100 transition-colors`}>
                      <td className="px-6 py-4 text-center">{i + 1}</td>
@@ -1476,10 +1560,10 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                        />
                      </td>
                      <td className="px-6 py-4">
-                       {priorityBadge(row.priority)}
-                     </td>
+                         {priorityBadge(row.priority)}
+                       </td>
                      <td className="px-6 py-4 min-w-[200px]">
-                       {/* Status Badge */}
+                         {/* Status Badge */}
                        <div className="mb-3">
                          <span className={`px-3 py-2 rounded-full text-sm font-medium ${
                            row.status === "Execution Pending" ? "bg-yellow-100 text-yellow-700" :
@@ -1490,54 +1574,54 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                          }`}>
                            {row.status}
                          </span>
-                       </div>
-                       
-                       {/* Status Progress Input - Only show for non-final statuses */}
-                       {row.status !== "Approved" && (
+                         </div>
+                         
+                         {/* Status Progress Input - Only show for non-final statuses */}
+                         {row.status !== "Approved" && (
                          <div className="space-y-3">
-                           <textarea
+                             <textarea
                              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
-                             placeholder="Enter progress notes..."
-                             rows="2"
-                             value={row.statusProgress?.notes || ""}
-                             onChange={(e) => handleStatusProgressUpdate(row.id, "notes", e.target.value)}
-                           />
-                           
-                           <div className="flex items-center gap-2">
-                             <input
-                               type="date"
-                               className="border border-gray-300 rounded-md px-3 py-2 text-sm flex-1 focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
-                               value={row.statusProgress?.date || ""}
-                               onChange={(e) => handleStatusProgressUpdate(row.id, "date", e.target.value)}
+                               placeholder="Enter progress notes..."
+                               rows="2"
+                               value={row.statusProgress?.notes || ""}
+                               onChange={(e) => handleStatusProgressUpdate(row.id, "notes", e.target.value)}
                              />
-                             <button
+                             
+                             <div className="flex items-center gap-2">
+                               <input
+                                 type="date"
+                               className="border border-gray-300 rounded-md px-3 py-2 text-sm flex-1 focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
+                                 value={row.statusProgress?.date || ""}
+                                 onChange={(e) => handleStatusProgressUpdate(row.id, "date", e.target.value)}
+                               />
+                               <button
                                className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors"
-                               onClick={() => handleSaveStatusProgress(row.id)}
-                               title="Save progress"
+                                 onClick={() => handleSaveStatusProgress(row.id)}
+                                 title="Save progress"
+                               >
+                                 Save
+                               </button>
+                             </div>
+                             
+                             <button
+                             className="w-full text-blue-600 underline text-sm hover:text-blue-800 transition-colors"
+                               onClick={() => handleViewStatusHistory(row.id, row.client)}
+                               title="View status history"
                              >
-                               Save
+                               ▶ View History ({row.statusHistory?.length || 0})
                              </button>
                            </div>
-                           
-                           <button
-                             className="w-full text-blue-600 underline text-sm hover:text-blue-800 transition-colors"
-                             onClick={() => handleViewStatusHistory(row.id, row.client)}
-                             title="View status history"
-                           >
-                             ▶ View History ({row.statusHistory?.length || 0})
-                           </button>
-                         </div>
-                       )}
-                       
-                       {/* Final Status Message for Approved */}
-                       {row.status === "Approved" && (
+                         )}
+                         
+                         {/* Final Status Message for Approved */}
+                         {row.status === "Approved" && (
                          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700">
-                           ✓ Approved - No further action required
-                         </div>
-                       )}
-                     </td>
+                             ✓ Approved - No further action required
+                           </div>
+                         )}
+                       </td>
                        
-                     {/* Addendums Count Column */}
+                       {/* Addendums Count Column */}
                      <td className="px-6 py-4 text-center">
                          {row.addendumsCount > 0 ? (
                            <div className="flex flex-col gap-2">
@@ -1548,21 +1632,21 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                                </span>
 
                                
-                                                               {/* View Button - Shows dropdown for multiple addendums */}
-                                {row.addendumsCount > 1 ? (
-                                  <div className="relative" ref={dropdownRef}>
-                                    <button
-                                      onClick={() => {
-                                        // Toggle dropdown for this row
-                                        const newDropdownOpen = { ...dropdownOpen };
-                                        newDropdownOpen[row.id] = !newDropdownOpen[row.id];
-                                        setDropdownOpen(newDropdownOpen);
-                                      }}
+                               {/* View Button - Shows dropdown for multiple addendums */}
+                               {row.addendumsCount > 1 ? (
+                                 <div className="relative" ref={dropdownRef}>
+                                   <button
+                                     onClick={() => {
+                                       // Toggle dropdown for this row
+                                       const newDropdownOpen = { ...dropdownOpen };
+                                       newDropdownOpen[row.id] = !newDropdownOpen[row.id];
+                                       setDropdownOpen(newDropdownOpen);
+                                     }}
                                       className="p-1 text-gray-600 hover:text-gray-900 rounded-full transition-colors"
-                                      title="Select addendum to view"
-                                    >
+                                     title="Select addendum to view"
+                                   >
                                       <span className="text-lg">👁️</span>
-                                    </button>
+                                   </button>
                                    
                                    {/* Dropdown Menu */}
                                    {dropdownOpen[row.id] && (
@@ -1612,21 +1696,21 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                                    )}
                                  </div>
                                ) : (
-                                                                   /* Single addendum - direct view button */
-                                  <button
-                                    onClick={() => {
+                                 /* Single addendum - direct view button */
+                                 <button
+                                   onClick={() => {
                                       const singleAddendum = addendums.find(addendum => 
-                                        addendum.parentAgreementId === row.originalAgreement.id
-                                      );
-                                      if (singleAddendum) {
-                                        handleViewAddendum(singleAddendum);
-                                      }
-                                    }}
+                                       addendum.parentAgreementId === row.originalAgreement.id
+                                     );
+                                     if (singleAddendum) {
+                                       handleViewAddendum(singleAddendum);
+                                     }
+                                   }}
                                     className="p-1 text-gray-600 hover:text-gray-900 rounded-full transition-colors"
-                                    title="View addendum"
-                                  >
+                                   title="View addendum"
+                                 >
                                     <span className="text-lg">👁️</span>
-                                  </button>
+                                 </button>
                                )}
                              </div>
                            </div>
@@ -1638,38 +1722,38 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                      {/* Actions Column */}
                      <td className="px-6 py-4 text-center">
                        <div className="flex flex-col gap-3">
-                         {/* Review Button - For both roles */}
-                         <button 
+                            {/* Review Button - For both roles */}
+                            <button 
                            className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 transition-colors font-medium" 
-                           title="Review & Take Action" 
-                           onClick={() => setDetails({ open: true, agreement: row })}
-                         >
-                           Review
-                         </button>
-                         
-                         {/* Edit Agreement Button - Only for Checker role */}
-                         {userRole === "checker" && (
-                           <button 
+                              title="Review & Take Action" 
+                              onClick={() => setDetails({ open: true, agreement: row })}
+                            >
+                              Review
+                            </button>
+                            
+                            {/* Edit Agreement Button - Only for Checker role */}
+                            {userRole === "checker" && (
+                              <button 
                              className="bg-orange-600 text-white px-4 py-2 rounded-md text-sm hover:bg-orange-700 transition-colors font-medium" 
-                             title="Edit Agreement" 
-                             onClick={() => handleEditAgreement(row.originalAgreement)}
-                           >
+                                title="Edit Agreement" 
+                                onClick={() => handleEditAgreement(row.originalAgreement)}
+                              >
                              Edit
-                           </button>
-                         )}
-                         
-                         {/* Add Addendum Button - Only for Checker role */}
-                         {userRole === "checker" && (
-                           <button 
+                              </button>
+                            )}
+                            
+                            {/* Add Addendum Button - Only for Checker role */}
+                            {userRole === "checker" && (
+                              <button 
                              className="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700 transition-colors font-medium" 
-                             title="Create New Addendum" 
-                             onClick={() => handleCreateAddendum(row.originalAgreement)}
-                           >
+                                title="Create New Addendum" 
+                                onClick={() => handleCreateAddendum(row.originalAgreement)}
+                              >
                              Add Addendum
-                           </button>
-                         )}
-                       </div>
-                     </td>
+                              </button>
+                            )}
+                          </div>
+                        </td>
                    </tr>
                  ))
                )}
@@ -2018,11 +2102,11 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                     >
                       Close
                     </button>
-                  </div>
+                          </div>
                   
                   <div className="text-sm text-gray-600 mb-2">
                     Current Status: <span className="font-semibold">{addendumDetailsModal.addendum.status}</span>
-                  </div>
+                        </div>
                   
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                     <p className="text-blue-800 text-sm">
@@ -2126,4 +2210,3 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
      </div>
    );
  }
- 

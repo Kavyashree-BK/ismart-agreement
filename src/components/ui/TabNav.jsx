@@ -1,27 +1,56 @@
-import React from "react";
+import React, { useMemo, useCallback } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { setActiveTab, closeAllModals, resetEditingState } from "../../slice/uiSlice";
 
-// Tab order: Dashboard -> New Agreement -> Agreements -> Addendums (FIXED)
-const TabNav = ({ activeTab, setActiveTab }) => (
-  <nav className="flex gap-2 px-8 pt-6 pb-2 bg-white">
-    {[
-      { label: "Dashboard", value: "dashboard" },
-      { label: "New Agreement", value: "new" },
-      { label: "Agreements", value: "agreements" },
-      { label: "Addendums", value: "addendums" },
-    ].map(tab => (
-      <button
-        key={tab.value}
-        className={`px-5 py-2 rounded font-medium border transition-colors duration-150 ${
-          activeTab === tab.value
-            ? "bg-gray-100 border-gray-300 text-black shadow"
-            : "bg-white border-transparent text-gray-600 hover:bg-gray-50"
-        }`}
-        onClick={() => setActiveTab(tab.value)}
-      >
-        {tab.label}
-      </button>
-    ))}
-  </nav>
-);
+export default function TabNav() {
+  const dispatch = useDispatch();
+  const user = useSelector(state => state.user);
+  const activeTab = useSelector(state => state.ui.activeTab);
 
-export default TabNav; 
+  // Memoize tabs array to prevent unnecessary re-renders
+  const tabs = useMemo(() => {
+    if (user.role === "Checker") {
+      return [
+        { id: "dashboard", label: "Dashboard", icon: "📊" },
+        { id: "new", label: "New Agreement", icon: "📝" },
+        { id: "agreements", label: "Agreements", icon: "📋" }
+      ];
+    } else {
+      return [
+        { id: "dashboard", label: "Dashboard", icon: "📊" },
+        { id: "agreements", label: "Agreements", icon: "📋" },
+        { id: "history", label: "History", icon: "📚" }
+      ];
+    }
+  }, [user.role]);
+
+  // Memoize the tab click handler
+  const handleTabClick = useCallback((tabId) => {
+    dispatch(setActiveTab(tabId));
+    dispatch(closeAllModals());
+    dispatch(resetEditingState());
+  }, [dispatch]);
+
+  return (
+    <nav className="bg-white border-b border-gray-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex space-x-8">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => handleTabClick(tab.id)}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === tab.id
+                  ? "border-green-500 text-green-600 bg-green-50" // EXACTLY like reference image
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              <span className="mr-2">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </nav>
+  );
+} 

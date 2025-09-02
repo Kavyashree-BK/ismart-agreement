@@ -1,8 +1,8 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  role: null,
-  name: '',
+  role: 'Checker', // Set default role
+  name: 'Demo User', // Set default name
 };
 
 const userSlice = createSlice({

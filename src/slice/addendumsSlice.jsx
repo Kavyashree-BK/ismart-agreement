@@ -1,0 +1,229 @@
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+
+// Helper function to format date without timezone
+const formatDateWithoutTimezone = (date) => {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  const milliseconds = String(d.getMilliseconds()).padStart(3, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}`;
+};
+
+// Demo addendums data - EXACTLY 2 addendums like the old UI
+const demoAddendums = [
+  {
+    id: "ADD001",
+    title: "Extension of Service Period",
+    description: "Extend the service period by 6 months due to project delays",
+    reason: "Client requested extension due to unforeseen project delays and additional requirements",
+    impact: "Service period extended from 12 months to 18 months. No change in pricing or terms.",
+    effectiveDate: formatDateWithoutTimezone(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+    submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)),
+    submittedBy: "checker",
+    status: "Approved",
+    parentAgreementId: "STATIC-001",
+    parentAgreementTitle: "TechCorp Solutions",
+    isDemo: true,
+    uploadedFiles: {
+      supportingDoc: { uploaded: true, name: "extension_request.pdf", isDemo: true },
+      amendmentDoc: { uploaded: true, name: "amendment_agreement.pdf", isDemo: true }
+    },
+    clauseModifications: [
+      {
+        clauseNumber: "1",
+        clauseTitle: "Term and termination (Duration)",
+        modificationType: "Modified",
+        details: "Duration extended from 12 months to 18 months",
+        previousValue: "12 months",
+        newValue: "18 months"
+      },
+      {
+        clauseNumber: "2",
+        clauseTitle: "Payment Terms",
+        modificationType: "Modified",
+        details: "Payment terms adjusted to accommodate extended period",
+        previousValue: "15 days",
+        newValue: "30 days"
+      }
+    ],
+    version: "1.0.0",
+    versionHistory: [
+      {
+        version: "1.0.0",
+        date: formatDateWithoutTimezone(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)),
+        type: "initial",
+        description: "Initial addendum submission",
+        modifiedBy: "checker",
+        changes: ["Service period extension", "Payment terms adjustment"]
+      }
+    ]
+  },
+  {
+    id: "ADD002",
+    title: "Additional Service Requirements",
+    description: "Add new service requirements for enhanced client support",
+    reason: "Client requested additional support services and monitoring capabilities",
+    impact: "Additional monthly cost of $2,000 for enhanced services. Improved client satisfaction.",
+    effectiveDate: formatDateWithoutTimezone(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000)),
+    submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)),
+    submittedBy: "checker",
+    status: "Pending Review",
+    parentAgreementId: "STATIC-002",
+    parentAgreementTitle: "Global Industries",
+    isDemo: true,
+    uploadedFiles: {
+      supportingDoc: { uploaded: true, name: "service_requirements.pdf", isDemo: true },
+      amendmentDoc: { uploaded: true, name: "service_amendment.pdf", isDemo: true }
+    },
+    clauseModifications: [
+      {
+        clauseNumber: "3",
+        clauseTitle: "Service Level Agreement",
+        modificationType: "Modified",
+        details: "Enhanced SLA with 24/7 support and monitoring",
+        previousValue: "Business hours support",
+        newValue: "24/7 support with monitoring"
+      }
+    ],
+    version: "1.0.0",
+    versionHistory: [
+      {
+        version: "1.0.0",
+        date: formatDateWithoutTimezone(new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)),
+        type: "initial",
+        description: "Initial addendum submission for additional services",
+        modifiedBy: "checker",
+        changes: ["Enhanced SLA", "24/7 support", "Monitoring services"]
+      }
+    ]
+  }
+];
+
+const initialState = {
+  addendums: demoAddendums,
+  loading: false,
+  error: null
+};
+
+// Async thunks for future API integration
+export const fetchAddendums = createAsyncThunk(
+  'addendums/fetchAddendums',
+  async () => {
+    // Simulate API call
+    return new Promise(resolve => setTimeout(() => resolve(demoAddendums), 1000));
+  }
+);
+
+export const createAddendum = createAsyncThunk(
+  'addendums/createAddendum',
+  async (addendumData) => {
+    // Simulate API call
+    const newAddendum = {
+      ...addendumData,
+      id: `ADD${Date.now()}`,
+      submittedDate: new Date().toISOString(),
+      version: "1.0.0",
+      isDemo: false
+    };
+    return newAddendum;
+  }
+);
+
+export const updateAddendumStatus = createAsyncThunk(
+  'addendums/updateAddendumStatus',
+  async ({ addendumId, newStatus }) => {
+    // Simulate API call
+    return { addendumId, newStatus };
+  }
+);
+
+const addendumsSlice = createSlice({
+  name: 'addendums',
+  initialState,
+  reducers: {
+    addAddendum: (state, action) => {
+      state.addendums.push(action.payload);
+    },
+    updateAddendum: (state, action) => {
+      const { id, updates } = action.payload;
+      const addendum = state.addendums.find(add => add.id === id);
+      if (addendum) {
+        Object.assign(addendum, updates);
+        // Add to version history
+        if (!addendum.versionHistory) addendum.versionHistory = [];
+        addendum.versionHistory.push({
+          version: addendum.version,
+          date: new Date().toISOString(),
+          type: "update",
+          description: "Addendum updated",
+          modifiedBy: "system",
+          changes: Object.keys(updates)
+        });
+      }
+    },
+    removeAddendum: (state, action) => {
+      state.addendums = state.addendums.filter(add => add.id !== action.payload);
+    },
+    setAddendumStatus: (state, action) => {
+      const { addendumId, status } = action.payload;
+      const addendum = state.addendums.find(add => add.id === addendumId);
+      if (addendum) {
+        addendum.status = status;
+        // Add to version history
+        if (!addendum.versionHistory) addendum.versionHistory = [];
+        addendum.versionHistory.push({
+          version: addendum.version,
+          date: new Date().toISOString(),
+          type: "status_change",
+          description: `Status changed to ${status}`,
+          modifiedBy: "system",
+          changes: [`Status: ${status}`]
+        });
+      }
+    }
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchAddendums.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchAddendums.fulfilled, (state, action) => {
+        state.loading = false;
+        state.addendums = action.payload;
+      })
+      .addCase(fetchAddendums.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
+      })
+      .addCase(createAddendum.fulfilled, (state, action) => {
+        state.addendums.push(action.payload);
+      })
+      .addCase(updateAddendumStatus.fulfilled, (state, action) => {
+        const { addendumId, newStatus } = action.payload;
+        const addendum = state.addendums.find(add => add.id === addendumId);
+        if (addendum) {
+          addendum.status = newStatus;
+        }
+      });
+  }
+});
+
+export const {
+  addAddendum,
+  updateAddendum,
+  removeAddendum,
+  setAddendumStatus
+} = addendumsSlice.actions;
+
+// Selectors
+export const selectAllAddendums = (state) => state.addendums.addendums;
+export const selectAddendumsLoading = (state) => state.addendums.loading;
+export const selectAddendumsError = (state) => state.addendums.error;
+export const selectAddendumsByAgreement = (state, agreementId) => 
+  state.addendums.addendums.filter(add => add.parentAgreementId === agreementId);
+
+export default addendumsSlice.reducer;

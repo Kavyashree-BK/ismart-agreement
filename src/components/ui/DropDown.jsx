@@ -1,26 +1,21 @@
 
 import React from 'react';
-import { Controller } from 'react-hook-form';
 
-export default function DropDown({ id, name, control, options, placeholder }) {
+export default function DropDown({ id, name, value, onChange, options, placeholder }) {
   return (
-    <Controller
-      control={control}
+    <select
+      id={id}
       name={name}
-      render={({ field }) => (
-        <select
-          id={id}
-          {...field}
-          className="w-full rounded border px-3 py-2 text-gray-700"
-        >
-          <option value="">{placeholder}</option>
-          {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      )}
-    />
+      value={value}
+      onChange={onChange}
+      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+    >
+      <option value="">{placeholder}</option>
+      {options.map((opt) => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
   );
 }
