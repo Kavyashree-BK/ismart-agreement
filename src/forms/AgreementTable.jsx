@@ -1975,7 +1975,8 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                   <div className="flex items-center gap-3 mb-4">
                     <select
                       className="border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-300 min-w-[140px]"
-                      value={pendingStatusChanges[addendumDetailsModal.addendum.id] || addendumDetailsModal.addendum.status}
+                      data-addendum-id={addendumDetailsModal.addendum.id}
+                      value={addendumDetailsModal.addendum.status}
                       onChange={(e) => {
                         // Just update the local state, don't submit yet
                         setPendingStatusChanges(prev => ({
@@ -1989,20 +1990,15 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                       <option value="Rejected">❌ Rejected</option>
                     </select>
                     
-                    {pendingStatusChanges[addendumDetailsModal.addendum.id] && pendingStatusChanges[addendumDetailsModal.addendum.id] !== addendumDetailsModal.addendum.status && (
+                    {addendumDetailsModal.addendum.status && (
                       <button
                         onClick={() => {
                           const addendumId = addendumDetailsModal.addendum.id;
-                          const newStatus = pendingStatusChanges[addendumId];
+                          const selectElement = document.querySelector(`select[data-addendum-id="${addendumId}"]`);
+                          const newStatus = selectElement ? selectElement.value : addendumDetailsModal.addendum.status;
                           console.log('Status change confirmed:', addendumId, newStatus);
                           if (onAddendumStatusUpdate) {
                             onAddendumStatusUpdate(addendumId, newStatus);
-                            // Clear pending change
-                            setPendingStatusChanges(prev => {
-                              const updated = { ...prev };
-                              delete updated[addendumId];
-                              return updated;
-                            });
                             // Modal stays open - user must manually close
                           }
                         }}
