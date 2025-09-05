@@ -872,6 +872,60 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
   // Ref for dropdown container
   const dropdownRef = useRef(null);
   
+  // Refs for scroll synchronization
+  const topScrollRef = useRef(null);
+  const bottomScrollRef = useRef(null);
+  
+  // Scroll synchronization between top and bottom scroll bars
+  useEffect(() => {
+    const topScroll = topScrollRef.current;
+    const bottomScroll = bottomScrollRef.current;
+    
+    if (!topScroll || !bottomScroll) return;
+    
+    const handleTopScroll = () => {
+      bottomScroll.scrollLeft = topScroll.scrollLeft;
+    };
+    
+    const handleBottomScroll = () => {
+      topScroll.scrollLeft = bottomScroll.scrollLeft;
+    };
+    
+    topScroll.addEventListener('scroll', handleTopScroll);
+    bottomScroll.addEventListener('scroll', handleBottomScroll);
+    
+    return () => {
+      topScroll.removeEventListener('scroll', handleTopScroll);
+      bottomScroll.removeEventListener('scroll', handleBottomScroll);
+    };
+  }, []);
+  
+  // Update top scroll bar width to match table width
+  useEffect(() => {
+    const updateScrollWidth = () => {
+      const topScroll = topScrollRef.current;
+      const bottomScroll = bottomScrollRef.current;
+      
+      if (topScroll && bottomScroll) {
+        const tableWidth = bottomScroll.scrollWidth;
+        const topScrollContent = topScroll.querySelector('div');
+        if (topScrollContent) {
+          topScrollContent.style.width = `${tableWidth}px`;
+        }
+      }
+    };
+    
+    // Update on mount and when agreements change
+    updateScrollWidth();
+    
+    // Update on window resize
+    window.addEventListener('resize', updateScrollWidth);
+    
+    return () => {
+      window.removeEventListener('resize', updateScrollWidth);
+    };
+  }, [agreements]);
+  
   // Handle clicking outside dropdown to close it
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -1420,8 +1474,22 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
             </div>
           </div>
         )}
-        <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm bg-white">
-          <table className="min-w-full text-sm">
+        <div className="relative">
+          {/* Top scroll bar */}
+          <div 
+            ref={topScrollRef}
+            className="overflow-x-auto mb-2" 
+            style={{ height: '17px' }}
+          >
+            <div className="h-4" style={{ width: '2000px' }}></div>
+          </div>
+          
+          {/* Main table with scroll */}
+          <div 
+            ref={bottomScrollRef}
+            className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm bg-white"
+          >
+            <table className="min-w-full text-sm">
             <thead>
               <tr className="bg-gray-50 text-gray-700 border-b border-gray-200">
                 <th className="px-6 py-4 font-semibold text-left text-gray-800">Sr. No</th>
@@ -1675,6 +1743,7 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                )}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 
