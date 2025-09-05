@@ -766,10 +766,10 @@ const AgreementForm = (props) => {
             <strong>Alert:</strong> This agreement is expiring in {daysToExpiry} day{daysToExpiry !== 1 ? 's' : ''}. Please ensure at least one required document (LOI, WO, PO, or Email Approval) is uploaded for renewal/escalation.
             {!["WO", "LOI", "PO", "EmailApproval"].some(type => uploadStatuses[type]?.uploaded) && (
               <div className="mt-2 text-red-700">
-                <strong>Escalation:</strong> At least one document is required (LOI, WO, PO, or Email Approval)
-              </div>
+                        <strong>Escalation:</strong> At least one document is required (LOI, WO, PO, or Email Approval)
+                    </div>
             )}
-          </div>
+                  </div>
         )}
         <section className="mb-10">
           <h2 className="text-xl font-bold mb-1 text-gray-900">Document Uploads</h2>
@@ -779,14 +779,14 @@ const AgreementForm = (props) => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Agreement Duration</label>
             <div className="flex items-center gap-4 mb-2">
               <label className="flex items-center">
-                <input
-                  type="checkbox"
+              <input
+                type="checkbox"
                   checked={isOpenAgreement}
                   onChange={e => setIsOpenAgreement(e.target.checked)}
                   className="mr-2"
                 />
                 Open Agreement (No End Date)
-              </label>
+            </label>
               <span className="text-xs text-gray-500">
                 {isOpenAgreement
                   ? "Only 'From Date' is required"
@@ -1054,9 +1054,9 @@ const AgreementForm = (props) => {
                       newClauses[idx].details = e.target.value;
                       setClauses(newClauses);
                     }}
-                  />
-                </div>
+                />
               </div>
+          </div>
             ))}
             
             <button

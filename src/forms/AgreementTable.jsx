@@ -341,7 +341,6 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
   const [uploadError, setUploadError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [currentPage, setCurrentPage] = useState("agreement"); // "agreement" or "addendums"
-  const [pendingStatusChanges, setPendingStatusChanges] = useState({}); // Track pending status changes for each addendum
 
   React.useEffect(() => {
     if (agreement) {
@@ -632,13 +631,6 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
                 >
                   Reset to Pending
                 </button>
-                <button
-                  onClick={handleApprove}
-                  disabled={isUploading}
-                  className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  {isUploading ? "Processing..." : "Move to Next Stage"}
-                </button>
               </div>
             )}
 
@@ -774,66 +766,46 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
                           <div className="flex items-center gap-3">
                             <select
                               className="border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-300 min-w-[140px]"
-                              value={pendingStatusChanges[addendum.id] || addendum.status}
+                              value={addendum.status}
                               onChange={(e) => {
-                                // Just update the local state, don't submit yet
-                                setPendingStatusChanges(prev => ({
-                                  ...prev,
-                                  [addendum.id]: e.target.value
-                                }));
+                                const newStatus = e.target.value;
+                                console.log('Status change requested:', addendum.id, newStatus);
+                                if (onAddendumStatusUpdate) {
+                                  onAddendumStatusUpdate(addendum.id, newStatus);
+                                }
                               }}
                             >
-                              <option value="Pending">⏳ Pending</option>
+                              <option value="Pending Review">⏳ Pending Review</option>
+                              <option value="Under Review">🔍 Under Review</option>
                               <option value="Approved">✅ Approved</option>
                               <option value="Rejected">❌ Rejected</option>
                             </select>
-                            
-                            {pendingStatusChanges[addendum.id] && pendingStatusChanges[addendum.id] !== addendum.status && (
-                              <button
-                                onClick={() => {
-                                  const addendumId = addendum.id;
-                                  const newStatus = pendingStatusChanges[addendum.id];
-                                  console.log('Status change confirmed:', addendumId, newStatus);
-                                  if (onAddendumStatusUpdate) {
-                                    onAddendumStatusUpdate(addendumId, newStatus);
-                                    // Clear pending change
-                                    setPendingStatusChanges(prev => {
-                                      const updated = { ...prev };
-                                      delete updated[addendum.id];
-                                      return updated;
-                                    });
-                                    // Modal stays open - user must manually close
-                                  }
-                                }}
-                                className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
-                              >
-                                Save Status
-                              </button>
-                            )}
-                            
-                            <button
-                              onClick={onClose}
-                              className="px-4 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
-                            >
-                              Close
-                            </button>
                           </div>
-                        </div>
-                        
-                        <div className="text-xs text-gray-600 mb-2">
-                          Current Status: <span className="font-semibold">{addendum.status}</span>
-                        </div>
-                        
-                        <div className="bg-blue-50 border border-blue-200 rounded p-2">
-                          <p className="text-blue-800 text-xs">
-                            💡 Select a new status from the dropdown above, then click "Save Status" to apply the change. Use "Close" to exit.
-                          </p>
+                          
+                          <div className="text-xs text-gray-600 mb-2">
+                            Current Status: <span className="font-semibold">{addendum.status}</span>
+                          </div>
+                          
+                          <div className="bg-blue-50 border border-blue-200 rounded p-2">
+                            <p className="text-blue-800 text-xs">
+                              💡 Select a new status from the dropdown above to change the addendum status.
+                            </p>
+                          </div>
                         </div>
                       </div>
                     )}
 
                     {/* Action Buttons */}
-                    <div className="flex justify-end pt-4 border-t border-gray-200">
+                    <div className="flex justify-between pt-4 border-t border-gray-200">
+                      <button
+                        onClick={() => {
+                          // Close the entire modal and go back to agreements table
+                          onClose();
+                        }}
+                        className="px-4 py-2 bg-gray-500 text-white text-sm rounded hover:bg-gray-600 transition-colors"
+                      >
+                        Close
+                      </button>
                       <button
                         onClick={() => handleViewAddendum(addendum)}
                         className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded hover:bg-blue-200 cursor-pointer transition-colors"
@@ -2036,66 +2008,6 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                 </div>
               )}
 
-              {/* Status Change Section - For Approvers */}
-              {userRole?.toLowerCase() === "approver" && (
-                <div className="mb-6 border-t border-gray-200 pt-6">
-                  <h4 className="font-semibold text-gray-800 mb-3">Change Addendum Status</h4>
-                  
-                  <div className="flex items-center gap-3 mb-4">
-                    <select
-                      className="border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-300 min-w-[140px]"
-                      data-addendum-id={addendumDetailsModal.addendum.id}
-                      value={addendumDetailsModal.addendum.status}
-                      onChange={(e) => {
-                        // Just update the local state, don't submit yet
-                        setPendingStatusChanges(prev => ({
-                          ...prev,
-                          [addendumDetailsModal.addendum.id]: e.target.value
-                        }));
-                      }}
-                    >
-                      <option value="Pending">⏳ Pending</option>
-                      <option value="Approved">✅ Approved</option>
-                      <option value="Rejected">❌ Rejected</option>
-                    </select>
-                    
-                    {addendumDetailsModal.addendum.status && (
-                      <button
-                        onClick={() => {
-                          const addendumId = addendumDetailsModal.addendum.id;
-                          const selectElement = document.querySelector(`select[data-addendum-id="${addendumId}"]`);
-                          const newStatus = selectElement ? selectElement.value : addendumDetailsModal.addendum.status;
-                          console.log('Status change confirmed:', addendumId, newStatus);
-                          if (onAddendumStatusUpdate) {
-                            onAddendumStatusUpdate(addendumId, newStatus);
-                            // Modal stays open - user must manually close
-                          }
-                        }}
-                        className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
-                      >
-                        Save Status
-                      </button>
-                    )}
-                    
-                    <button
-                      onClick={() => setAddendumDetailsModal({ open: false, addendum: null })}
-                      className="px-4 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
-                    >
-                      Close
-                    </button>
-                  </div>
-                  
-                  <div className="text-sm text-gray-600 mb-2">
-                    Current Status: <span className="font-semibold">{addendumDetailsModal.addendum.status}</span>
-                  </div>
-                  
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p className="text-blue-800 text-sm">
-                      💡 Select a new status from the dropdown above, then click "Save Status" to apply the change. Use "Close" to exit.
-                    </p>
-                  </div>
-                </div>
-              )}
 
               {/* Action Buttons */}
               <div className="flex justify-end gap-3">

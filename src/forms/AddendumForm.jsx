@@ -291,8 +291,8 @@ const AddendumForm = ({
               </p>
             </div>
           </div>
-        </div>
-      )}
+          </div>
+          )}
 
       {/* Parent Agreement Info */}
       {parentAgreement && (
@@ -416,45 +416,45 @@ const AddendumForm = ({
                 <h2 className="text-lg font-semibold text-gray-800 mb-4">
                   Branches
                 </h2>
-                
-                {/* Current Branches Display */}
-                <div className="mb-4">
+            
+            {/* Current Branches Display */}
+              <div className="mb-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-3">Current Branches:</h4>
                   {form.branches.length === 0 ? (
                     <p className="text-gray-500 text-sm italic bg-white p-3 rounded border border-gray-200">
                       No branches added yet. Add your first branch to get started!
                     </p>
                   ) : (
-                    <div className="space-y-3">
-                      {form.branches.map((branch) => (
+                <div className="space-y-3">
+                  {form.branches.map((branch) => (
                         <div key={branch.id} className="flex items-center justify-between bg-white p-4 rounded border border-gray-200">
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-800">{branch.name}</div>
-                            <div className="text-sm text-gray-600 mt-1">{branch.description}</div>
-                            <div className="text-xs text-gray-500 mt-2">
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-800">{branch.name}</div>
+                          <div className="text-sm text-gray-600 mt-1">{branch.description}</div>
+                          <div className="text-xs text-gray-500 mt-2">
                               Created: {branch.createdAt} • Status: {branch.status}
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleEditBranch(branch.id)}
-                              className="px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleRemoveBranch(branch.id)}
-                              className="px-3 py-2 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
-                            >
-                              Remove
-                            </button>
                           </div>
                         </div>
-                      ))}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditBranch(branch.id)}
+                            className="px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleRemoveBranch(branch.id)}
+                            className="px-3 py-2 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                          >
+                            Remove
+                          </button>
+                      </div>
                     </div>
-                  )}
-                </div>
-                
+                  ))}
+              </div>
+            )}
+          </div>
+
                 {/* Add New Branch Button - Made Smaller */}
                 <div className="flex justify-start">
                   <button
@@ -545,7 +545,7 @@ const AddendumForm = ({
                   • Editing existing addendum with {editingAddendum.clauseModifications?.length || 0} clause modifications
                 </span>
               )}
-            </div>
+                    </div>
 
             {/* Clause Modification Form Modal */}
             {showClauseModificationForm && (
@@ -605,7 +605,7 @@ const AddendumForm = ({
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Details <span className="text-red-500">*</span>
-                      </label>
+                  </label>
                       <textarea
                         id="details"
                         className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -615,7 +615,7 @@ const AddendumForm = ({
                           console.log("Details textarea changed:", e.target.value);
                         }}
                       />
-                    </div>
+                  </div>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -629,7 +629,7 @@ const AddendumForm = ({
                             console.log("Previous value changed:", e.target.value);
                           }}
                         />
-                      </div>
+                  </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">New Value</label>
                         <input
@@ -641,21 +641,21 @@ const AddendumForm = ({
                             console.log("New value changed:", e.target.value);
                           }}
                         />
-                      </div>
-                    </div>
-                  </div>
-
+              </div>
+            </div>
+                </div>
+                
                   <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
-                    <button
-                      type="button"
+              <button
+                type="button"
                       onClick={() => {
                         console.log("Cancel clicked");
                         setShowClauseModificationForm(false);
                       }}
                       className="px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition-colors"
-                    >
-                      Cancel
-                    </button>
+              >
+            Cancel
+              </button>
                     <button
                       type="button"
                       onClick={() => {

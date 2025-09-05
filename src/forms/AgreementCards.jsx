@@ -19,7 +19,6 @@ const AgreementCards = ({
   const [viewingAgreement, setViewingAgreement] = useState(null);
   const [selectedAddendum, setSelectedAddendum] = useState(null);
   const [showAddendumModal, setShowAddendumModal] = useState(false);
-  const [pendingStatusChange, setPendingStatusChange] = useState(null);
 
   // Sort agreements by submission date (newest first)
   const sortedAgreements = [...agreements].sort((a, b) => 
@@ -613,65 +612,6 @@ const AgreementCards = ({
               </div>
             </div>
 
-            {/* Status Change Section - Only for Approvers */}
-            {userRole?.toLowerCase() === "approver" && (
-              <div className="border-t border-gray-200 pt-4">
-                <h4 className="font-semibold text-gray-800 mb-3">Change Status</h4>
-                
-                <div className="flex items-center gap-3 mb-4">
-                  <select
-                    className="border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-300 min-w-[140px]"
-                    value={pendingStatusChange || selectedAddendum.status}
-                    onChange={(e) => {
-                      // Just update the local state, don't submit yet
-                      setPendingStatusChange(e.target.value);
-                    }}
-                  >
-                    <option value="Pending">⏳ Pending</option>
-                    <option value="Approved">✅ Approved</option>
-                    <option value="Rejected">❌ Rejected</option>
-                  </select>
-                  
-                  {pendingStatusChange && pendingStatusChange !== selectedAddendum.status && (
-                    <button
-                      onClick={() => {
-                        console.log('Status change confirmed:', selectedAddendum.id, pendingStatusChange);
-                        if (onAddendumStatusUpdate) {
-                          onAddendumStatusUpdate(selectedAddendum.id, pendingStatusChange);
-                          // Clear pending change but keep modal open
-                          setPendingStatusChange(null);
-                          // Modal stays open - user must manually close
-                        }
-                      }}
-                      className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
-                    >
-                      Save Status
-                    </button>
-                  )}
-                  
-                  <button
-                    onClick={() => {
-                      setPendingStatusChange(null);
-                      setShowAddendumModal(false);
-                      setSelectedAddendum(null);
-                    }}
-                    className="px-4 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
-                
-                <div className="text-sm text-gray-600 mb-2">
-                  Current Status: <span className="font-semibold">{selectedAddendum.status}</span>
-                </div>
-                
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-blue-800 text-sm">
-                    💡 Select a new status from the dropdown above, then click "Save Status" to apply the change. Use "Close" to exit.
-                  </p>
-                </div>
-              </div>
-            )}
 
             {/* Close Button */}
             <div className="mt-6 flex justify-end">

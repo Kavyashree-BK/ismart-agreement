@@ -765,9 +765,9 @@ function App() {
       endDate: "2024-08-31",
       totalValue: 120000,
       currency: "USD",
-      status: "Under Process with Client",
-      submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)),
-      submittedBy: "checker",
+             status: "Pending Review",
+       submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)),
+       submittedBy: "checker",
       entityType: "multiple",
       priority: "High",
       clauses: [
@@ -808,10 +808,99 @@ function App() {
           modifiedBy: "System",
           changes: []
         }
-      ]
-    }
-  ]);
-  const [editingAgreement, setEditingAgreement] = useState(null);
+             ]
+     },
+     // Demo approved agreements for history tab presentation
+     {
+       id: "DEMO-APPROVED-001",
+       selectedClient: "TechCorp Solutions",
+       selectedDepartment: "IT Services",
+       agreementType: "LOI",
+       startDate: "2024-01-15",
+       endDate: "2024-12-31",
+       totalValue: 50000,
+       currency: "USD",
+       status: "Approved",
+       submittedDate: "2024-01-10",
+       approvedDate: "2024-01-18",
+       submittedBy: "checker",
+       approvedBy: "approver",
+       entityType: "single",
+       priority: "Medium",
+       clauses: [
+         { title: "Term and termination (Duration)", placeholder: "12 months", isInitial: true },
+         { title: "Payment Terms", placeholder: "15 days", isInitial: true },
+         { title: "SLA", placeholder: "99.9% uptime", isInitial: true }
+       ],
+       selectedBranches: [
+         { name: "Mumbai Central", id: "branch-001" },
+         { name: "Pune", id: "branch-002" }
+       ],
+       createdAt: "2024-01-10T10:00:00",
+       lastModified: "2024-01-18T14:30:00",
+       version: "1.0.0"
+     },
+     {
+       id: "DEMO-APPROVED-002",
+       selectedClient: "Global Industries Ltd",
+       selectedDepartment: "Manufacturing",
+       agreementType: "WO",
+       startDate: "2024-02-01",
+       endDate: "2025-01-31",
+       totalValue: 75000,
+       currency: "EUR",
+       status: "Approved",
+       submittedDate: "2024-01-25",
+       approvedDate: "2024-02-05",
+       submittedBy: "checker",
+       approvedBy: "approver",
+       entityType: "single",
+       priority: "Low",
+       clauses: [
+         { title: "Quality Standards", placeholder: "ISO 9001", isInitial: true },
+         { title: "Delivery Schedule", placeholder: "30 days", isInitial: true },
+         { title: "Warranty", placeholder: "1 year", isInitial: true }
+       ],
+       selectedBranches: [
+         { name: "Delhi", id: "branch-003" },
+         { name: "Gurgaon", id: "branch-004" },
+         { name: "Noida", id: "branch-005" }
+       ],
+       createdAt: "2024-01-25T09:15:00",
+       lastModified: "2024-02-05T11:45:00",
+       version: "1.0.0"
+     },
+     {
+       id: "DEMO-APPROVED-003",
+       selectedClient: "Healthcare Plus",
+       selectedDepartment: "Medical Services",
+       agreementType: "PO",
+       startDate: "2024-03-01",
+       endDate: "2024-08-31",
+       totalValue: 120000,
+       currency: "USD",
+       status: "Approved",
+       submittedDate: "2024-02-15",
+       approvedDate: "2024-02-28",
+       submittedBy: "checker",
+       approvedBy: "approver",
+       entityType: "multiple",
+       priority: "High",
+       clauses: [
+         { title: "Medical Standards", placeholder: "FDA Approved", isInitial: true },
+         { title: "Compliance Requirements", placeholder: "HIPAA Standards", isInitial: true },
+         { title: "Emergency Response", placeholder: "24/7 Support", isInitial: true }
+       ],
+       selectedBranches: [
+         { name: "Delhi Medical", id: "branch-006" },
+         { name: "Bangalore Health", id: "branch-007" }
+       ],
+       createdAt: "2024-02-15T08:30:00",
+       lastModified: "2024-02-28T16:20:00",
+       version: "1.0.0"
+     }
+   ]);
+   const [editingAgreement, setEditingAgreement] = useState(null);
   const [viewModal, setViewModal] = useState({ open: false, agreement: null });
   const [historyFilters, setHistoryFilters] = useState({ status: "approved", search: "" });
   
@@ -1376,88 +1465,107 @@ function App() {
                  />
                </div>
 
-               {/* Simple Table - Always Works */}
-               <div className="overflow-x-auto">
-                 <table className="w-full text-sm">
-                   <thead className="bg-gray-50">
-                     <tr>
-                       <th className="px-4 py-3 text-left font-semibold">Agreement ID</th>
-                       <th className="px-4 py-3 text-left font-semibold">Client</th>
-                       <th className="px-4 py-3 text-left font-semibold">Branches</th>
-                       <th className="px-4 py-3 text-left font-semibold">Status</th>
-                       <th className="px-4 py-3 text-left font-semibold">Submitted Date</th>
-                       <th className="px-4 py-3 text-left font-semibold">Approved Date</th>
-                       <th className="px-4 py-3 text-left font-semibold">Actions</th>
-                     </tr>
-                   </thead>
-                   <tbody className="divide-y">
-                     {/* Demo Data - Always Shows */}
-                     <tr className="hover:bg-gray-50">
-                       <td className="px-4 py-3">
-                         <div className="flex items-center gap-2">
-                           <span className="font-medium">HIST-001</span>
-                           <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Demo</span>
-                         </div>
-                       </td>
-                       <td className="px-4 py-3 font-medium">TechCorp Solutions</td>
-                       <td className="px-4 py-3">Mumbai Central, Pune</td>
-                       <td className="px-4 py-3">
-                         <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">Approved</span>
-                       </td>
-                       <td className="px-4 py-3">2024-01-15</td>
-                       <td className="px-4 py-3">2024-01-18</td>
-                       <td className="px-4 py-3">
-                         <div className="flex gap-2">
-                           <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">👁️ View</button>
-                           <button className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200">📥 Download</button>
-                         </div>
-                       </td>
-                     </tr>
-                     <tr className="hover:bg-gray-50">
-                       <td className="px-4 py-3">
-                         <div className="flex items-center gap-2">
-                           <span className="font-medium">HIST-002</span>
-                           <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Demo</span>
-                         </div>
-                       </td>
-                       <td className="px-4 py-3 font-medium">Global Industries Ltd</td>
-                       <td className="px-4 py-3">Delhi, Gurgaon</td>
-                       <td className="px-4 py-3">
-                         <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">Approved</span>
-                       </td>
-                       <td className="px-4 py-3">2024-01-10</td>
-                       <td className="px-4 py-3">2024-01-12</td>
-                       <td className="px-4 py-3">
-                         <div className="flex gap-2">
-                           <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">👁️ View</button>
-                           <button className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200">📥 Download</button>
-                         </div>
-                       </td>
-                     </tr>
-                     <tr className="hover:bg-gray-50">
-                       <td className="px-4 py-3">
-                         <div className="flex items-center gap-2">
-                           <span className="font-medium">HIST-003</span>
-                           <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">Demo</span>
-                         </div>
-                       </td>
-                       <td className="px-4 py-3 font-medium">Innovation Systems</td>
-                       <td className="px-4 py-3">Bangalore</td>
-                       <td className="px-4 py-3">
-                         <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">Approved</span>
-                       </td>
-                       <td className="px-4 py-3">2024-01-05</td>
-                       <td className="px-4 py-3">2024-01-08</td>
-                       <td className="px-4 py-3">
-                         <div className="flex gap-2">
-                           <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">👁️ View</button>
-                           <button className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200">📥 Download</button>
-                         </div>
-                       </td>
-                     </tr>
-                   </tbody>
-                 </table>
-               </div>
+               {/* Filter Approved Agreements */}
+               {(() => {
+                 // Filter approved agreements from the actual agreements data
+                 const approvedAgreements = agreements.filter(agreement => 
+                   agreement.status === "Approved" && 
+                   (!historyFilters.search || 
+                    agreement.clientName?.toLowerCase().includes(historyFilters.search.toLowerCase()) ||
+                    agreement.selectedClient?.toLowerCase().includes(historyFilters.search.toLowerCase()))
+                 );
+
+                 return (
+                   <div className="overflow-x-auto">
+                     <table className="w-full text-sm">
+                       <thead className="bg-gray-50">
+                         <tr>
+                           <th className="px-4 py-3 text-left font-semibold">Agreement ID</th>
+                           <th className="px-4 py-3 text-left font-semibold">Client</th>
+                           <th className="px-4 py-3 text-left font-semibold">Branches</th>
+                           <th className="px-4 py-3 text-left font-semibold">Status</th>
+                           <th className="px-4 py-3 text-left font-semibold">Submitted Date</th>
+                           <th className="px-4 py-3 text-left font-semibold">Approved Date</th>
+                           <th className="px-4 py-3 text-left font-semibold">Actions</th>
+                         </tr>
+                       </thead>
+                       <tbody className="divide-y">
+                         {approvedAgreements.length === 0 ? (
+                           <tr>
+                             <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
+                               <div className="flex flex-col items-center gap-2">
+                                 <span className="text-4xl">📋</span>
+                                 <p>No approved agreements found</p>
+                                 <p className="text-sm">Approved agreements will appear here once they are approved by approvers.</p>
+                               </div>
+                             </td>
+                           </tr>
+                         ) : (
+                           approvedAgreements.map((agreement) => (
+                             <tr key={agreement.id} className="hover:bg-gray-50">
+                               <td className="px-4 py-3">
+                                 <div className="flex items-center gap-2">
+                                   <span className="font-medium">{agreement.id}</span>
+                                 </div>
+                               </td>
+                               <td className="px-4 py-3 font-medium">
+                                 {agreement.clientName || agreement.selectedClient || 'N/A'}
+                               </td>
+                               <td className="px-4 py-3">
+                                 {agreement.selectedBranches ? 
+                                   (Array.isArray(agreement.selectedBranches) ? 
+                                     agreement.selectedBranches.join(', ') : 
+                                     agreement.selectedBranches) : 
+                                   'All Branches'
+                                 }
+                               </td>
+                               <td className="px-4 py-3">
+                                 <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                                   Approved
+                                 </span>
+                               </td>
+                               <td className="px-4 py-3">
+                                 {agreement.submittedDate ? 
+                                   new Date(agreement.submittedDate).toLocaleDateString() : 
+                                   'N/A'
+                                 }
+                               </td>
+                               <td className="px-4 py-3">
+                                 {agreement.approvedDate ? 
+                                   new Date(agreement.approvedDate).toLocaleDateString() : 
+                                   'N/A'
+                                 }
+                               </td>
+                               <td className="px-4 py-3">
+                                 <div className="flex gap-2">
+                                   <button 
+                                     onClick={() => {
+                                       // You can implement view functionality here
+                                       console.log('View agreement:', agreement.id);
+                                     }}
+                                     className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200"
+                                   >
+                                     👁️ View
+                                   </button>
+                                   <button 
+                                     onClick={() => {
+                                       // You can implement download functionality here
+                                       console.log('Download agreement:', agreement.id);
+                                     }}
+                                     className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200"
+                                   >
+                                     📥 Download
+                                   </button>
+                                 </div>
+                               </td>
+                             </tr>
+                           ))
+                         )}
+                       </tbody>
+                     </table>
+                   </div>
+                 );
+               })()}
              </div>
            </div>
          )}
@@ -1500,10 +1608,216 @@ function App() {
              />
            </div>
          </div>
-       )}
-     </div>
-   );
- }
+               )}
+
+        {/* View Agreement Modal for Dashboard */}
+        {viewModal.open && viewModal.agreement && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="bg-white rounded-lg shadow-lg p-6 min-w-[600px] max-w-4xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold">Agreement Details - {viewModal.agreement.id}</h3>
+                <button 
+                  onClick={() => setViewModal({ open: false, agreement: null })} 
+                  className="text-gray-500 hover:text-gray-700 text-xl"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="space-y-6">
+                {/* Basic Information */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Client</label>
+                    <p className="text-gray-900">{viewModal.agreement.selectedClient || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                      viewModal.agreement.status === "Approved" ? "bg-green-100 text-green-700" :
+                      viewModal.agreement.status === "Rejected" ? "bg-red-100 text-red-700" :
+                      "bg-orange-100 text-orange-700"
+                    }`}>
+                      {viewModal.agreement.status}
+                    </span>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Branches</label>
+                    <p className="text-gray-900">
+                      {viewModal.agreement.selectedBranches ? 
+                        (Array.isArray(viewModal.agreement.selectedBranches) ? 
+                          viewModal.agreement.selectedBranches.map(branch => branch.name).join(', ') : 
+                          viewModal.agreement.selectedBranches) : 
+                        'All Branches'
+                      }
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Entity Type</label>
+                    <p className="text-gray-900">{viewModal.agreement.entityType || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Submitted Date</label>
+                    <p className="text-gray-900">
+                      {viewModal.agreement.submittedDate ? 
+                        new Date(viewModal.agreement.submittedDate).toLocaleDateString() : 
+                        'N/A'
+                      }
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Approved Date</label>
+                    <p className="text-gray-900">
+                      {viewModal.agreement.approvedDate ? 
+                        new Date(viewModal.agreement.approvedDate).toLocaleDateString() : 
+                        'N/A'
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                {/* Agreement Period */}
+                {viewModal.agreement.startDate && viewModal.agreement.endDate && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Agreement Period</label>
+                    <p className="text-gray-900">
+                      {new Date(viewModal.agreement.startDate).toLocaleDateString()} to {new Date(viewModal.agreement.endDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+
+                {/* Important Clauses */}
+                {viewModal.agreement.clauses && viewModal.agreement.clauses.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Important Clauses</label>
+                    <div className="space-y-2">
+                      {viewModal.agreement.clauses.map((clause, idx) => (
+                        <div key={idx} className="bg-gray-50 p-3 rounded">
+                          <div className="font-medium text-gray-900">{clause.title}</div>
+                          <div className="text-sm text-gray-600">{clause.placeholder || 'No details provided'}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Contact Information */}
+                {(viewModal.agreement.form?.iSmartName || viewModal.agreement.form?.clientName) && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Contact Information</label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">I Smart Contact</h4>
+                        <div className="space-y-1 text-sm">
+                          <p><strong>Name:</strong> {viewModal.agreement.form?.iSmartName || 'Not provided'}</p>
+                          <p><strong>Phone:</strong> {viewModal.agreement.form?.iSmartContact || 'Not provided'}</p>
+                          <p><strong>Email:</strong> {viewModal.agreement.form?.iSmartEmail || 'Not provided'}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Client Contact</h4>
+                        <div className="space-y-1 text-sm">
+                          <p><strong>Name:</strong> {viewModal.agreement.form?.clientName || 'Not provided'}</p>
+                          <p><strong>Phone:</strong> {viewModal.agreement.form?.clientContact || 'Not provided'}</p>
+                          <p><strong>Email:</strong> {viewModal.agreement.form?.clientEmail || 'Not provided'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Documents */}
+                {viewModal.agreement.uploadStatuses && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Uploaded Documents</label>
+                    <div className="space-y-2">
+                      {Object.entries(viewModal.agreement.uploadStatuses).map(([type, status]) => (
+                        <div key={type} className="flex items-center justify-between bg-gray-50 p-3 rounded">
+                          <span className="font-medium">{type}</span>
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            status.uploaded ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                          }`}>
+                            {status.uploaded ? 'Uploaded' : 'Not uploaded'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <button
+                    onClick={() => {
+                      // Download functionality
+                      const agreementContent = `
+LEGAL AGREEMENT COPY
+==================
+
+Agreement ID: ${viewModal.agreement.id}
+Client: ${viewModal.agreement.selectedClient}
+Branches: ${(viewModal.agreement.selectedBranches || []).map(branch => branch.name).join(", ")}
+Submitted Date: ${viewModal.agreement.submittedDate}
+Status: ${viewModal.agreement.status}
+Entity Type: ${viewModal.agreement.entityType}
+Agreement Period: ${viewModal.agreement.startDate ? new Date(viewModal.agreement.startDate).toLocaleDateString() : 'N/A'} to ${viewModal.agreement.endDate ? new Date(viewModal.agreement.endDate).toLocaleDateString() : 'N/A'}
+
+CONTACT INFORMATION:
+===================
+I Smart Contact:
+  Name: ${viewModal.agreement.form?.iSmartName || 'Not provided'}
+  Phone: ${viewModal.agreement.form?.iSmartContact || 'Not provided'}
+  Email: ${viewModal.agreement.form?.iSmartEmail || 'Not provided'}
+
+Client Contact:
+  Name: ${viewModal.agreement.form?.clientName || 'Not provided'}
+  Phone: ${viewModal.agreement.form?.clientContact || 'Not provided'}
+  Email: ${viewModal.agreement.form?.clientEmail || 'Not provided'}
+
+IMPORTANT CLAUSES:
+=================
+${(viewModal.agreement.clauses || []).map((clause, idx) => `
+${idx + 1}. ${clause.title}
+   Details: ${clause.placeholder || 'No details provided'}
+`).join('\n')}
+
+DOCUMENTS:
+==========
+${Object.entries(viewModal.agreement.uploadStatuses || {}).map(([type, status]) => 
+  `${type}: ${status.uploaded ? 'Uploaded' : 'Not uploaded'}`
+).join('\n')}
+
+Generated on: ${new Date().toLocaleString()}
+                      `;
+
+                      const blob = new Blob([agreementContent], { type: 'text/plain' });
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = `Agreement_${viewModal.agreement.id}_${viewModal.agreement.selectedClient}.txt`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                  >
+                    📥 Download
+                  </button>
+                  <button
+                    onClick={() => setViewModal({ open: false, agreement: null })}
+                    className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // View Agreement Modal Component - REMOVED - Now integrated into AgreementTable
 
