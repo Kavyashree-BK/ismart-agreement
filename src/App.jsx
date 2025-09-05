@@ -9,7 +9,8 @@ import Header from "./components/ui/Header";
 import TabNav from "./components/ui/TabNav";
 import Dashboard from "./components/Dashboard";
 import History from "./components/History";
-import { setEditingAgreement, setActiveTab } from "./slice/uiSlice";
+import ViewModal from "./components/ViewModal";
+import { setEditingAgreement, setActiveTab, setViewModal } from "./slice/uiSlice";
 import { createAddendum } from "./slice/addendumsSlice";
 
 // Main App Component
@@ -20,8 +21,15 @@ export default function App() {
   const user = useSelector(state => state.user);
   const activeTab = useSelector(state => state.ui.activeTab);
   const showAddendumForm = useSelector(state => state.ui.showAddendumForm);
+  const viewModal = useSelector(state => state.ui.viewModal);
   const agreements = useSelector(state => state.agreements.agreements);
   const addendums = useSelector(state => state.addendums.addendums);
+  
+  // Debug logging for addendum form state
+  console.log("App render - showAddendumForm:", showAddendumForm);
+  console.log("App render - ui state:", useSelector(state => state.ui));
+  console.log("App render - addendums:", addendums);
+  console.log("App render - addendums length:", addendums?.length);
   
   // Debug logging
   console.log('App render - user:', user, 'activeTab:', activeTab, 'agreements:', agreements);
@@ -55,19 +63,29 @@ export default function App() {
       <TabNav />
       
       <main>
-        {activeTab === "dashboard" && <Dashboard />}
-        {activeTab === "new" && user.role === "Checker" && <AgreementForm />}
+        {activeTab === "dashboard" && <Dashboard onNavigateToAgreements={() => dispatch(setActiveTab("agreements"))} />}
+        {activeTab === "new" && (() => {
+          console.log("Rendering AgreementForm - activeTab:", activeTab);
+          return <AgreementForm />;
+        })()}
         {activeTab === "agreements" && (
-          user.role === "Approver" ? (
-            <AgreementTable 
-             agreements={agreements} 
-             addendums={addendums}
+          user.role === "Checker" ? (
+            <AgreementCards 
+               agreements={agreements} 
+               addendums={addendums}
               userRole={user.role}
+              onEditAgreement={(agreement) => {
+                dispatch(setEditingAgreement(agreement));
+                dispatch(setActiveTab("new"));
+              }}
+              onAddendumSubmit={(addendumData) => {
+                dispatch(createAddendum(addendumData));
+              }}
             />
           ) : (
-            <AgreementCards 
-              agreements={agreements}
-             addendums={addendums} 
+            <AgreementTable 
+              agreements={agreements} 
+              addendums={addendums}
               userRole={user.role}
               onEditAgreement={(agreement) => {
                 dispatch(setEditingAgreement(agreement));
@@ -85,6 +103,11 @@ export default function App() {
 
       {/* Modals */}
       {showAddendumForm && <AddendumForm />}
+      <ViewModal 
+        open={viewModal.open} 
+        agreement={viewModal.agreement}
+        onClose={() => dispatch(setViewModal({ open: false, agreement: null }))}
+      />
      </div>
    );
  }

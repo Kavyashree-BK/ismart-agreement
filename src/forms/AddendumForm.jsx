@@ -2,12 +2,20 @@ import React, { useState, useEffect } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useAppState } from "../hooks/useRedux";
+import { useDispatch } from "react-redux";
+import { setShowAddendumForm, setEditingAddendum, closeAllModals, setActiveTab } from "../slice/uiSlice";
+import { createAddendum } from "../slice/addendumsSlice";
 
 const AddendumForm = () => {
+  console.log("=== ADDENDUM FORM RENDERING ===");
+  const dispatch = useDispatch();
   const { agreements, addendums, ui } = useAppState();
   const { agreements: agreementsList } = agreements;
   const { actions: addendumsActions } = addendums;
   const { editingAddendum, actions: uiActions } = ui;
+  
+  console.log("AddendumForm - editingAddendum:", editingAddendum);
+  console.log("AddendumForm - ui state:", ui);
 
   const [form, setForm] = useState({
     title: "",
@@ -29,6 +37,16 @@ const AddendumForm = () => {
   // Clause modification tracking
   const [clauseModifications, setClauseModifications] = useState([]);
   const [showClauseModificationForm, setShowClauseModificationForm] = useState(false);
+  
+  // State for the clause modification form inputs
+  const [clauseForm, setClauseForm] = useState({
+    clause: "",
+    action: "modified",
+    description: ""
+  });
+  
+  // Debug clauseForm state changes
+  console.log("AddendumForm - clauseForm state:", clauseForm);
   
   // Add branch management state
   const [showBranchModal, setShowBranchModal] = useState(false);
@@ -111,13 +129,35 @@ const AddendumForm = () => {
 
   // Clause modification functions
   const handleAddClauseModification = () => {
-    const newModification = {
-      clause: "",
-      description: "",
-      action: "modified"
-    };
-    setClauseModifications(prev => [...prev, newModification]);
-    setShowClauseModificationForm(false);
+    console.log("=== ADD MODIFICATION BUTTON CLICKED ===");
+    console.log("Current clauseForm:", clauseForm);
+    console.log("Clause title:", clauseForm.clause);
+    console.log("Description:", clauseForm.description);
+    console.log("Action:", clauseForm.action);
+    
+    if (clauseForm.clause.trim() && clauseForm.description.trim()) {
+      console.log("Validation passed, creating new modification...");
+      const newModification = {
+        clause: clauseForm.clause,
+        description: clauseForm.description,
+        action: clauseForm.action
+      };
+      console.log("New modification:", newModification);
+      
+      setClauseModifications(prev => {
+        const updated = [...prev, newModification];
+        console.log("Updated clauseModifications:", updated);
+        return updated;
+      });
+      
+      setClauseForm({ clause: "", action: "modified", description: "" });
+      setShowClauseModificationForm(false);
+      console.log("Modal closed and form reset");
+    } else {
+      console.log("Validation failed - missing required fields");
+      console.log("Clause title empty:", !clauseForm.clause.trim());
+      console.log("Description empty:", !clauseForm.description.trim());
+    }
   };
 
   const handleUpdateClauseModification = (index, field, value) => {
@@ -131,21 +171,80 @@ const AddendumForm = () => {
   };
 
   const handleCancelClauseModification = () => {
+    setClauseForm({ clause: "", action: "modified", description: "" });
     setShowClauseModificationForm(false);
+  };
+
+  const handleOpenClauseModificationForm = () => {
+    setClauseForm({ clause: "", action: "modified", description: "" });
+    setShowClauseModificationForm(true);
   };
 
     const handleSubmit = () => {
     console.log("=== ADDENDUM SUBMISSION STARTED ===");
-    if (isSubmitting) { return; }
+    console.log("Submit button clicked");
+    console.log("Current form data:", form);
+    console.log("Current clauseModifications:", clauseModifications);
+    console.log("Current uploadedFiles:", uploadedFiles);
+    
+    if (isSubmitting) { 
+      console.log("Already submitting, returning");
+      return; 
+    }
     setIsSubmitting(true);
     
     try {
+      console.log("Validating form...");
       const validationErrors = validateForm();
+      console.log("Validation errors:", validationErrors);
+      
       if (Object.keys(validationErrors).length > 0) {
+        console.log("Validation failed, setting errors");
         setErrors(validationErrors);
         setIsSubmitting(false);
         return;
       }
+      
+      console.log("Validation passed, preparing addendum data...");
+      
+      // Convert File objects to serializable data
+      const serializedUploadedFiles = {};
+      Object.keys(uploadedFiles).forEach(key => {
+        const fileData = uploadedFiles[key];
+        if (fileData && fileData.file instanceof File) {
+          // Convert File object to serializable data
+          serializedUploadedFiles[key] = {
+            name: fileData.file.name,
+            size: fileData.file.size,
+            type: fileData.file.type,
+            lastModified: fileData.file.lastModified,
+            uploaded: fileData.uploaded || false
+          };
+        } else {
+          // Keep non-File data as is
+          serializedUploadedFiles[key] = fileData;
+        }
+      });
+      
+      console.log("Original uploadedFiles:", uploadedFiles);
+      console.log("Serialized uploadedFiles:", serializedUploadedFiles);
+      console.log("Clause modifications:", clauseModifications);
+      
+      // Ensure clauseModifications is serializable
+      const serializedClauseModifications = clauseModifications.map(mod => ({
+        clause: mod.clause || "",
+        action: mod.action || "modified",
+        description: mod.description || ""
+      }));
+      
+      // Ensure branches is serializable
+      const serializedBranches = (form.branches || []).map(branch => ({
+        id: branch.id || "",
+        name: branch.name || "",
+        description: branch.description || "",
+        createdAt: branch.createdAt || "",
+        status: branch.status || "Active"
+      }));
       
       const addendumData = {
         id: editingAddendum?.id || `ADD${Date.now()}`,
@@ -154,14 +253,14 @@ const AddendumForm = () => {
         effectiveDate: form.effectiveDate.toISOString().split('Z')[0],
         reason: form.reason,
         impact: form.impact,
-        uploadedFiles: uploadedFiles,
-        clauseModifications: clauseModifications,
+        uploadedFiles: serializedUploadedFiles,
+        clauseModifications: serializedClauseModifications,
         parentAgreementId: editingAddendum?.parentAgreementId,
         parentAgreementTitle: editingAddendum?.parentAgreementTitle,
         submittedDate: new Date().toISOString().split('Z')[0],
         submittedBy: "checker",
         status: "Pending Review",
-        branches: form.branches
+        branches: serializedBranches
       };
       
       if (isEditMode && editingAddendum) {
@@ -169,14 +268,25 @@ const AddendumForm = () => {
         addendumData.originalSubmittedBy = editingAddendum.submittedBy;
       }
       
+      console.log("=== ADDENDUM DATA PREPARED ===");
       console.log("Addendum data prepared:", addendumData);
+      console.log("Parent Agreement ID:", addendumData.parentAgreementId);
+      console.log("Parent Agreement ID type:", typeof addendumData.parentAgreementId);
+      console.log("Parent Agreement Title:", addendumData.parentAgreementTitle);
+      console.log("Available actions:", addendumsActions);
+      console.log("editingAddendum:", editingAddendum);
       
       if (editingAddendum) {
+        console.log("Updating existing addendum:", editingAddendum.id);
         addendumsActions.update({ id: editingAddendum.id, updates: addendumData });
       } else {
-        addendumsActions.create(addendumData);
+        console.log("Creating new addendum");
+        // Use the async thunk instead of direct action
+        dispatch(createAddendum(addendumData));
+        console.log("Addendum creation dispatched");
       }
       
+      console.log("Closing modal and resetting form...");
       uiActions.setShowAddendumForm(false);
       uiActions.setEditingAddendum(null);
       
@@ -185,10 +295,12 @@ const AddendumForm = () => {
         additionalDocuments: [], branches: []
       });
       setUploadedFiles({});
-        setClauseModifications([]);
+      setClauseModifications([]);
       setErrors({});
       setIsSubmitting(false);
       setIsEditMode(false);
+      
+      console.log("Addendum submission completed successfully!");
       
       console.log("=== ADDENDUM SUBMISSION COMPLETED SUCCESSFULLY ===");
       
@@ -243,20 +355,36 @@ const AddendumForm = () => {
   };
 
   const handleCancel = () => {
-    uiActions.setShowAddendumForm(false);
-    uiActions.setEditingAddendum(null);
+    // Close the modal and navigate to agreements tab
+    dispatch(setShowAddendumForm(false));
+    dispatch(setEditingAddendum(null));
+    dispatch(setActiveTab("agreements"));
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl border border-gray-200 w-full max-w-4xl max-h-[90vh] flex flex-col">
+    <div 
+      id="addendum-modal"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          handleCancel();
+        }
+      }}
+    >
+      <div 
+        className="bg-white rounded-lg shadow-xl border border-gray-200 w-full max-w-4xl max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Fixed Header */}
         <div className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-900">
               {editingAddendum ? "Edit Addendum" : "Create Addendum"}
             </h2>
-            <button onClick={handleCancel} className="text-gray-500 hover:text-gray-700">
+            <button 
+              onClick={handleCancel}
+              className="text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+            >
               <span className="sr-only">Close</span>
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -471,7 +599,7 @@ const AddendumForm = () => {
               <h2 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">Clause Modifications</h2>
               <button
                 type="button"
-                onClick={() => setShowClauseModificationForm(true)}
+                onClick={handleOpenClauseModificationForm}
                 className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
               >
                 + Add Clause Change
@@ -590,15 +718,20 @@ const AddendumForm = () => {
         <div className="flex-shrink-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
               <button
                 type="button"
-            onClick={handleCancel}
-                className="px-6 py-2 border border-gray-300 rounded font-medium hover:bg-gray-50"
+                onClick={handleCancel}
+                className="px-6 py-2 border border-gray-300 rounded font-medium hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-            Cancel
+                Cancel
               </button>
             <button
               type="button"
-              className="bg-blue-600 text-white px-6 py-2 rounded font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-            onClick={handleSubmit}
+              className="bg-blue-600 text-white px-6 py-2 rounded font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onClick={(e) => {
+                console.log("Submit button clicked");
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmit();
+              }}
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Submitting...' : (isEditMode ? 'Update Addendum' : 'Submit Addendum')}
@@ -622,13 +755,10 @@ const AddendumForm = () => {
                 </label>
                 <input
                   type="text"
-                  value={clauseModifications[clauseModifications.length - 1]?.clause || ""}
+                  value={clauseForm.clause}
                   onChange={(e) => {
-                    const newMods = [...clauseModifications];
-                    if (newMods.length > 0) {
-                      newMods[newMods.length - 1].clause = e.target.value;
-                      setClauseModifications(newMods);
-                    }
+                    console.log("Clause title changed to:", e.target.value);
+                    setClauseForm(prev => ({ ...prev, clause: e.target.value }));
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="e.g., Payment Terms, SLA, Insurance"
@@ -639,14 +769,8 @@ const AddendumForm = () => {
                   Action <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={clauseModifications[clauseModifications.length - 1]?.action || ""}
-                  onChange={(e) => {
-                    const newMods = [...clauseModifications];
-                    if (newMods.length > 0) {
-                      newMods[newMods.length - 1].action = e.target.value;
-                      setClauseModifications(newMods);
-                    }
-                  }}
+                  value={clauseForm.action}
+                  onChange={(e) => setClauseForm(prev => ({ ...prev, action: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Select action</option>
@@ -660,13 +784,10 @@ const AddendumForm = () => {
                   Details <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                  value={clauseModifications[clauseModifications.length - 1]?.description || ""}
+                  value={clauseForm.description}
                   onChange={(e) => {
-                    const newMods = [...clauseModifications];
-                    if (newMods.length > 0) {
-                      newMods[newMods.length - 1].description = e.target.value;
-                      setClauseModifications(newMods);
-                    }
+                    console.log("Description changed to:", e.target.value);
+                    setClauseForm(prev => ({ ...prev, description: e.target.value }));
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows={3}

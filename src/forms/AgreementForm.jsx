@@ -7,6 +7,16 @@ const AgreementForm = () => {
   const dispatch = useDispatch();
   const editingAgreement = useSelector(state => state.ui.editingAgreement);
   const isEditing = !!editingAgreement;
+  
+  console.log("AgreementForm rendering - isEditing:", isEditing, "editingAgreement:", editingAgreement);
+  
+
+  // Helper function to safely access nested properties
+  const safeGet = (obj, path, defaultValue = '') => {
+    return path.split('.').reduce((current, key) => {
+      return current && current[key] !== undefined ? current[key] : defaultValue;
+    }, obj);
+  };
 
   // Form state
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
@@ -45,7 +55,8 @@ const AgreementForm = () => {
       WO: { uploaded: false, file: null },
       PO: { uploaded: false, file: null },
       EmailApproval: { uploaded: false, file: null }
-    }
+    },
+    draftFiles: []
   });
 
   // Demo data
@@ -72,10 +83,66 @@ const AgreementForm = () => {
 
   // Load editing data
   useEffect(() => {
+    console.log("AgreementForm useEffect - isEditing:", isEditing, "editingAgreement:", editingAgreement);
     if (isEditing && editingAgreement) {
-      setFormData(editingAgreement);
+      console.log("Pre-filling form with editingAgreement data:", editingAgreement);
+      
+      // Ensure all required objects exist with default values
+      const safeEditingData = {
+        ...editingAgreement,
+        contactInfo: editingAgreement.contactInfo || {
+          name: '',
+          email: '',
+          phone: '',
+          clientName: '',
+          clientEmail: '',
+          clientPhone: '',
+          ismartName: '',
+          ismartEmail: '',
+          ismartPhone: ''
+        },
+        importantClauses: editingAgreement.importantClauses || [
+          { title: 'Term and termination (Duration)', content: '', file: null },
+          { title: 'Payment Terms', content: '', file: null },
+          { title: 'Penalty', content: '', file: null },
+          { title: 'Minimum Wages', content: '', file: null },
+          { title: 'Costing - Salary Breakup', content: '', file: null },
+          { title: 'SLA', content: '', file: null },
+          { title: 'Indemnity', content: '', file: null },
+          { title: 'Insurance', content: '', file: null }
+        ],
+        selectedBranches: editingAgreement.selectedBranches || [],
+        groupCompanies: editingAgreement.groupCompanies || ['']
+      };
+      
+      setFormData(safeEditingData);
     }
   }, [isEditing, editingAgreement]);
+
+  // Load draft files from localStorage
+  useEffect(() => {
+    const loadDraftFiles = () => {
+      const draftFiles = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('draft_')) {
+          try {
+            const draftData = JSON.parse(localStorage.getItem(key));
+            draftFiles.push({
+              id: key,
+              name: draftData.draftName || 'Untitled Draft',
+              date: draftData.submittedDate || new Date().toISOString()
+            });
+          } catch (error) {
+            console.error('Error loading draft:', error);
+          }
+        }
+      }
+      setFormData(prev => ({ ...prev, draftFiles }));
+    };
+
+    loadDraftFiles();
+  }, []);
 
   // Handle input changes
   const handleInputChange = (field, value) => {
@@ -87,12 +154,40 @@ const AgreementForm = () => {
 
   // Handle branch selection
   const toggleBranch = (branch) => {
-    setFormData(prev => ({
-      ...prev,
-      selectedBranches: prev.selectedBranches.includes(branch)
-        ? prev.selectedBranches.filter(b => b !== branch)
-        : [...prev.selectedBranches, branch]
-    }));
+    setFormData(prev => {
+      const currentBranches = prev.selectedBranches;
+      const isCurrentlySelected = currentBranches.includes(branch);
+      
+      if (branch === 'Pan India') {
+        // If Pan India is selected, select all branches
+        // If Pan India is deselected, deselect all branches
+        return {
+          ...prev,
+          selectedBranches: isCurrentlySelected ? [] : [...branchOptions]
+        };
+      } else {
+        // For individual branches
+        let newBranches;
+        if (isCurrentlySelected) {
+          // Remove the branch and also remove Pan India if it was selected
+          newBranches = currentBranches.filter(b => b !== branch && b !== 'Pan India');
+        } else {
+          // Add the branch
+          newBranches = [...currentBranches.filter(b => b !== 'Pan India'), branch];
+          
+          // If all individual branches are now selected, add Pan India
+          const individualBranches = branchOptions.filter(b => b !== 'Pan India');
+          if (individualBranches.every(b => newBranches.includes(b))) {
+            newBranches = [...branchOptions];
+          }
+        }
+        
+        return {
+          ...prev,
+          selectedBranches: newBranches
+        };
+      }
+    });
   };
 
   // Handle group companies
@@ -121,24 +216,40 @@ const AgreementForm = () => {
 
   // Validation functions
   const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return emailRegex.test(email);
   };
 
   const validatePhone = (phone) => {
-    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-    return phoneRegex.test(phone.replace(/[\s\-\(\)]/g, ''));
+    // Remove all non-digit characters
+    const cleanPhone = phone.replace(/\D/g, '');
+    // Check if it's exactly 10 digits
+    return cleanPhone.length === 10 && /^[6-9]\d{9}$/.test(cleanPhone);
   };
 
   const validateContactInfo = () => {
     const errors = {};
     
-    if (formData.contactInfo.email && !validateEmail(formData.contactInfo.email)) {
-      errors.email = 'Please enter a valid email address';
+    // I Smart validation
+    const email = safeGet(formData, 'contactInfo.email');
+    if (email && !validateEmail(email)) {
+      errors.email = 'Please enter a valid email address (e.g., user@example.com)';
     }
     
-    if (formData.contactInfo.phone && !validatePhone(formData.contactInfo.phone)) {
-      errors.phone = 'Please enter a valid phone number';
+    const phone = safeGet(formData, 'contactInfo.phone');
+    if (phone && !validatePhone(phone)) {
+      errors.phone = 'Please enter a valid 10-digit phone number starting with 6-9';
+    }
+    
+    // Client validation
+    const clientEmail = safeGet(formData, 'contactInfo.clientEmail');
+    if (clientEmail && !validateEmail(clientEmail)) {
+      errors.clientEmail = 'Please enter a valid email address (e.g., user@example.com)';
+    }
+    
+    const clientPhone = safeGet(formData, 'contactInfo.clientPhone');
+    if (clientPhone && !validatePhone(clientPhone)) {
+      errors.clientPhone = 'Please enter a valid 10-digit phone number starting with 6-9';
     }
     
     setValidationErrors(errors);
@@ -200,6 +311,30 @@ const AgreementForm = () => {
       submittedDate: new Date().toISOString(),
       submittedBy: 'checker'
     };
+
+    if (action === 'draft') {
+      // Save as draft to localStorage
+      const draftId = `draft_${Date.now()}`;
+      const draftData = {
+        ...agreementData,
+        id: draftId,
+        draftName: `${formData.selectedClient || 'Untitled'} - ${new Date().toLocaleDateString()}`
+      };
+      
+      localStorage.setItem(draftId, JSON.stringify(draftData));
+      
+      // Add to draft files list
+      setFormData(prev => ({
+        ...prev,
+        draftFiles: [
+          ...prev.draftFiles,
+          { id: draftId, name: draftData.draftName, date: new Date().toISOString() }
+        ]
+      }));
+      
+      alert('Draft saved successfully!');
+      return;
+    }
 
     if (isEditing) {
       dispatch(updateAgreement({ id: editingAgreement.id, updates: agreementData }));
@@ -326,29 +461,43 @@ const AgreementForm = () => {
                   {/* Selected Branch Tags */}
                   {formData.selectedBranches.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {formData.selectedBranches.map(branch => (
-                        <div key={branch} className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                          <span className="mr-1">
-                            {branch === 'Pan India' ? 'Pan India' : 
-                             branch === 'Mumbai' ? 'Mumbai Branch (MUM)' :
-                             branch === 'Delhi' ? 'Delhi Branch (DEL)' :
-                             branch === 'Bangalore' ? 'Bangalore Branch (BLR)' :
-                             branch === 'Pune' ? 'Pune Branch (PUN)' :
-                             branch === 'Chennai' ? 'Chennai Branch (CHE)' :
-                             branch === 'Hyderabad' ? 'Hyderabad Branch (HYD)' :
-                             branch === 'Kolkata' ? 'Kolkata Branch (KOL)' :
-                             branch}
-                          </span>
-                      <button
-                        type="button"
-                            onClick={() => toggleBranch(branch)}
+                      {formData.selectedBranches.includes('Pan India') ? (
+                        // If Pan India is selected, only show Pan India tag
+                        <div className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                          <span className="mr-1">Pan India</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleBranch('Pan India')}
                             className="ml-1 text-blue-600 hover:text-blue-800 focus:outline-none"
-                      >
+                          >
                             ×
-                      </button>
-                    </div>
-                      ))}
+                          </button>
                         </div>
+                      ) : (
+                        // If Pan India is not selected, show individual branch tags
+                        formData.selectedBranches.map(branch => (
+                          <div key={branch} className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                            <span className="mr-1">
+                              {branch === 'Mumbai' ? 'Mumbai Branch (MUM)' :
+                               branch === 'Delhi' ? 'Delhi Branch (DEL)' :
+                               branch === 'Bangalore' ? 'Bangalore Branch (BLR)' :
+                               branch === 'Pune' ? 'Pune Branch (PUN)' :
+                               branch === 'Chennai' ? 'Chennai Branch (CHE)' :
+                               branch === 'Hyderabad' ? 'Hyderabad Branch (HYD)' :
+                               branch === 'Kolkata' ? 'Kolkata Branch (KOL)' :
+                               branch}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => toggleBranch(branch)}
+                              className="ml-1 text-blue-600 hover:text-blue-800 focus:outline-none"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   )}
                   
                   {showBranchDropdown && (
@@ -683,7 +832,7 @@ const AgreementForm = () => {
           <h2 className="text-lg font-semibold text-gray-900 mb-2">Important Clauses</h2>
           <p className="text-sm text-gray-500 mb-4">Add important clauses and supporting documents</p>
           <div className="space-y-4">
-            {formData.importantClauses.map((clause, index) => (
+            {(formData.importantClauses || []).map((clause, index) => (
               <div key={index} className="bg-white p-4 rounded-lg border">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-medium text-gray-700">Clause {index + 1}</h3>
@@ -793,93 +942,219 @@ const AgreementForm = () => {
 
         {/* Contact Information */}
         <div className="bg-white p-6 rounded-lg border border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Contact Name
-              </label>
-              <input
-                type="text"
-                value={formData.contactInfo.name}
-                onChange={(e) => handleInputChange('contactInfo', { ...formData.contactInfo, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter name"
-              />
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Contact Information</h2>
+          <p className="text-sm text-gray-500 mb-4">Contact details for I Smart and Client</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* I Smart Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-center">
+                <div className="px-4 py-2 bg-white border-2 border-blue-500 rounded-full">
+                  <span className="text-blue-600 font-medium text-sm">I Smart</span>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <input
+                    type="text"
+                    value={safeGet(formData, 'contactInfo.name')}
+                    onChange={(e) => handleInputChange('contactInfo', { ...(formData.contactInfo || {}), name: e.target.value })}
+                    className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter name"
+                  />
+                </div>
+                
+                <div>
+                  <input
+                    type="tel"
+                    value={safeGet(formData, 'contactInfo.phone')}
+                    onChange={(e) => {
+                      handleInputChange('contactInfo', { ...(formData.contactInfo || {}), phone: e.target.value });
+                      if (validationErrors.phone) {
+                        setValidationErrors(prev => ({ ...prev, phone: '' }));
+                      }
+                    }}
+                    onBlur={() => {
+                      const phone = safeGet(formData, 'contactInfo.phone');
+                      if (phone && !validatePhone(phone)) {
+                        setValidationErrors(prev => ({ ...prev, phone: 'Please enter a valid 10-digit phone number starting with 6-9' }));
+                      }
+                    }}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      validationErrors.phone ? 'border-red-500' : 'border-blue-300'
+                    }`}
+                    placeholder="Enter phone number"
+                  />
+                  {validationErrors.phone && (
+                    <p className="mt-1 text-sm text-red-600">{validationErrors.phone}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <input
+                    type="email"
+                    value={safeGet(formData, 'contactInfo.email')}
+                    onChange={(e) => {
+                      handleInputChange('contactInfo', { ...(formData.contactInfo || {}), email: e.target.value });
+                      if (validationErrors.email) {
+                        setValidationErrors(prev => ({ ...prev, email: '' }));
+                      }
+                    }}
+                    onBlur={() => {
+                      const email = safeGet(formData, 'contactInfo.email');
+                      if (email && !validateEmail(email)) {
+                        setValidationErrors(prev => ({ ...prev, email: 'Please enter a valid email address (e.g., user@example.com)' }));
+                      }
+                    }}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      validationErrors.email ? 'border-red-500' : 'border-blue-300'
+                    }`}
+                    placeholder="Enter email"
+                  />
+                  {validationErrors.email && (
+                    <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+                  )}
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
-                             <input
-                type="email"
-                value={formData.contactInfo.email}
-                onChange={(e) => {
-                  handleInputChange('contactInfo', { ...formData.contactInfo, email: e.target.value });
-                  if (validationErrors.email) {
-                    setValidationErrors(prev => ({ ...prev, email: '' }));
-                  }
-                }}
-                onBlur={() => {
-                  if (formData.contactInfo.email && !validateEmail(formData.contactInfo.email)) {
-                    setValidationErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
-                  }
-                }}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  validationErrors.email ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Enter email address"
-              />
-              {validationErrors.email && (
-                <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone
-              </label>
-              <input
-                type="tel"
-                value={formData.contactInfo.phone}
-                onChange={(e) => {
-                  handleInputChange('contactInfo', { ...formData.contactInfo, phone: e.target.value });
-                  if (validationErrors.phone) {
-                    setValidationErrors(prev => ({ ...prev, phone: '' }));
-                  }
-                }}
-                onBlur={() => {
-                  if (formData.contactInfo.phone && !validatePhone(formData.contactInfo.phone)) {
-                    setValidationErrors(prev => ({ ...prev, phone: 'Please enter a valid phone number' }));
-                  }
-                }}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  validationErrors.phone ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Enter phone number"
-              />
-              {validationErrors.phone && (
-                <p className="mt-1 text-sm text-red-600">{validationErrors.phone}</p>
-              )}
+
+            {/* Client Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-center">
+                <div className="px-4 py-2 bg-white border-2 border-blue-500 rounded-full">
+                  <span className="text-blue-600 font-medium text-sm">Client</span>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <input
+                    type="text"
+                    value={safeGet(formData, 'contactInfo.clientName')}
+                    onChange={(e) => handleInputChange('contactInfo', { ...(formData.contactInfo || {}), clientName: e.target.value })}
+                    className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter name"
+                  />
+                </div>
+                
+                <div>
+                  <input
+                    type="tel"
+                    value={safeGet(formData, 'contactInfo.clientPhone')}
+                    onChange={(e) => {
+                      handleInputChange('contactInfo', { ...(formData.contactInfo || {}), clientPhone: e.target.value });
+                      if (validationErrors.clientPhone) {
+                        setValidationErrors(prev => ({ ...prev, clientPhone: '' }));
+                      }
+                    }}
+                    onBlur={() => {
+                      const clientPhone = safeGet(formData, 'contactInfo.clientPhone');
+                      if (clientPhone && !validatePhone(clientPhone)) {
+                        setValidationErrors(prev => ({ ...prev, clientPhone: 'Please enter a valid 10-digit phone number starting with 6-9' }));
+                      }
+                    }}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      validationErrors.clientPhone ? 'border-red-500' : 'border-blue-300'
+                    }`}
+                    placeholder="Enter phone number"
+                  />
+                  {validationErrors.clientPhone && (
+                    <p className="mt-1 text-sm text-red-600">{validationErrors.clientPhone}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <input
+                    type="email"
+                    value={safeGet(formData, 'contactInfo.clientEmail')}
+                    onChange={(e) => {
+                      handleInputChange('contactInfo', { ...(formData.contactInfo || {}), clientEmail: e.target.value });
+                      if (validationErrors.clientEmail) {
+                        setValidationErrors(prev => ({ ...prev, clientEmail: '' }));
+                      }
+                    }}
+                    onBlur={() => {
+                      const clientEmail = safeGet(formData, 'contactInfo.clientEmail');
+                      if (clientEmail && !validateEmail(clientEmail)) {
+                        setValidationErrors(prev => ({ ...prev, clientEmail: 'Please enter a valid email address (e.g., user@example.com)' }));
+                      }
+                    }}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      validationErrors.clientEmail ? 'border-red-500' : 'border-blue-300'
+                    }`}
+                    placeholder="Enter email"
+                  />
+                  {validationErrors.clientEmail && (
+                    <p className="mt-1 text-sm text-red-600">{validationErrors.clientEmail}</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-end space-x-4">
-              <button
-                type="button"
-            onClick={() => handleSubmit('draft')}
-            className="px-6 py-2 border border-blue-600 text-blue-600 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        <div className="flex justify-between items-center">
+          {/* Draft Files Display */}
+          <div className="flex items-center space-x-4">
+            {formData.draftFiles && formData.draftFiles.length > 0 && (
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-600">Draft Files:</span>
+                {formData.draftFiles.map((file, index) => (
+                  <div key={index} className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Open draft file for editing
+                        const draftAgreement = JSON.parse(localStorage.getItem(`draft_${file.id}`) || '{}');
+                        setFormData(draftAgreement);
+                        dispatch(setEditingAgreement(draftAgreement));
+                      }}
+                      className="flex items-center space-x-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>{file.name}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Delete draft file
+                        const updatedDrafts = formData.draftFiles.filter((_, i) => i !== index);
+                        setFormData(prev => ({ ...prev, draftFiles: updatedDrafts }));
+                        localStorage.removeItem(`draft_${file.id}`);
+                      }}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex space-x-4">
+            <button
+              type="button"
+              onClick={() => handleSubmit('draft')}
+              className="px-6 py-2 border border-blue-600 text-blue-600 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               Save Draft
             </button>
-          <button
-            type="button"
-            onClick={() => handleSubmit('submit')}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            Submit for Review
-          </button>
+            <button
+              type="button"
+              onClick={() => handleSubmit('submit')}
+              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Submit for Review
+            </button>
+          </div>
         </div>
       </form>
   </div>

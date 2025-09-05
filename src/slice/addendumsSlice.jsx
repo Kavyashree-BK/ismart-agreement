@@ -13,7 +13,7 @@ const formatDateWithoutTimezone = (date) => {
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}`;
 };
 
-// Demo addendums data - EXACTLY 2 addendums like the old UI
+// Demo addendums data - Multiple addendums for different agreements
 const demoAddendums = [
   {
     id: "ADD001",
@@ -40,14 +40,6 @@ const demoAddendums = [
         details: "Duration extended from 12 months to 18 months",
         previousValue: "12 months",
         newValue: "18 months"
-      },
-      {
-        clauseNumber: "2",
-        clauseTitle: "Payment Terms",
-        modificationType: "Modified",
-        details: "Payment terms adjusted to accommodate extended period",
-        previousValue: "15 days",
-        newValue: "30 days"
       }
     ],
     version: "1.0.0",
@@ -58,7 +50,7 @@ const demoAddendums = [
         type: "initial",
         description: "Initial addendum submission",
         modifiedBy: "checker",
-        changes: ["Service period extension", "Payment terms adjustment"]
+        changes: ["Service period extension"]
       }
     ]
   },
@@ -100,6 +92,120 @@ const demoAddendums = [
         changes: ["Enhanced SLA", "24/7 support", "Monitoring services"]
       }
     ]
+  },
+  {
+    id: "ADD003",
+    title: "Budget Adjustment",
+    description: "Increase project budget due to scope changes",
+    reason: "Additional features requested by client",
+    impact: "Budget increased by 25% to accommodate new requirements",
+    effectiveDate: formatDateWithoutTimezone(new Date(Date.now() + 10 * 24 * 60 * 60 * 1000)),
+    submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)),
+    submittedBy: "checker",
+    status: "Under Review",
+    parentAgreementId: "STATIC-003",
+    parentAgreementTitle: "Innovation Labs",
+    isDemo: true,
+    uploadedFiles: {
+      supportingDoc: { uploaded: true, name: "budget_adjustment.pdf", isDemo: true }
+    },
+    clauseModifications: [
+      {
+        clauseNumber: "4",
+        clauseTitle: "Payment Terms",
+        modificationType: "Modified",
+        details: "Payment schedule adjusted for increased budget",
+        previousValue: "Monthly payments",
+        newValue: "Bi-weekly payments"
+      }
+    ],
+    version: "1.0.0",
+    versionHistory: [
+      {
+        version: "1.0.0",
+        date: formatDateWithoutTimezone(new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)),
+        type: "initial",
+        description: "Initial budget adjustment request",
+        modifiedBy: "checker",
+        changes: ["Budget increase", "Payment schedule change"]
+      }
+    ]
+  },
+  {
+    id: "ADD004",
+    title: "Timeline Extension",
+    description: "Extend project timeline by 3 months",
+    reason: "Technical complexity requires additional development time",
+    impact: "Project completion delayed by 3 months, no additional cost",
+    effectiveDate: formatDateWithoutTimezone(new Date(Date.now() + 20 * 24 * 60 * 60 * 1000)),
+    submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)),
+    submittedBy: "checker",
+    status: "Approved",
+    parentAgreementId: "STATIC-004",
+    parentAgreementTitle: "Digital Solutions Inc",
+    isDemo: true,
+    uploadedFiles: {
+      supportingDoc: { uploaded: true, name: "timeline_extension.pdf", isDemo: true }
+    },
+    clauseModifications: [
+      {
+        clauseNumber: "2",
+        clauseTitle: "Project Timeline",
+        modificationType: "Modified",
+        details: "Project completion date extended",
+        previousValue: "6 months",
+        newValue: "9 months"
+      }
+    ],
+    version: "1.0.0",
+    versionHistory: [
+      {
+        version: "1.0.0",
+        date: formatDateWithoutTimezone(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)),
+        type: "initial",
+        description: "Initial timeline extension request",
+        modifiedBy: "checker",
+        changes: ["Timeline extension"]
+      }
+    ]
+  },
+  {
+    id: "ADD005",
+    title: "Scope Modification",
+    description: "Add new features to the project scope",
+    reason: "Client requested additional functionality",
+    impact: "Enhanced project deliverables, 15% cost increase",
+    effectiveDate: formatDateWithoutTimezone(new Date(Date.now() + 25 * 24 * 60 * 60 * 1000)),
+    submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)),
+    submittedBy: "checker",
+    status: "Pending Review",
+    parentAgreementId: "STATIC-005",
+    parentAgreementTitle: "Future Tech Corp",
+    isDemo: true,
+    uploadedFiles: {
+      supportingDoc: { uploaded: true, name: "scope_modification.pdf", isDemo: true }
+    },
+    clauseModifications: [
+      {
+        clauseNumber: "5",
+        clauseTitle: "Project Scope",
+        modificationType: "Modified",
+        details: "Additional features added to scope",
+        previousValue: "Basic features only",
+        newValue: "Basic + Advanced features"
+      }
+    ],
+    version: "1.0.0",
+    versionHistory: [
+      {
+        version: "1.0.0",
+        date: formatDateWithoutTimezone(new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)),
+        type: "initial",
+        description: "Initial scope modification request",
+        modifiedBy: "checker",
+        changes: ["Scope expansion", "Feature additions"]
+      }
+    ]
   }
 ];
 
@@ -121,6 +227,9 @@ export const fetchAddendums = createAsyncThunk(
 export const createAddendum = createAsyncThunk(
   'addendums/createAddendum',
   async (addendumData) => {
+    console.log("=== CREATE ADDENDUM ASYNC THUNK ===");
+    console.log("Received addendum data:", addendumData);
+    
     // Simulate API call
     const newAddendum = {
       ...addendumData,
@@ -129,6 +238,8 @@ export const createAddendum = createAsyncThunk(
       version: "1.0.0",
       isDemo: false
     };
+    
+    console.log("Created new addendum:", newAddendum);
     return newAddendum;
   }
 );
@@ -146,7 +257,12 @@ const addendumsSlice = createSlice({
   initialState,
   reducers: {
     addAddendum: (state, action) => {
+      console.log("=== ADDENDUM SLICE - ADD ADDENDUM ===");
+      console.log("addAddendum action called with payload:", action.payload);
+      console.log("Current addendums array before adding:", state.addendums);
       state.addendums.push(action.payload);
+      console.log("Updated addendums array after adding:", state.addendums);
+      console.log("Total addendums count:", state.addendums.length);
     },
     updateAddendum: (state, action) => {
       const { id, updates } = action.payload;
@@ -200,7 +316,12 @@ const addendumsSlice = createSlice({
         state.error = action.error.message;
       })
       .addCase(createAddendum.fulfilled, (state, action) => {
+        console.log("=== CREATE ADDENDUM FULFILLED ===");
+        console.log("Adding addendum to store:", action.payload);
+        console.log("Current addendums before adding:", state.addendums.length);
         state.addendums.push(action.payload);
+        console.log("Current addendums after adding:", state.addendums.length);
+        console.log("New addendum added successfully!");
       })
       .addCase(updateAddendumStatus.fulfilled, (state, action) => {
         const { addendumId, newStatus } = action.payload;

@@ -1,4 +1,6 @@
+
 import React, { useState } from "react";
+import { useAppState } from "../hooks/useRedux";
 import AddendumForm from "./AddendumForm";
 
 const AgreementCards = ({ 
@@ -13,6 +15,8 @@ const AgreementCards = ({
   onEditComplete,
   onAddendumSubmit
 }) => {
+  const { ui } = useAppState();
+  const { actions: uiActions } = ui;
   const [showAddendumForm, setShowAddendumForm] = useState(false);
   const [selectedAgreement, setSelectedAgreement] = useState(null);
   const [editingAddendum, setEditingAddendum] = useState(null);
@@ -27,14 +31,34 @@ const AgreementCards = ({
   );
 
   const handleAddendumClick = (agreement) => {
-    setSelectedAgreement(agreement);
-    setShowAddendumForm(true);
-    setEditingAddendum(null);
+    console.log("=== ADDENDUM BUTTON CLICKED ===");
+    console.log("Opening addendum form for agreement:", agreement);
+    console.log("Agreement ID:", agreement.id);
+    console.log("Agreement ID type:", typeof agreement.id);
+    console.log("uiActions available:", uiActions);
+    
+    try {
+      // Set the parent agreement information in Redux state
+      console.log("Calling setEditingAddendum...");
+      const parentData = {
+        parentAgreementId: agreement.id,
+        parentAgreementTitle: agreement.clientName || agreement.title,
+        parentAgreementBranches: agreement.selectedBranches?.join(", ") || "All Branches"
+      };
+      console.log("Parent data being set:", parentData);
+      uiActions.setEditingAddendum(parentData);
+      console.log("Calling setShowAddendumForm...");
+      uiActions.setShowAddendumForm(true);
+      console.log("Both actions completed successfully!");
+    } catch (error) {
+      console.error("Error in handleAddendumClick:", error);
+    }
   };
 
   const handleEditAddendum = (addendum) => {
-    setEditingAddendum(addendum);
-    setShowAddendumForm(true);
+    console.log("Editing addendum:", addendum);
+    uiActions.setEditingAddendum(addendum);
+    uiActions.setShowAddendumForm(true);
   };
 
   const handleAddendumSubmit = (addendumData) => {
@@ -115,10 +139,44 @@ const AgreementCards = ({
 
   // Get addendums for a specific agreement
   const getAgreementAddendums = (agreementId) => {
-    return (addendums || []).filter(addendum => addendum.parentAgreementId === agreementId);
+    console.log("=== GETTING ADDENDUMS FOR AGREEMENT ===");
+    console.log("Agreement ID:", agreementId);
+    console.log("All addendums:", addendums);
+    console.log("Addendums type:", typeof addendums);
+    console.log("Addendums length:", addendums?.length);
+    
+    if (!addendums || addendums.length === 0) {
+      console.log("No addendums available");
+      return [];
+    }
+    
+    const filtered = addendums.filter(addendum => {
+      console.log(`Checking addendum ${addendum.id}: parentAgreementId=${addendum.parentAgreementId}, matches=${addendum.parentAgreementId === agreementId}`);
+      return addendum.parentAgreementId === agreementId;
+    });
+    
+    console.log(`Filtered addendums for agreement ${agreementId}:`, filtered);
+    return filtered;
   };
 
   // Component is ready to render
+  console.log("=== AGREEMENT CARDS - AGREEMENTS DATA ===");
+  console.log("Agreements:", agreements);
+  console.log("Agreements length:", agreements?.length);
+  console.log("Addendums:", addendums);
+  console.log("Addendums length:", addendums?.length);
+  
+  // Force re-render test
+  const [forceRender, setForceRender] = useState(0);
+  console.log("Force render count:", forceRender);
+  if (agreements && agreements.length > 0) {
+    console.log("First agreement:", agreements[0]);
+    console.log("First agreement ID:", agreements[0].id);
+  }
+  if (addendums && addendums.length > 0) {
+    console.log("First addendum:", addendums[0]);
+    console.log("First addendum parentAgreementId:", addendums[0].parentAgreementId);
+  }
 
   // Show loading state if agreements are not yet loaded
   if (!agreements || agreements.length === 0) {
@@ -248,12 +306,7 @@ const AgreementCards = ({
                         {viewingAgreement.endDate ? new Date(viewingAgreement.endDate).toLocaleDateString() : "N/A"}
                       </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="font-medium text-gray-600">Total Value:</span>
-                      <span className="text-gray-900">
-                        {viewingAgreement.totalValue ? `${viewingAgreement.currency || "₹"}${viewingAgreement.totalValue.toLocaleString()}` : "N/A"}
-                      </span>
-                    </div>
+
                   </div>
                 </div>
 
@@ -321,6 +374,10 @@ const AgreementCards = ({
                   <div className="space-y-2">
                     {(() => {
                       const agreementAddendums = getAgreementAddendums(viewingAgreement.id);
+                      console.log("=== AGREEMENT CARDS - ADDENDUM DISPLAY ===");
+                      console.log("Viewing agreement ID:", viewingAgreement.id);
+                      console.log("Found addendums:", agreementAddendums);
+                      console.log("Addendums length:", agreementAddendums.length);
                       return agreementAddendums.length > 0 ? (
                         agreementAddendums.map((addendum, idx) => (
                           <div key={addendum.id} className="bg-purple-50 rounded-lg p-3">
@@ -362,8 +419,13 @@ const AgreementCards = ({
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => {
-                      setSelectedAgreement(viewingAgreement);
-                      setShowAddendumForm(true);
+                      console.log("Opening addendum form from modal for agreement:", viewingAgreement);
+                      uiActions.setEditingAddendum({
+                        parentAgreementId: viewingAgreement.id,
+                        parentAgreementTitle: viewingAgreement.clientName || viewingAgreement.title,
+                        parentAgreementBranches: viewingAgreement.selectedBranches?.join(", ") || "All Branches"
+                      });
+                      uiActions.setShowAddendumForm(true);
                       setViewingAgreement(null);
                     }}
                     className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
@@ -412,6 +474,95 @@ const AgreementCards = ({
         <p className="text-gray-600">Manage and review all agreements in chronological order</p>
       </div>
 
+      {/* Debug Button */}
+      <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <div className="mb-2">
+          <strong>Debug Info:</strong> Addendums: {addendums?.length || 0} | Agreements: {agreements?.length || 0}
+        </div>
+        <button 
+          onClick={() => {
+            console.log("=== MANUAL REDUX STATE CHECK ===");
+            console.log("Agreements:", agreements);
+            console.log("Addendums:", addendums);
+            console.log("Addendums length:", addendums?.length);
+            if (addendums && addendums.length > 0) {
+              addendums.forEach((addendum, index) => {
+                console.log(`Addendum ${index}:`, addendum);
+                console.log(`  - ID: ${addendum.id}`);
+                console.log(`  - Parent Agreement ID: ${addendum.parentAgreementId}`);
+                console.log(`  - Title: ${addendum.title}`);
+              });
+            }
+          }}
+          className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
+        >
+          🔍 Check Redux State
+        </button>
+        
+        <button 
+          onClick={() => {
+            console.log("=== CREATING TEST ADDENDUM ===");
+            if (agreements.length > 0) {
+              const testAddendum = {
+                id: `TEST-${Date.now()}`,
+                title: "Test Addendum",
+                description: "This is a test addendum",
+                reason: "Testing addendum creation",
+                impact: "No impact",
+                effectiveDate: new Date().toISOString(),
+                submittedDate: new Date().toISOString(),
+                submittedBy: "checker",
+                status: "Pending Review",
+                parentAgreementId: agreements[0].id,
+                parentAgreementTitle: agreements[0].selectedClient,
+                clauseModifications: [],
+                branches: [],
+                uploadedFiles: {}
+              };
+              
+              console.log("Test addendum data:", testAddendum);
+              onAddendumSubmit(testAddendum);
+              console.log("Test addendum submitted!");
+            } else {
+              console.log("No agreements available for testing");
+            }
+          }}
+          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 ml-2"
+        >
+          🧪 Create Test Addendum
+        </button>
+        
+        <button 
+          onClick={() => {
+            console.log("=== FORCE RE-RENDER ===");
+            setForceRender(prev => prev + 1);
+            console.log("Force re-render triggered");
+          }}
+          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 ml-2"
+        >
+          🔄 Force Re-render
+        </button>
+        
+        <button 
+          onClick={() => {
+            console.log("=== TEST DEMO ADDENDUMS ===");
+            if (agreements.length > 0) {
+              const firstAgreementId = agreements[0].id;
+              console.log("Testing with first agreement ID:", firstAgreementId);
+              const testResult = getAgreementAddendums(firstAgreementId);
+              console.log("Demo addendums for first agreement:", testResult);
+              
+              // Test with STATIC-001 specifically
+              const staticResult = getAgreementAddendums("STATIC-001");
+              console.log("Demo addendums for STATIC-001:", staticResult);
+            }
+          }}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ml-2"
+        >
+          🧪 Test Demo Data
+        </button>
+      </div>
+
       {sortedAgreements.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-6xl mb-4">📋</div>
@@ -422,6 +573,11 @@ const AgreementCards = ({
         <div className="space-y-6">
           {sortedAgreements.map((agreement, index) => {
             const agreementAddendums = getAgreementAddendums(agreement.id);
+            console.log(`=== AGREEMENT CARD ${index} ===`);
+            console.log("Agreement ID:", agreement.id);
+            console.log("Agreement addendums:", agreementAddendums);
+            console.log("Addendums count:", agreementAddendums.length);
+            console.log("Will render addendums:", agreementAddendums.length > 0);
             
             return (
               <div key={agreement.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
@@ -493,12 +649,7 @@ const AgreementCards = ({
                             {agreement.endDate ? new Date(agreement.endDate).toLocaleDateString() : "N/A"}
                           </span>
                         </div>
-                        <div>
-                          <span className="font-medium text-gray-600">Value:</span>
-                          <span className="ml-2 text-gray-900">
-                            {agreement.totalValue ? `₹${agreement.totalValue.toLocaleString()}` : "N/A"}
-                          </span>
-                        </div>
+
                       </div>
                     </div>
 
@@ -506,9 +657,14 @@ const AgreementCards = ({
                     <div>
                       <h4 className="font-semibold text-gray-800 mb-2">Addendums</h4>
                       <div className="space-y-2">
-                        {agreementAddendums.length > 0 ? (
-                          <div className="space-y-2">
-                            {agreementAddendums.slice(0, 3).map((addendum, idx) => (
+                        {(() => {
+                          console.log(`=== ADDENDUM DISPLAY FOR AGREEMENT ${agreement.id} ===`);
+                          console.log("agreementAddendums:", agreementAddendums);
+                          console.log("agreementAddendums.length:", agreementAddendums.length);
+                          console.log("Will show addendums:", agreementAddendums.length > 0);
+                          return agreementAddendums.length > 0 ? (
+                            <div className="space-y-2">
+                              {agreementAddendums.slice(0, 3).map((addendum, idx) => (
                               <div key={addendum.id} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm">📝</span>
@@ -538,7 +694,8 @@ const AgreementCards = ({
                           </div>
                         ) : (
                           <span className="text-sm text-gray-500">No addendums yet</span>
-                        )}
+                        );
+                        })()}
                       </div>
                     </div>
                   </div>

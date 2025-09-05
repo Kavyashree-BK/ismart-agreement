@@ -6,30 +6,54 @@ export default function TabNav() {
   const dispatch = useDispatch();
   const user = useSelector(state => state.user);
   const activeTab = useSelector(state => state.ui.activeTab);
+  const editingAgreement = useSelector(state => state.ui.editingAgreement);
 
   // Memoize tabs array to prevent unnecessary re-renders
   const tabs = useMemo(() => {
+    const hasEditingAgreement = !!editingAgreement;
+    console.log("TabNav tabs calculation - user.role:", user.role, "hasEditingAgreement:", hasEditingAgreement, "editingAgreement:", editingAgreement);
+    
     if (user.role === "Checker") {
-      return [
+      const checkerTabs = [
         { id: "dashboard", label: "Dashboard", icon: "📊" },
         { id: "new", label: "New Agreement", icon: "📝" },
         { id: "agreements", label: "Agreements", icon: "📋" }
       ];
+      console.log("Returning checker tabs:", checkerTabs);
+      return checkerTabs;
     } else {
-      return [
+      // For other roles, show "New Agreement" tab only when editing
+      const baseTabs = [
         { id: "dashboard", label: "Dashboard", icon: "📊" },
         { id: "agreements", label: "Agreements", icon: "📋" },
         { id: "history", label: "History", icon: "📚" }
       ];
+      
+      if (hasEditingAgreement) {
+        // Insert "New Agreement" tab when editing
+        baseTabs.splice(1, 0, { id: "new", label: "New Agreement", icon: "📝" });
+        console.log("Added new tab for editing, returning:", baseTabs);
+      } else {
+        console.log("No editing agreement, returning base tabs:", baseTabs);
+      }
+      
+      return baseTabs;
     }
-  }, [user.role]);
+  }, [user.role, editingAgreement]);
 
   // Memoize the tab click handler
   const handleTabClick = useCallback((tabId) => {
+    console.log("TabNav handleTabClick - tabId:", tabId, "editingAgreement:", editingAgreement);
     dispatch(setActiveTab(tabId));
     dispatch(closeAllModals());
-    dispatch(resetEditingState());
-  }, [dispatch]);
+    // Don't reset editing state when navigating to "new" tab for editing
+    if (tabId !== "new") {
+      console.log("Resetting editing state for tab:", tabId);
+      dispatch(resetEditingState());
+    } else {
+      console.log("Preserving editing state for new tab");
+    }
+  }, [dispatch, editingAgreement]);
 
   return (
     <nav className="bg-white border-b border-gray-200">

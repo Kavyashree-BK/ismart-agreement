@@ -62,6 +62,8 @@ const uiSlice = createSlice({
       state.statusHistoryModal = { open: false, history: [], title: "" };
       state.showFinalUpload = null;
       state.dropdownOpen = {};
+      state.showAddendumForm = false;
+      state.editingAddendum = null;
     },
     resetEditingState: (state) => {
       state.editingAgreement = null;

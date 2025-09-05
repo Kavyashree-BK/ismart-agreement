@@ -1,7 +1,10 @@
 import React from "react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { setViewModal, setEditingAgreement, setActiveTab } from "../slice/uiSlice";
 
-export default function Dashboard() {
+export default function Dashboard({ onNavigateToAgreements }) {
+  const dispatch = useDispatch();
+  
   // Use individual selectors to prevent infinite re-renders
   const agreements = useSelector(state => state.agreements.agreements);
   const addendums = useSelector(state => state.addendums.addendums);
@@ -10,6 +13,134 @@ export default function Dashboard() {
   const agreementsList = agreements || [];
   const addendumsList = addendums || [];
   const userRole = user.role;
+
+  // Handler functions for buttons
+  const handleViewAgreement = (agreement) => {
+    dispatch(setViewModal({ open: true, agreement }));
+  };
+
+  const handleEditAgreement = (agreement) => {
+    console.log("Edit button clicked for agreement:", agreement);
+    
+    // Ensure all required fields exist for editing
+    const completeAgreement = {
+      ...agreement,
+      selectedDepartment: agreement.selectedDepartment || '',
+      agreementType: agreement.agreementType || 'Client Draft',
+      startDate: agreement.startDate || new Date().toISOString().split('T')[0],
+      openAgreement: agreement.openAgreement || false,
+      remarks: agreement.remarks || '',
+      entityType: agreement.entityType || 'single',
+      groupCompanies: agreement.groupCompanies || [''],
+      importantClauses: agreement.importantClauses || [
+        { title: 'Term and termination (Duration)', content: '', file: null },
+        { title: 'Payment Terms', content: '', file: null },
+        { title: 'Penalty', content: '', file: null },
+        { title: 'Minimum Wages', content: '', file: null },
+        { title: 'Costing - Salary Breakup', content: '', file: null },
+        { title: 'SLA', content: '', file: null },
+        { title: 'Indemnity', content: '', file: null },
+        { title: 'Insurance', content: '', file: null }
+      ],
+      contactInfo: agreement.contactInfo || {
+        name: '',
+        email: '',
+        phone: '',
+        clientName: '',
+        clientEmail: '',
+        clientPhone: '',
+        ismartName: '',
+        ismartEmail: '',
+        ismartPhone: ''
+      }
+    };
+    
+    console.log("Complete agreement for editing:", completeAgreement);
+    console.log("Dispatching setEditingAgreement...");
+    dispatch(setEditingAgreement(completeAgreement));
+    console.log("Dispatching setActiveTab('new')...");
+    dispatch(setActiveTab("new"));
+    console.log("Edit actions completed");
+  };
+
+  const handleDownloadAgreement = (agreement) => {
+    // Create a downloadable PDF or document
+    const agreementData = {
+      title: `Agreement - ${agreement.selectedClient}`,
+      content: `
+        Client: ${agreement.selectedClient}
+        Branches: ${getAllBranches(agreement)}
+        Status: ${agreement.status}
+        Submitted Date: ${agreement.submittedDate ? new Date(agreement.submittedDate).toLocaleDateString() : 'N/A'}
+        End Date: ${agreement.endDate ? new Date(agreement.endDate).toLocaleDateString() : 'N/A'}
+        
+        Agreement Details:
+        ${JSON.stringify(agreement, null, 2)}
+      `
+    };
+    
+    // Create and download file
+    const blob = new Blob([agreementData.content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${agreement.selectedClient}_Agreement_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleRenewAgreement = (agreement) => {
+    console.log("Renew button clicked for agreement:", agreement);
+    
+    // Create a new agreement based on the expiring one with all required fields
+    const renewedAgreement = {
+      ...agreement,
+      id: null, // New ID will be generated
+      status: "Draft",
+      submittedDate: null,
+      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year from now
+      isRenewal: true,
+      originalAgreementId: agreement.id,
+      // Ensure all required fields exist
+      selectedDepartment: agreement.selectedDepartment || '',
+      agreementType: agreement.agreementType || 'Client Draft',
+      startDate: agreement.startDate || new Date().toISOString().split('T')[0],
+      openAgreement: agreement.openAgreement || false,
+      remarks: agreement.remarks || '',
+      entityType: agreement.entityType || 'single',
+      groupCompanies: agreement.groupCompanies || [''],
+      importantClauses: agreement.importantClauses || [
+        { title: 'Term and termination (Duration)', content: '', file: null },
+        { title: 'Payment Terms', content: '', file: null },
+        { title: 'Penalty', content: '', file: null },
+        { title: 'Minimum Wages', content: '', file: null },
+        { title: 'Costing - Salary Breakup', content: '', file: null },
+        { title: 'SLA', content: '', file: null },
+        { title: 'Indemnity', content: '', file: null },
+        { title: 'Insurance', content: '', file: null }
+      ],
+      contactInfo: agreement.contactInfo || {
+        name: '',
+        email: '',
+        phone: '',
+        clientName: '',
+        clientEmail: '',
+        clientPhone: '',
+        ismartName: '',
+        ismartEmail: '',
+        ismartPhone: ''
+      }
+    };
+    
+    console.log("Created renewed agreement:", renewedAgreement);
+    console.log("Dispatching setEditingAgreement...");
+    dispatch(setEditingAgreement(renewedAgreement));
+    console.log("Dispatching setActiveTab('new')...");
+    dispatch(setActiveTab("new"));
+    console.log("Renew actions completed");
+  };
 
   // Calculate dashboard metrics - EXACTLY like the old UI image
   const totalSubmissions = agreementsList.length;
@@ -42,35 +173,175 @@ export default function Dashboard() {
       selectedClient: "TechCorp Solutions",
       selectedBranches: [{ name: "Mumbai Central" }, { name: "Pune" }],
       endDate: "2025-09-04",
-      demo: true
+      demo: true,
+      selectedDepartment: "IT Services",
+      agreementType: "Client Draft",
+      startDate: "2024-09-04",
+      openAgreement: false,
+      remarks: "Demo contract for testing",
+      entityType: "single",
+      groupCompanies: [""],
+      importantClauses: [
+        { title: 'Term and termination (Duration)', content: '2 years', file: null },
+        { title: 'Payment Terms', content: 'Monthly', file: null },
+        { title: 'Penalty', content: '5% per month', file: null },
+        { title: 'Minimum Wages', content: 'As per law', file: null },
+        { title: 'Costing - Salary Breakup', content: 'Standard rates', file: null },
+        { title: 'SLA', content: '99.9% uptime', file: null },
+        { title: 'Indemnity', content: 'Standard terms', file: null },
+        { title: 'Insurance', content: 'Required', file: null }
+      ],
+      contactInfo: {
+        name: "John Doe",
+        email: "john@techcorp.com",
+        phone: "9876543210",
+        clientName: "TechCorp Solutions",
+        clientEmail: "contact@techcorp.com",
+        clientPhone: "9876543210",
+        ismartName: "iSmart Solutions",
+        ismartEmail: "contact@ismart.com",
+        ismartPhone: "9876543210"
+      }
     },
     {
       id: "demo-2", 
       selectedClient: "Global Industries Ltd",
       selectedBranches: [{ name: "Delhi" }, { name: "Gurgaon" }, { name: "Noida" }],
       endDate: "2025-09-09",
-      demo: true
+      demo: true,
+      selectedDepartment: "Manufacturing",
+      agreementType: "iSmart Draft",
+      startDate: "2024-09-09",
+      openAgreement: false,
+      remarks: "Demo contract for testing",
+      entityType: "single",
+      groupCompanies: [""],
+      importantClauses: [
+        { title: 'Term and termination (Duration)', content: '3 years', file: null },
+        { title: 'Payment Terms', content: 'Quarterly', file: null },
+        { title: 'Penalty', content: '3% per month', file: null },
+        { title: 'Minimum Wages', content: 'As per law', file: null },
+        { title: 'Costing - Salary Breakup', content: 'Standard rates', file: null },
+        { title: 'SLA', content: '99.5% uptime', file: null },
+        { title: 'Indemnity', content: 'Standard terms', file: null },
+        { title: 'Insurance', content: 'Required', file: null }
+      ],
+      contactInfo: {
+        name: "Jane Smith",
+        email: "jane@globalindustries.com",
+        phone: "9876543211",
+        clientName: "Global Industries Ltd",
+        clientEmail: "contact@globalindustries.com",
+        clientPhone: "9876543211",
+        ismartName: "iSmart Solutions",
+        ismartEmail: "contact@ismart.com",
+        ismartPhone: "9876543210"
+      }
     },
     {
       id: "demo-3",
       selectedClient: "Innovation Systems",
       selectedBranches: [{ name: "Bangalore" }],
       endDate: "2025-09-15",
-      demo: true
+      demo: true,
+      selectedDepartment: "Software Development",
+      agreementType: "Client Draft",
+      startDate: "2024-09-15",
+      openAgreement: false,
+      remarks: "Demo contract for testing",
+      entityType: "single",
+      groupCompanies: [""],
+      importantClauses: [
+        { title: 'Term and termination (Duration)', content: '1 year', file: null },
+        { title: 'Payment Terms', content: 'Monthly', file: null },
+        { title: 'Penalty', content: '2% per month', file: null },
+        { title: 'Minimum Wages', content: 'As per law', file: null },
+        { title: 'Costing - Salary Breakup', content: 'Standard rates', file: null },
+        { title: 'SLA', content: '99.8% uptime', file: null },
+        { title: 'Indemnity', content: 'Standard terms', file: null },
+        { title: 'Insurance', content: 'Required', file: null }
+      ],
+      contactInfo: {
+        name: "Mike Johnson",
+        email: "mike@innovationsystems.com",
+        phone: "9876543212",
+        clientName: "Innovation Systems",
+        clientEmail: "contact@innovationsystems.com",
+        clientPhone: "9876543212",
+        ismartName: "iSmart Solutions",
+        ismartEmail: "contact@ismart.com",
+        ismartPhone: "9876543210"
+      }
     },
     {
       id: "demo-4",
       selectedClient: "Digital Solutions Pvt Ltd",
       selectedBranches: [{ name: "Chennai" }, { name: "Coimbatore" }],
       endDate: "2025-09-22",
-      demo: true
+      demo: true,
+      selectedDepartment: "Digital Services",
+      agreementType: "iSmart Draft",
+      startDate: "2024-09-22",
+      openAgreement: false,
+      remarks: "Demo contract for testing",
+      entityType: "single",
+      groupCompanies: [""],
+      importantClauses: [
+        { title: 'Term and termination (Duration)', content: '2 years', file: null },
+        { title: 'Payment Terms', content: 'Monthly', file: null },
+        { title: 'Penalty', content: '4% per month', file: null },
+        { title: 'Minimum Wages', content: 'As per law', file: null },
+        { title: 'Costing - Salary Breakup', content: 'Standard rates', file: null },
+        { title: 'SLA', content: '99.7% uptime', file: null },
+        { title: 'Indemnity', content: 'Standard terms', file: null },
+        { title: 'Insurance', content: 'Required', file: null }
+      ],
+      contactInfo: {
+        name: "Sarah Wilson",
+        email: "sarah@digitalsolutions.com",
+        phone: "9876543213",
+        clientName: "Digital Solutions Pvt Ltd",
+        clientEmail: "contact@digitalsolutions.com",
+        clientPhone: "9876543213",
+        ismartName: "iSmart Solutions",
+        ismartEmail: "contact@ismart.com",
+        ismartPhone: "9876543210"
+      }
     },
     {
       id: "demo-5",
       selectedClient: "Future Technologies",
       selectedBranches: [{ name: "Hyderabad" }],
       endDate: "2025-09-28",
-      demo: true
+      demo: true,
+      selectedDepartment: "Technology",
+      agreementType: "Client Draft",
+      startDate: "2024-09-28",
+      openAgreement: false,
+      remarks: "Demo contract for testing",
+      entityType: "single",
+      groupCompanies: [""],
+      importantClauses: [
+        { title: 'Term and termination (Duration)', content: '3 years', file: null },
+        { title: 'Payment Terms', content: 'Quarterly', file: null },
+        { title: 'Penalty', content: '3% per month', file: null },
+        { title: 'Minimum Wages', content: 'As per law', file: null },
+        { title: 'Costing - Salary Breakup', content: 'Standard rates', file: null },
+        { title: 'SLA', content: '99.9% uptime', file: null },
+        { title: 'Indemnity', content: 'Standard terms', file: null },
+        { title: 'Insurance', content: 'Required', file: null }
+      ],
+      contactInfo: {
+        name: "David Brown",
+        email: "david@futuretech.com",
+        phone: "9876543214",
+        clientName: "Future Technologies",
+        clientEmail: "contact@futuretech.com",
+        clientPhone: "9876543214",
+        ismartName: "iSmart Solutions",
+        ismartEmail: "contact@ismart.com",
+        ismartPhone: "9876543210"
+      }
     }
   ];
 
@@ -116,8 +387,9 @@ export default function Dashboard() {
 
   // Handle View All Contracts button click - Navigate to Agreements tab
   const handleViewAllContracts = () => {
-    // This will be handled by the parent component
-    console.log("View All Contracts clicked");
+    if (onNavigateToAgreements) {
+      onNavigateToAgreements();
+    }
   };
 
   // APPROVER ROLE DASHBOARD - EXACTLY like the reference image
@@ -372,13 +644,22 @@ export default function Dashboard() {
                     </span>
                     
                     <div className="flex space-x-2">
-                      <button className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors">
+                      <button 
+                        onClick={() => handleViewAgreement(agreement)}
+                        className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors"
+                      >
                         View
                       </button>
-                      <button className="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600 transition-colors">
+                      <button 
+                        onClick={() => handleEditAgreement(agreement)}
+                        className="bg-yellow-500 text-white px-3 py-1 rounded text-xs hover:bg-yellow-600 transition-colors"
+                      >
                         Edit
                       </button>
-                      <button className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors">
+                      <button 
+                        onClick={() => handleDownloadAgreement(agreement)}
+                        className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                      >
                         Download
                       </button>
                     </div>
@@ -421,13 +702,22 @@ export default function Dashboard() {
                       </span>
                       
                       <div className="flex space-x-2">
-                        <button className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors">
+                        <button 
+                          onClick={() => handleViewAgreement(agreement)}
+                          className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors"
+                        >
                           View
                         </button>
-                        <button className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors">
+                        <button 
+                          onClick={() => handleRenewAgreement(agreement)}
+                          className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                        >
                           Renew
                         </button>
-                        <button className="bg-purple-600 text-white px-3 py-1 rounded text-xs hover:bg-purple-700 transition-colors">
+                        <button 
+                          onClick={() => handleDownloadAgreement(agreement)}
+                          className="bg-purple-600 text-white px-3 py-1 rounded text-xs hover:bg-purple-700 transition-colors"
+                        >
                           Download
                         </button>
                       </div>

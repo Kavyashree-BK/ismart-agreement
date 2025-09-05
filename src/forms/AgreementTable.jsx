@@ -948,9 +948,17 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
     else if (daysDiff >= 3) priority = "Medium";
 
     // Calculate addendums count for this agreement
-    const addendumsCount = addendums.filter(addendum => 
-      addendum.parentAgreementId === agreement.id
-    ).length;
+    console.log("=== AGREEMENT TABLE - CALCULATING ADDENDUMS ===");
+    console.log("Agreement ID:", agreement.id);
+    console.log("All addendums:", addendums);
+    console.log("Addendums length:", addendums?.length);
+    
+    const addendumsCount = addendums.filter(addendum => {
+      console.log(`Checking addendum ${addendum.id}: parentAgreementId=${addendum.parentAgreementId}, agreement.id=${agreement.id}, matches=${addendum.parentAgreementId === agreement.id}`);
+      return addendum.parentAgreementId === agreement.id;
+    }).length;
+    
+    console.log(`Addendums count for agreement ${agreement.id}:`, addendumsCount);
 
     return {
       id: agreement.id || `AGR${String(index + 1).padStart(3, '0')}`,
@@ -1146,7 +1154,17 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
 
   // Handler for viewing a specific addendum
   const handleViewAddendum = (addendum) => {
-    console.log("Viewing addendum:", addendum);
+    console.log("=== VIEWING ADDENDUM ===");
+    console.log("Addendum data:", addendum);
+    console.log("Addendum ID:", addendum?.id);
+    console.log("Addendum title:", addendum?.title);
+    console.log("Addendum status:", addendum?.status);
+    
+    if (!addendum) {
+      console.error("No addendum data provided");
+      return;
+    }
+    
     setAddendumDetailsModal({ open: true, addendum: addendum });
   };
 
@@ -1797,7 +1815,17 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
             <div className="bg-white rounded-lg shadow-lg p-6 min-w-[600px] max-w-4xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-xl font-bold">📄 Addendum Details - #{addendumDetailsModal.addendum.id}</h3>
+                  <h3 className="text-xl font-bold">📄 Addendum Details - #{addendumDetailsModal.addendum?.id || 'Unknown'}</h3>
+                  <div className="text-sm text-gray-500 mt-1">
+                    Debug: Modal opened with addendum data: {JSON.stringify(addendumDetailsModal.addendum, null, 2)}
+                  </div>
+                  
+                  {!addendumDetailsModal.addendum && (
+                    <div className="bg-red-50 border border-red-200 rounded p-3 mt-2">
+                      <p className="text-red-700">⚠️ Error: No addendum data available</p>
+                      <p className="text-red-600 text-sm">Modal state: {JSON.stringify(addendumDetailsModal, null, 2)}</p>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-sm text-gray-600">Version:</span>
                     <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
