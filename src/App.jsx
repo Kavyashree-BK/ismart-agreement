@@ -10,8 +10,10 @@ import TabNav from "./components/ui/TabNav";
 import Dashboard from "./components/Dashboard";
 import History from "./components/History";
 import ViewModal from "./components/ViewModal";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { setEditingAgreement, setActiveTab, setViewModal } from "./slice/uiSlice";
-import { createAddendum } from "./slice/addendumsSlice";
+import { createAddendum, updateAddendumStatus } from "./slice/addendumsSlice";
+import { updateAgreementStatus } from "./slice/agreementsSlice";
 
 // Main App Component
 export default function App() {
@@ -20,6 +22,7 @@ export default function App() {
   // Use individual selectors to prevent infinite re-renders
   const user = useSelector(state => state.user);
   const activeTab = useSelector(state => state.ui.activeTab);
+  const editingAgreement = useSelector(state => state.ui.editingAgreement);
   const showAddendumForm = useSelector(state => state.ui.showAddendumForm);
   const viewModal = useSelector(state => state.ui.viewModal);
   const agreements = useSelector(state => state.agreements.agreements);
@@ -66,13 +69,19 @@ export default function App() {
         {activeTab === "dashboard" && <Dashboard onNavigateToAgreements={() => dispatch(setActiveTab("agreements"))} />}
         {activeTab === "new" && (() => {
           console.log("Rendering AgreementForm - activeTab:", activeTab);
-          return <AgreementForm />;
+          console.log("editingAgreement:", editingAgreement);
+          console.log("isEditing:", !!editingAgreement);
+          
+          return (
+            <ErrorBoundary>
+              <AgreementForm />
+            </ErrorBoundary>
+          );
         })()}
         {activeTab === "agreements" && (
           user.role === "Checker" ? (
             <AgreementCards 
                agreements={agreements} 
-               addendums={addendums}
               userRole={user.role}
               onEditAgreement={(agreement) => {
                 dispatch(setEditingAgreement(agreement));
@@ -80,12 +89,20 @@ export default function App() {
               }}
               onAddendumSubmit={(addendumData) => {
                 dispatch(createAddendum(addendumData));
+              }}
+              onStatusUpdate={(agreementId, status, approvedDate, finalAgreement, priority) => {
+                dispatch(updateAgreementStatus({ 
+                  id: agreementId, 
+                  status, 
+                  approvedDate, 
+                  finalAgreement, 
+                  priority 
+                }));
               }}
             />
           ) : (
             <AgreementTable 
-              agreements={agreements} 
-              addendums={addendums}
+             agreements={agreements} 
               userRole={user.role}
               onEditAgreement={(agreement) => {
                 dispatch(setEditingAgreement(agreement));
@@ -93,6 +110,18 @@ export default function App() {
               }}
               onAddendumSubmit={(addendumData) => {
                 dispatch(createAddendum(addendumData));
+              }}
+              onStatusUpdate={(agreementId, status, approvedDate, finalAgreement, priority) => {
+                dispatch(updateAgreementStatus({ 
+                  id: agreementId, 
+                  status, 
+                  approvedDate, 
+                  finalAgreement, 
+                  priority 
+                }));
+              }}
+              onAddendumStatusUpdate={(addendumId, newStatus) => {
+                dispatch(updateAddendumStatus({ addendumId, newStatus }));
               }}
             />
           )

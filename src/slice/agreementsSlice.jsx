@@ -40,16 +40,57 @@ const demoAgreements = [
       PO: { uploaded: true, file: { name: "TechCorp_PO.pdf", size: "3.2 MB" } }
     },
     importantClauses: [
-      "Term and termination",
-      "Payment Terms",
-      "SLA",
-      "Insurance",
-      "Confidentiality"
+      {
+        title: "Term and termination",
+        description: "Agreement duration and termination conditions",
+        documents: [
+          { name: "Termination_Clause.pdf", size: "245 KB", type: "PDF" },
+          { name: "Duration_Agreement.docx", size: "180 KB", type: "DOCX" }
+        ]
+      },
+      {
+        title: "Payment Terms",
+        description: "Payment schedule and terms",
+        documents: [
+          { name: "Payment_Schedule.pdf", size: "320 KB", type: "PDF" }
+        ]
+      },
+      {
+        title: "SLA",
+        description: "Service Level Agreement details",
+        documents: [
+          { name: "SLA_Document.pdf", size: "450 KB", type: "PDF" },
+          { name: "Performance_Metrics.xlsx", size: "125 KB", type: "XLSX" }
+        ]
+      },
+      {
+        title: "Insurance",
+        description: "Insurance coverage and requirements",
+        documents: [
+          { name: "Insurance_Policy.pdf", size: "1.2 MB", type: "PDF" }
+        ]
+      },
+      {
+        title: "Confidentiality",
+        description: "Confidentiality and non-disclosure terms",
+        documents: [
+          { name: "NDA_Agreement.pdf", size: "380 KB", type: "PDF" },
+          { name: "Confidentiality_Clause.docx", size: "220 KB", type: "DOCX" }
+        ]
+      }
     ],
     selectedBranches: [
       { name: "Mumbai Central", id: "branch-001" },
       { name: "Andheri West", id: "branch-002" }
     ],
+    contactInfo: {
+      name: "John Smith",
+      email: "john.smith@ismart.com",
+      phone: "9876543210",
+      clientName: "Sarah Johnson",
+      clientEmail: "sarah.johnson@techcorp.com",
+      clientPhone: "9123456789"
+    },
     createdAt: "2024-01-10T10:00:00",
     lastModified: "2024-01-15T14:30:00",
     version: "1.0.0"
@@ -78,13 +119,41 @@ const demoAgreements = [
       PO: { uploaded: true, file: { name: "GlobalIndustries_PO.pdf", size: "3.1 MB" } }
     },
     importantClauses: [
-      "Quality Standards",
-      "Delivery Schedule",
-      "Service Level Agreement"
+      {
+        title: "Quality Standards",
+        description: "Quality control and standards requirements",
+        documents: [
+          { name: "Quality_Standards.pdf", size: "380 KB", type: "PDF" },
+          { name: "ISO_Certification.pdf", size: "520 KB", type: "PDF" }
+        ]
+      },
+      {
+        title: "Delivery Schedule",
+        description: "Delivery timelines and milestones",
+        documents: [
+          { name: "Delivery_Timeline.pdf", size: "290 KB", type: "PDF" }
+        ]
+      },
+      {
+        title: "Service Level Agreement",
+        description: "Service level commitments and metrics",
+        documents: [
+          { name: "SLA_Agreement.pdf", size: "650 KB", type: "PDF" },
+          { name: "Performance_Report.xlsx", size: "180 KB", type: "XLSX" }
+        ]
+      }
     ],
     selectedBranches: [
       { name: "Pune Industrial", id: "branch-003" }
     ],
+    contactInfo: {
+      name: "Mike Wilson",
+      email: "mike.wilson@ismart.com",
+      phone: "9876543211",
+      clientName: "David Brown",
+      clientEmail: "david.brown@globalindustries.com",
+      clientPhone: "9123456790"
+    },
     createdAt: "2024-02-01T09:00:00",
     lastModified: "2024-02-05T16:45:00",
     version: "1.0.0"

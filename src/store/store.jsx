@@ -17,9 +17,9 @@ export const store = configureStore({
         // Ignore these action types for serialization checks
         ignoredActions: ['persist/PERSIST'],
         // Ignore these field paths in all actions
-        ignoredActionPaths: ['payload.createdAt', 'payload.lastModified', 'payload.submittedDate', 'payload.uploadedFiles', 'payload.updates.uploadedFiles'],
+        ignoredActionPaths: ['payload.createdAt', 'payload.lastModified', 'payload.submittedDate', 'payload.uploadedFiles', 'payload.updates.uploadedFiles', 'payload.importantClauses.*.file', 'payload.updates.importantClauses.*.file'],
         // Ignore these paths in the state
-        ignoredPaths: ['agreements.agreements', 'addendums.addendums', 'addendums.addendums.*.uploadedFiles'],
+        ignoredPaths: ['agreements.agreements', 'addendums.addendums', 'addendums.addendums.*.uploadedFiles', 'agreements.agreements.*.importantClauses.*.file'],
       },
     }),
 });

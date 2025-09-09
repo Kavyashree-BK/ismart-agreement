@@ -16,6 +16,18 @@ const AddendumForm = () => {
   
   console.log("AddendumForm - editingAddendum:", editingAddendum);
   console.log("AddendumForm - ui state:", ui);
+  console.log("AddendumForm - editingAddendum type:", typeof editingAddendum);
+  console.log("AddendumForm - editingAddendum keys:", editingAddendum ? Object.keys(editingAddendum) : "null");
+  
+  // Debug parent agreement ID specifically
+  if (editingAddendum) {
+    console.log("✅ editingAddendum found:", editingAddendum);
+    console.log("✅ parentAgreementId:", editingAddendum.parentAgreementId);
+    console.log("✅ parentAgreementTitle:", editingAddendum.parentAgreementTitle);
+  } else {
+    console.log("❌ editingAddendum is null/undefined");
+    console.log("❌ This means the parent agreement data was not set properly");
+  }
 
   const [form, setForm] = useState({
     title: "",
@@ -56,7 +68,8 @@ const AddendumForm = () => {
 
   // Handle editing mode - pre-fill form when editingAddendum is provided
   useEffect(() => {
-    if (editingAddendum) {
+    if (editingAddendum && editingAddendum.id) {
+      // This is an existing addendum being edited
       setIsEditMode(true);
       setForm({
         title: editingAddendum.title || "",
@@ -70,6 +83,7 @@ const AddendumForm = () => {
       setUploadedFiles(editingAddendum.uploadedFiles || {});
       setClauseModifications(editingAddendum.clauseModifications || []);
     } else {
+      // This is a new addendum or no addendum data
       setIsEditMode(false);
       setClauseModifications([]);
     }
@@ -263,6 +277,32 @@ const AddendumForm = () => {
         branches: serializedBranches
       };
       
+      console.log("=== ADDENDUM DATA DEBUG ===");
+      console.log("editingAddendum:", editingAddendum);
+      console.log("editingAddendum type:", typeof editingAddendum);
+      console.log("editingAddendum keys:", editingAddendum ? Object.keys(editingAddendum) : "null");
+      console.log("parentAgreementId:", addendumData.parentAgreementId);
+      console.log("parentAgreementId type:", typeof addendumData.parentAgreementId);
+      console.log("parentAgreementTitle:", addendumData.parentAgreementTitle);
+      console.log("Available agreements:", agreementsList);
+      
+      // Check if parentAgreementId is missing
+      if (!addendumData.parentAgreementId) {
+        console.error("❌ MISSING PARENT AGREEMENT ID!");
+        console.error("editingAddendum:", editingAddendum);
+        console.error("This will cause the addendum to not display in agreement cards!");
+        setErrorModalMessage("Error: Parent Agreement ID is missing. Please try again.");
+        setShowErrorModal(true);
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Set fallback title if missing
+      if (!addendumData.parentAgreementTitle) {
+        addendumData.parentAgreementTitle = `Agreement ${addendumData.parentAgreementId}`;
+        console.log("Set fallback title:", addendumData.parentAgreementTitle);
+      }
+      
       if (isEditMode && editingAddendum) {
         addendumData.originalSubmittedDate = editingAddendum.submittedDate;
         addendumData.originalSubmittedBy = editingAddendum.submittedBy;
@@ -276,14 +316,28 @@ const AddendumForm = () => {
       console.log("Available actions:", addendumsActions);
       console.log("editingAddendum:", editingAddendum);
       
-      if (editingAddendum) {
+      if (isEditMode) {
         console.log("Updating existing addendum:", editingAddendum.id);
         addendumsActions.update({ id: editingAddendum.id, updates: addendumData });
       } else {
         console.log("Creating new addendum");
-        // Use the async thunk instead of direct action
-        dispatch(createAddendum(addendumData));
-        console.log("Addendum creation dispatched");
+        console.log("Addendum data being added:", addendumData);
+        console.log("addendumsActions.add function:", addendumsActions.add);
+        console.log("Calling addendumsActions.add...");
+        
+        try {
+          // Use direct action for immediate update
+          const result = addendumsActions.add(addendumData);
+          console.log("✅ Addendum added to store successfully:", result);
+          console.log("✅ Addendum ID:", addendumData.id);
+          console.log("✅ Parent Agreement ID:", addendumData.parentAgreementId);
+        } catch (error) {
+          console.error("❌ Error adding addendum to store:", error);
+          setErrorModalMessage("Error adding addendum: " + error.message);
+          setShowErrorModal(true);
+          setIsSubmitting(false);
+          return;
+        }
       }
       
       console.log("Closing modal and resetting form...");

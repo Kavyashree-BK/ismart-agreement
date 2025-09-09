@@ -1,7 +1,6 @@
 import React, { useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { setUser, logout } from "../../slice/userSlice";
-import { closeAllModals, resetEditingState } from "../../slice/uiSlice";
+import { setUser } from "../../slice/userSlice";
 
 export default function Header() {
   const dispatch = useDispatch();
@@ -11,11 +10,6 @@ export default function Header() {
     dispatch(setUser({ name: user.name, role: newRole }));
   }, [dispatch, user.name]);
 
-  const handleLogout = useCallback(() => {
-    dispatch(logout());
-    dispatch(closeAllModals());
-    dispatch(resetEditingState());
-  }, [dispatch]);
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -39,8 +33,8 @@ export default function Header() {
                     onChange={(e) => handleRoleChange(e.target.value)}
                     className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <option value="Approver">Approver</option>
                     <option value="Checker">Checker</option>
+                    <option value="Approver">Approver</option>
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,13 +48,6 @@ export default function Header() {
                 </button>
               </div>
             )}
-            
-            <button
-              onClick={handleLogout}
-              className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700 transition-colors"
-            >
-              Logout
-            </button>
           </div>
         </div>
       </div>

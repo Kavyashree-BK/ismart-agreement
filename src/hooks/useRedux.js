@@ -101,9 +101,23 @@ export const useAddendums = () => {
   const addendums = useSelector(selectAllAddendums);
   const loading = useSelector(selectAddendumsLoading);
   const error = useSelector(selectAddendumsError);
+  
+  // Debug addendums selector
+  console.log("=== USE ADDENDUMS HOOK ===");
+  console.log("addendums from selector:", addendums);
+  console.log("addendums type:", typeof addendums);
+  console.log("addendums length:", addendums?.length);
+  console.log("addendums structure:", addendums);
+  if (addendums && addendums.length > 0) {
+    console.log("First addendum:", addendums[0]);
+  }
 
   const actions = useMemo(() => ({
-    add: (addendum) => dispatch(addAddendum(addendum)),
+    add: (addendum) => {
+      console.log("=== DISPATCHING ADD ADDENDUM ===");
+      console.log("Dispatching addAddendum with:", addendum);
+      return dispatch(addAddendum(addendum));
+    },
     update: (data) => dispatch(updateAddendum(data)),
     remove: (id) => dispatch(removeAddendum(id)),
     setStatus: (data) => dispatch(setAddendumStatus(data)),

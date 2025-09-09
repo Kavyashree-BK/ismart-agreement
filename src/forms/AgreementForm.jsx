@@ -7,20 +7,31 @@ const AgreementForm = () => {
   const dispatch = useDispatch();
   const editingAgreement = useSelector(state => state.ui.editingAgreement);
   const isEditing = !!editingAgreement;
-  
+
   console.log("AgreementForm rendering - isEditing:", isEditing, "editingAgreement:", editingAgreement);
+  
+  // Add safety check for editingAgreement
+  if (isEditing && editingAgreement) {
+    console.log("Editing agreement type:", typeof editingAgreement);
+    console.log("Editing agreement constructor:", editingAgreement.constructor?.name);
+    console.log("Editing agreement isArray:", Array.isArray(editingAgreement));
+    console.log("Editing agreement isObject:", typeof editingAgreement === 'object' && editingAgreement !== null);
+  }
   
 
   // Helper function to safely access nested properties
   const safeGet = (obj, path, defaultValue = '') => {
-    return path.split('.').reduce((current, key) => {
+    const result = path.split('.').reduce((current, key) => {
       return current && current[key] !== undefined ? current[key] : defaultValue;
     }, obj);
+    // Ensure we always return a string to prevent object rendering issues
+    return typeof result === 'string' ? result : String(result || defaultValue);
   };
 
   // Form state
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
+  const [isFormReady, setIsFormReady] = useState(false);
   const [formData, setFormData] = useState({
     selectedClient: '',
     selectedDepartment: '',
@@ -85,37 +96,83 @@ const AgreementForm = () => {
   useEffect(() => {
     console.log("AgreementForm useEffect - isEditing:", isEditing, "editingAgreement:", editingAgreement);
     if (isEditing && editingAgreement) {
-      console.log("Pre-filling form with editingAgreement data:", editingAgreement);
-      
-      // Ensure all required objects exist with default values
-      const safeEditingData = {
-        ...editingAgreement,
-        contactInfo: editingAgreement.contactInfo || {
-          name: '',
-          email: '',
-          phone: '',
-          clientName: '',
-          clientEmail: '',
-          clientPhone: '',
-          ismartName: '',
-          ismartEmail: '',
-          ismartPhone: ''
-        },
-        importantClauses: editingAgreement.importantClauses || [
-          { title: 'Term and termination (Duration)', content: '', file: null },
-          { title: 'Payment Terms', content: '', file: null },
-          { title: 'Penalty', content: '', file: null },
-          { title: 'Minimum Wages', content: '', file: null },
-          { title: 'Costing - Salary Breakup', content: '', file: null },
-          { title: 'SLA', content: '', file: null },
-          { title: 'Indemnity', content: '', file: null },
-          { title: 'Insurance', content: '', file: null }
-        ],
-        selectedBranches: editingAgreement.selectedBranches || [],
-        groupCompanies: editingAgreement.groupCompanies || ['']
-      };
-      
-      setFormData(safeEditingData);
+      try {
+        console.log("Pre-filling form with editingAgreement data:", editingAgreement);
+        
+        // Ensure all required objects exist with default values
+        const safeEditingData = {
+          ...editingAgreement,
+          contactInfo: editingAgreement.contactInfo || {
+            name: '',
+            email: '',
+            phone: '',
+            clientName: '',
+            clientEmail: '',
+            clientPhone: '',
+            ismartName: '',
+            ismartEmail: '',
+            ismartPhone: ''
+          },
+          importantClauses: editingAgreement.importantClauses || [
+            { title: 'Term and termination (Duration)', content: '', file: null },
+            { title: 'Payment Terms', content: '', file: null },
+            { title: 'Penalty', content: '', file: null },
+            { title: 'Minimum Wages', content: '', file: null },
+            { title: 'Costing - Salary Breakup', content: '', file: null },
+            { title: 'SLA', content: '', file: null },
+            { title: 'Indemnity', content: '', file: null },
+            { title: 'Insurance', content: '', file: null }
+          ],
+          selectedBranches: editingAgreement.selectedBranches || [],
+          groupCompanies: editingAgreement.groupCompanies || ['']
+        };
+        
+        console.log("Safe editing data created:", safeEditingData);
+        setFormData(safeEditingData);
+        setIsFormReady(true);
+        console.log("Form data set successfully");
+      } catch (error) {
+        console.error("Error in AgreementForm useEffect:", error);
+        console.error("Error details:", error.message, error.stack);
+        // Reset to default form data if there's an error
+        setFormData({
+          selectedClient: '',
+          selectedDepartment: '',
+          selectedBranches: [],
+          agreementType: '',
+          startDate: '',
+          endDate: '',
+          openAgreement: false,
+          remarks: '',
+          entityType: 'single',
+          groupCompanies: [''],
+          importantClauses: [
+            { title: 'Term and termination (Duration)', content: '', file: null },
+            { title: 'Payment Terms', content: '', file: null },
+            { title: 'Penalty', content: '', file: null },
+            { title: 'Minimum Wages', content: '', file: null },
+            { title: 'Costing - Salary Breakup', content: '', file: null },
+            { title: 'SLA', content: '', file: null },
+            { title: 'Indemnity', content: '', file: null },
+            { title: 'Insurance', content: '', file: null }
+          ],
+          contactInfo: {
+            name: '',
+            email: '',
+            phone: '',
+            clientName: '',
+            clientEmail: '',
+            clientPhone: '',
+            ismartName: '',
+            ismartEmail: '',
+            ismartPhone: ''
+          }
+        });
+        setIsFormReady(true);
+      }
+    } else if (!isEditing) {
+      // If not editing, set form ready immediately
+      setIsFormReady(true);
     }
   }, [isEditing, editingAgreement]);
 
@@ -162,7 +219,7 @@ const AgreementForm = () => {
         // If Pan India is selected, select all branches
         // If Pan India is deselected, deselect all branches
         return {
-          ...prev,
+      ...prev,
           selectedBranches: isCurrentlySelected ? [] : [...branchOptions]
         };
       } else {
@@ -294,7 +351,26 @@ const AgreementForm = () => {
   };
 
   const handleClauseFileUpload = (clauseIndex, file) => {
-    updateClause(clauseIndex, 'file', file);
+    // Convert File object to serializable format
+    const fileData = {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: file.lastModified,
+      // Store the file as a data URL for serialization
+      dataUrl: null // We'll convert this when needed
+    };
+    
+    // Convert file to data URL for storage
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const fileDataWithUrl = {
+        ...fileData,
+        dataUrl: e.target.result
+      };
+      updateClause(clauseIndex, 'file', fileDataWithUrl);
+    };
+    reader.readAsDataURL(file);
   };
 
   // Handle form submission
@@ -384,16 +460,79 @@ const AgreementForm = () => {
     dispatch(setActiveTab('agreements'));
   };
 
+  // Show loading state if form is not ready
+  if (!isFormReady) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading form...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-6 bg-gray-100 min-h-screen">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">
-          {isEditing ? 'Edit Agreement' : 'New Agreement'}
+          {isEditing && formData.isRenewal ? 'Editing Agreement' : (isEditing ? 'Edit Agreement' : 'New Agreement')}
         </h1>
         <p className="text-gray-600 mt-1">
-          {isEditing ? 'Update agreement details' : 'Create a new agreement'}
-              </p>
+          {isEditing && formData.isRenewal 
+            ? `Agreement ID: ${formData.originalAgreementId || 'N/A'} • Client: ${formData.selectedClient}`
+            : (isEditing ? 'Update agreement details' : 'Create a new agreement')
+          }
+        </p>
+        
+        {/* Renewal Banner - like live URL */}
+        {isEditing && formData.isRenewal && (
+          <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-blue-800">
+                  Renewing Agreement
+                </h3>
+                <div className="mt-2 text-sm text-blue-700">
+                  <p>Agreement ID: {formData.originalAgreementId || 'N/A'}</p>
+                  <p>Client: {formData.selectedClient}</p>
+                  <p>Original Agreement: {formData.originalAgreementId}</p>
+                </div>
+              </div>
             </div>
+          </div>
+        )}
+        
+        {/* Expiry Alert - like live URL */}
+        {isEditing && formData.isRenewal && (
+          <div className="mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-yellow-800">
+                  <strong>Alert:</strong> This agreement is expiring in 3 days. Please ensure at least one required document (LOI, WO, PO, or Email Approval) is uploaded for renewal/escalation.
+                </p>
+                <div className="mt-2">
+                  <p className="text-sm text-yellow-700">
+                    <strong>Escalation:</strong> At least one document is required (LOI, WO, PO, or Email Approval)
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       <form className="space-y-6">
         {/* User Information */}
@@ -475,29 +614,32 @@ const AgreementForm = () => {
                         </div>
                       ) : (
                         // If Pan India is not selected, show individual branch tags
-                        formData.selectedBranches.map(branch => (
-                          <div key={branch} className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                            <span className="mr-1">
-                              {branch === 'Mumbai' ? 'Mumbai Branch (MUM)' :
-                               branch === 'Delhi' ? 'Delhi Branch (DEL)' :
-                               branch === 'Bangalore' ? 'Bangalore Branch (BLR)' :
-                               branch === 'Pune' ? 'Pune Branch (PUN)' :
-                               branch === 'Chennai' ? 'Chennai Branch (CHE)' :
-                               branch === 'Hyderabad' ? 'Hyderabad Branch (HYD)' :
-                               branch === 'Kolkata' ? 'Kolkata Branch (KOL)' :
-                               branch}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => toggleBranch(branch)}
-                              className="ml-1 text-blue-600 hover:text-blue-800 focus:outline-none"
-                            >
-                              ×
-                            </button>
-                          </div>
+                        formData.selectedBranches.map((branch, index) => (
+                        <div key={typeof branch === 'string' ? branch : `branch-${index}`} className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                          <span className="mr-1">
+                              {(() => {
+                                const branchName = typeof branch === 'string' ? branch : branch.name;
+                                return branchName === 'Mumbai' ? 'Mumbai Branch (MUM)' :
+                                       branchName === 'Delhi' ? 'Delhi Branch (DEL)' :
+                                       branchName === 'Bangalore' ? 'Bangalore Branch (BLR)' :
+                                       branchName === 'Pune' ? 'Pune Branch (PUN)' :
+                                       branchName === 'Chennai' ? 'Chennai Branch (CHE)' :
+                                       branchName === 'Hyderabad' ? 'Hyderabad Branch (HYD)' :
+                                       branchName === 'Kolkata' ? 'Kolkata Branch (KOL)' :
+                                       branchName;
+                              })()}
+                          </span>
+                      <button
+                        type="button"
+                            onClick={() => toggleBranch(typeof branch === 'string' ? branch : branch.name)}
+                            className="ml-1 text-blue-600 hover:text-blue-800 focus:outline-none"
+                      >
+                            ×
+                      </button>
+                    </div>
                         ))
                       )}
-                    </div>
+                        </div>
                   )}
                   
                   {showBranchDropdown && (
@@ -899,20 +1041,26 @@ const AgreementForm = () => {
                             <button
                               type="button"
                               onClick={() => {
-                                const url = URL.createObjectURL(clause.file);
-                              window.open(url, '_blank');
-                            }}
+                                if (clause.file.dataUrl) {
+                                  // For serialized files, open data URL
+                                  window.open(clause.file.dataUrl, '_blank');
+                                } else if (clause.file instanceof File) {
+                                  // For File objects, create object URL
+                                  const url = URL.createObjectURL(clause.file);
+                                  window.open(url, '_blank');
+                                }
+                              }}
                               className="text-xs text-blue-600 hover:text-blue-800"
-                          >
-                            View
-                          </button>
-                          <button
-                            type="button"
+                            >
+                              View
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => updateClause(index, 'file', null)}
                               className="text-xs text-red-600 hover:text-red-800"
-                          >
-                            Delete
-                          </button>
+                            >
+                              Delete
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -955,17 +1103,17 @@ const AgreementForm = () => {
               </div>
               
               <div className="space-y-3">
-                <div>
-                  <input
-                    type="text"
+            <div>
+              <input
+                type="text"
                     value={safeGet(formData, 'contactInfo.name')}
                     onChange={(e) => handleInputChange('contactInfo', { ...(formData.contactInfo || {}), name: e.target.value })}
                     className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter name"
-                  />
-                </div>
+                placeholder="Enter name"
+              />
+            </div>
                 
-                <div>
+            <div>
                   <input
                     type="tel"
                     value={safeGet(formData, 'contactInfo.phone')}
@@ -992,30 +1140,30 @@ const AgreementForm = () => {
                 </div>
                 
                 <div>
-                  <input
-                    type="email"
+                             <input
+                type="email"
                     value={safeGet(formData, 'contactInfo.email')}
-                    onChange={(e) => {
+                onChange={(e) => {
                       handleInputChange('contactInfo', { ...(formData.contactInfo || {}), email: e.target.value });
-                      if (validationErrors.email) {
-                        setValidationErrors(prev => ({ ...prev, email: '' }));
-                      }
-                    }}
-                    onBlur={() => {
+                  if (validationErrors.email) {
+                    setValidationErrors(prev => ({ ...prev, email: '' }));
+                  }
+                }}
+                onBlur={() => {
                       const email = safeGet(formData, 'contactInfo.email');
                       if (email && !validateEmail(email)) {
                         setValidationErrors(prev => ({ ...prev, email: 'Please enter a valid email address (e.g., user@example.com)' }));
-                      }
-                    }}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                       validationErrors.email ? 'border-red-500' : 'border-blue-300'
-                    }`}
+                }`}
                     placeholder="Enter email"
-                  />
-                  {validationErrors.email && (
-                    <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
-                  )}
-                </div>
+              />
+              {validationErrors.email && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+              )}
+            </div>
               </div>
             </div>
 
@@ -1028,7 +1176,7 @@ const AgreementForm = () => {
               </div>
               
               <div className="space-y-3">
-                <div>
+            <div>
                   <input
                     type="text"
                     value={safeGet(formData, 'contactInfo.clientName')}
@@ -1039,26 +1187,26 @@ const AgreementForm = () => {
                 </div>
                 
                 <div>
-                  <input
-                    type="tel"
+              <input
+                type="tel"
                     value={safeGet(formData, 'contactInfo.clientPhone')}
-                    onChange={(e) => {
+                onChange={(e) => {
                       handleInputChange('contactInfo', { ...(formData.contactInfo || {}), clientPhone: e.target.value });
                       if (validationErrors.clientPhone) {
                         setValidationErrors(prev => ({ ...prev, clientPhone: '' }));
-                      }
-                    }}
-                    onBlur={() => {
+                  }
+                }}
+                onBlur={() => {
                       const clientPhone = safeGet(formData, 'contactInfo.clientPhone');
                       if (clientPhone && !validatePhone(clientPhone)) {
                         setValidationErrors(prev => ({ ...prev, clientPhone: 'Please enter a valid 10-digit phone number starting with 6-9' }));
-                      }
-                    }}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  }
+                }}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                       validationErrors.clientPhone ? 'border-red-500' : 'border-blue-300'
-                    }`}
-                    placeholder="Enter phone number"
-                  />
+                }`}
+                placeholder="Enter phone number"
+              />
                   {validationErrors.clientPhone && (
                     <p className="mt-1 text-sm text-red-600">{validationErrors.clientPhone}</p>
                   )}
@@ -1140,20 +1288,32 @@ const AgreementForm = () => {
 
           {/* Action Buttons */}
           <div className="flex space-x-4">
-            <button
-              type="button"
-              onClick={() => handleSubmit('draft')}
-              className="px-6 py-2 border border-blue-600 text-blue-600 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              <button
+                type="button"
+            onClick={() => handleSubmit('draft')}
+            className="px-6 py-2 border border-blue-600 text-blue-600 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               Save Draft
             </button>
+          <button
+            type="button"
+            onClick={() => handleSubmit('submit')}
+            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {isEditing && formData.isRenewal ? 'Update Agreement' : 'Submit for Review'}
+          </button>
+          {isEditing && formData.isRenewal && (
             <button
               type="button"
-              onClick={() => handleSubmit('submit')}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onClick={() => {
+                dispatch(setEditingAgreement(null));
+                dispatch(setActiveTab('agreements'));
+              }}
+              className="px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
             >
-              Submit for Review
+              Cancel Edit
             </button>
+          )}
           </div>
         </div>
       </form>

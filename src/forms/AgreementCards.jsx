@@ -1,11 +1,10 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAppState } from "../hooks/useRedux";
 import AddendumForm from "./AddendumForm";
 
 const AgreementCards = ({ 
   agreements, 
-  addendums, 
   onStatusUpdate, 
   onAddendumStatusUpdate,
   userRole, 
@@ -15,8 +14,52 @@ const AgreementCards = ({
   onEditComplete,
   onAddendumSubmit
 }) => {
-  const { ui } = useAppState();
+  const { ui, addendums } = useAppState();
   const { actions: uiActions } = ui;
+  
+  // Monitor addendums changes
+  useEffect(() => {
+    console.log("=== ADDENDUMS CHANGED IN AGREEMENT CARDS ===");
+    console.log("New addendums:", addendums?.addendums);
+    console.log("Addendums count:", addendums?.addendums?.length);
+    console.log("Addendums structure:", addendums);
+    
+    // Test filtering for STATIC-006 specifically
+    if (addendums?.addendums) {
+      const static006Addendums = addendums.addendums.filter(add => add.parentAgreementId === "STATIC-006");
+      console.log("STATIC-006 addendums from Redux:", static006Addendums);
+      console.log("STATIC-006 addendums count:", static006Addendums.length);
+    }
+    
+    // Test filtering for first agreement
+    if (agreements && agreements.length > 0 && addendums?.addendums) {
+      const firstAgreementId = agreements[0].id;
+      console.log("Testing filtering for first agreement:", firstAgreementId);
+      const filtered = addendums.addendums.filter(add => add.parentAgreementId === firstAgreementId);
+      console.log("Filtered addendums for first agreement:", filtered);
+    }
+    
+  }, [addendums?.addendums, agreements]);
+  
+  // Debug addendums from Redux
+  console.log("=== AGREEMENT CARDS - REDUX ADDENDUMS ===");
+  console.log("addendums from useAppState:", addendums);
+  console.log("addendums.addendums:", addendums?.addendums);
+  console.log("addendums length:", addendums?.addendums?.length);
+  
+  // Debug each addendum
+  if (addendums?.addendums) {
+    addendums.addendums.forEach((addendum, index) => {
+      console.log(`Addendum ${index}:`, {
+        id: addendum.id,
+        title: addendum.title,
+        parentAgreementId: addendum.parentAgreementId,
+        status: addendum.status,
+        isDemo: addendum.isDemo
+      });
+    });
+  }
+  
   const [showAddendumForm, setShowAddendumForm] = useState(false);
   const [selectedAgreement, setSelectedAgreement] = useState(null);
   const [editingAddendum, setEditingAddendum] = useState(null);
@@ -42,8 +85,15 @@ const AgreementCards = ({
       console.log("Calling setEditingAddendum...");
       const parentData = {
         parentAgreementId: agreement.id,
-        parentAgreementTitle: agreement.clientName || agreement.title,
-        parentAgreementBranches: agreement.selectedBranches?.join(", ") || "All Branches"
+        parentAgreementTitle: agreement.clientName || agreement.title || `Agreement ${agreement.id}`,
+        parentAgreementBranches: (() => {
+          if (!agreement.selectedBranches || agreement.selectedBranches.length === 0) {
+            return "All Branches";
+          }
+          return agreement.selectedBranches.map(branch => 
+            typeof branch === 'string' ? branch : branch.name
+          ).join(", ");
+        })()
       };
       console.log("Parent data being set:", parentData);
       uiActions.setEditingAddendum(parentData);
@@ -137,38 +187,98 @@ const AgreementCards = ({
     }
   };
 
-  // Get addendums for a specific agreement
-  const getAgreementAddendums = (agreementId) => {
-    console.log("=== GETTING ADDENDUMS FOR AGREEMENT ===");
-    console.log("Agreement ID:", agreementId);
-    console.log("All addendums:", addendums);
-    console.log("Addendums type:", typeof addendums);
-    console.log("Addendums length:", addendums?.length);
+  // Memoized function to get addendums for a specific agreement
+  const getAgreementAddendums = useMemo(() => {
+    return (agreementId) => {
+      console.log("=== GETTING ADDENDUMS FOR AGREEMENT (MEMOIZED) ===");
+      console.log("Agreement ID:", agreementId);
+      console.log("Agreement ID type:", typeof agreementId);
+      console.log("All addendums:", addendums);
+      console.log("Addendums type:", typeof addendums);
+      console.log("Addendums length:", addendums?.addendums?.length);
+      
+      const addendumsList = addendums?.addendums || [];
+      if (!addendumsList || addendumsList.length === 0) {
+        console.log("No addendums available");
+        return [];
+      }
+      
+      console.log("Available addendums for filtering:");
+      addendumsList.forEach((addendum, index) => {
+        console.log(`Addendum ${index}:`, {
+          id: addendum.id,
+          parentAgreementId: addendum.parentAgreementId,
+          parentAgreementIdType: typeof addendum.parentAgreementId,
+          title: addendum.title,
+          isDemo: addendum.isDemo
+        });
+      });
+      
+      const filtered = addendumsList.filter(addendum => {
+        const matches = addendum.parentAgreementId === agreementId;
+        console.log(`Checking addendum ${addendum.id}: parentAgreementId="${addendum.parentAgreementId}" === agreementId="${agreementId}" = ${matches}`);
+        return matches;
+      });
+      
+      console.log(`Filtered addendums for agreement ${agreementId}:`, filtered);
+      console.log(`Found ${filtered.length} addendums for agreement ${agreementId}`);
+      return filtered;
+    };
+  }, [addendums?.addendums]);
+
+  // Pre-calculate addendums for all agreements
+  const agreementAddendumsMap = useMemo(() => {
+    console.log("=== PRE-CALCULATING ADDENDUMS FOR ALL AGREEMENTS ===");
+    console.log("agreements:", agreements);
+    console.log("addendums?.addendums:", addendums?.addendums);
+    console.log("agreements length:", agreements?.length);
+    console.log("addendums length:", addendums?.addendums?.length);
     
-    if (!addendums || addendums.length === 0) {
-      console.log("No addendums available");
-      return [];
+    const map = new Map();
+    
+    if (agreements && addendums?.addendums) {
+      console.log("Processing agreements and addendums...");
+      agreements.forEach((agreement, index) => {
+        console.log(`Processing agreement ${index}: ${agreement.id}`);
+        const addendumsForAgreement = addendums.addendums.filter(add => {
+          const matches = add.parentAgreementId === agreement.id;
+          console.log(`  Checking addendum ${add.id} (parent: ${add.parentAgreementId}) against agreement ${agreement.id}: ${matches}`);
+          return matches;
+        });
+        map.set(agreement.id, addendumsForAgreement);
+        console.log(`Agreement ${agreement.id} has ${addendumsForAgreement.length} addendums:`, addendumsForAgreement);
+      });
+    } else {
+      console.log("Missing data - agreements:", !!agreements, "addendums:", !!addendums?.addendums);
     }
     
-    const filtered = addendums.filter(addendum => {
-      console.log(`Checking addendum ${addendum.id}: parentAgreementId=${addendum.parentAgreementId}, matches=${addendum.parentAgreementId === agreementId}`);
-      return addendum.parentAgreementId === agreementId;
-    });
+    console.log("Final agreement addendums map:", map);
+    console.log("Map size:", map.size);
+    console.log("Map entries:", Array.from(map.entries()));
     
-    console.log(`Filtered addendums for agreement ${agreementId}:`, filtered);
-    return filtered;
-  };
+    // Test STATIC-006 specifically
+    const static006Addendums = map.get("STATIC-006");
+    console.log("STATIC-006 addendums from map:", static006Addendums);
+    console.log("STATIC-006 addendums count from map:", static006Addendums?.length || 0);
+    
+    return map;
+  }, [agreements, addendums?.addendums, addendums?.addendums?.length, addendums?.addendums?.map(add => add.id).join(',')]);
 
   // Component is ready to render
   console.log("=== AGREEMENT CARDS - AGREEMENTS DATA ===");
   console.log("Agreements:", agreements);
   console.log("Agreements length:", agreements?.length);
+  
+  // Debug agreement IDs
+  if (agreements && agreements.length > 0) {
+    console.log("Available agreement IDs:");
+    agreements.forEach((agreement, index) => {
+      console.log(`Agreement ${index}: ID="${agreement.id}", Client="${agreement.clientName || agreement.selectedClient}"`);
+    });
+  }
   console.log("Addendums:", addendums);
   console.log("Addendums length:", addendums?.length);
   
-  // Force re-render test
-  const [forceRender, setForceRender] = useState(0);
-  console.log("Force render count:", forceRender);
   if (agreements && agreements.length > 0) {
     console.log("First agreement:", agreements[0]);
     console.log("First agreement ID:", agreements[0].id);
@@ -317,9 +427,11 @@ const AgreementCards = ({
                     {viewingAgreement.selectedBranches && viewingAgreement.selectedBranches.length > 0 ? (
                       viewingAgreement.selectedBranches.map((branch, idx) => (
                         <div key={branch.id || idx} className="bg-gray-50 rounded-lg p-3">
-                          <div className="font-medium text-gray-800">{branch.name}</div>
-                          {branch.address && <div className="text-sm text-gray-600">{branch.address}</div>}
-                          {branch.manager && <div className="text-sm text-gray-600">Manager: {branch.manager}</div>}
+                          <div className="font-medium text-gray-800">
+                            {typeof branch === 'string' ? branch : branch.name}
+                          </div>
+                          {typeof branch === 'object' && branch.address && <div className="text-sm text-gray-600">{branch.address}</div>}
+                          {typeof branch === 'object' && branch.manager && <div className="text-sm text-gray-600">Manager: {branch.manager}</div>}
                         </div>
                       ))
                     ) : (
@@ -373,7 +485,7 @@ const AgreementCards = ({
                   <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-200 pb-2">Addendums</h3>
                   <div className="space-y-2">
                     {(() => {
-                      const agreementAddendums = getAgreementAddendums(viewingAgreement.id);
+                      const agreementAddendums = agreementAddendumsMap.get(viewingAgreement.id) || [];
                       console.log("=== AGREEMENT CARDS - ADDENDUM DISPLAY ===");
                       console.log("Viewing agreement ID:", viewingAgreement.id);
                       console.log("Found addendums:", agreementAddendums);
@@ -422,8 +534,15 @@ const AgreementCards = ({
                       console.log("Opening addendum form from modal for agreement:", viewingAgreement);
                       uiActions.setEditingAddendum({
                         parentAgreementId: viewingAgreement.id,
-                        parentAgreementTitle: viewingAgreement.clientName || viewingAgreement.title,
-                        parentAgreementBranches: viewingAgreement.selectedBranches?.join(", ") || "All Branches"
+                        parentAgreementTitle: viewingAgreement.clientName || viewingAgreement.title || `Agreement ${viewingAgreement.id}`,
+                        parentAgreementBranches: (() => {
+                          if (!viewingAgreement.selectedBranches || viewingAgreement.selectedBranches.length === 0) {
+                            return "All Branches";
+                          }
+                          return viewingAgreement.selectedBranches.map(branch => 
+                            typeof branch === 'string' ? branch : branch.name
+                          ).join(", ");
+                        })()
                       });
                       uiActions.setShowAddendumForm(true);
                       setViewingAgreement(null);
@@ -434,7 +553,7 @@ const AgreementCards = ({
                     Add Addendum
                   </button>
                   <span className="text-sm text-gray-600">
-                    {getAgreementAddendums(viewingAgreement.id).length} addendum{getAgreementAddendums(viewingAgreement.id).length !== 1 ? 's' : ''} attached
+                    {(agreementAddendumsMap.get(viewingAgreement.id) || []).length} addendum{(agreementAddendumsMap.get(viewingAgreement.id) || []).length !== 1 ? 's' : ''} attached
                   </span>
                 </div>
                 
@@ -474,94 +593,6 @@ const AgreementCards = ({
         <p className="text-gray-600">Manage and review all agreements in chronological order</p>
       </div>
 
-      {/* Debug Button */}
-      <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <div className="mb-2">
-          <strong>Debug Info:</strong> Addendums: {addendums?.length || 0} | Agreements: {agreements?.length || 0}
-        </div>
-        <button 
-          onClick={() => {
-            console.log("=== MANUAL REDUX STATE CHECK ===");
-            console.log("Agreements:", agreements);
-            console.log("Addendums:", addendums);
-            console.log("Addendums length:", addendums?.length);
-            if (addendums && addendums.length > 0) {
-              addendums.forEach((addendum, index) => {
-                console.log(`Addendum ${index}:`, addendum);
-                console.log(`  - ID: ${addendum.id}`);
-                console.log(`  - Parent Agreement ID: ${addendum.parentAgreementId}`);
-                console.log(`  - Title: ${addendum.title}`);
-              });
-            }
-          }}
-          className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
-        >
-          🔍 Check Redux State
-        </button>
-        
-        <button 
-          onClick={() => {
-            console.log("=== CREATING TEST ADDENDUM ===");
-            if (agreements.length > 0) {
-              const testAddendum = {
-                id: `TEST-${Date.now()}`,
-                title: "Test Addendum",
-                description: "This is a test addendum",
-                reason: "Testing addendum creation",
-                impact: "No impact",
-                effectiveDate: new Date().toISOString(),
-                submittedDate: new Date().toISOString(),
-                submittedBy: "checker",
-                status: "Pending Review",
-                parentAgreementId: agreements[0].id,
-                parentAgreementTitle: agreements[0].selectedClient,
-                clauseModifications: [],
-                branches: [],
-                uploadedFiles: {}
-              };
-              
-              console.log("Test addendum data:", testAddendum);
-              onAddendumSubmit(testAddendum);
-              console.log("Test addendum submitted!");
-            } else {
-              console.log("No agreements available for testing");
-            }
-          }}
-          className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 ml-2"
-        >
-          🧪 Create Test Addendum
-        </button>
-        
-        <button 
-          onClick={() => {
-            console.log("=== FORCE RE-RENDER ===");
-            setForceRender(prev => prev + 1);
-            console.log("Force re-render triggered");
-          }}
-          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 ml-2"
-        >
-          🔄 Force Re-render
-        </button>
-        
-        <button 
-          onClick={() => {
-            console.log("=== TEST DEMO ADDENDUMS ===");
-            if (agreements.length > 0) {
-              const firstAgreementId = agreements[0].id;
-              console.log("Testing with first agreement ID:", firstAgreementId);
-              const testResult = getAgreementAddendums(firstAgreementId);
-              console.log("Demo addendums for first agreement:", testResult);
-              
-              // Test with STATIC-001 specifically
-              const staticResult = getAgreementAddendums("STATIC-001");
-              console.log("Demo addendums for STATIC-001:", staticResult);
-            }
-          }}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ml-2"
-        >
-          🧪 Test Demo Data
-        </button>
-      </div>
 
       {sortedAgreements.length === 0 ? (
         <div className="text-center py-12">
@@ -572,12 +603,39 @@ const AgreementCards = ({
       ) : (
         <div className="space-y-6">
           {sortedAgreements.map((agreement, index) => {
-            const agreementAddendums = getAgreementAddendums(agreement.id);
+            // Try Map first, then fallback to direct filtering
+            let agreementAddendums = agreementAddendumsMap.get(agreement.id) || [];
+            
+            // Fallback: direct filtering if Map is empty
+            if (agreementAddendums.length === 0 && addendums?.addendums) {
+              console.log("Map returned empty, trying direct filtering...");
+              agreementAddendums = addendums.addendums.filter(add => add.parentAgreementId === agreement.id);
+              console.log("Direct filtering result:", agreementAddendums);
+            }
+            
             console.log(`=== AGREEMENT CARD ${index} ===`);
             console.log("Agreement ID:", agreement.id);
-            console.log("Agreement addendums:", agreementAddendums);
+            console.log("Agreement ID type:", typeof agreement.id);
+            console.log("Map has key:", agreementAddendumsMap.has(agreement.id));
+            console.log("Map size:", agreementAddendumsMap.size);
+            console.log("Map keys:", Array.from(agreementAddendumsMap.keys()));
+            console.log("Agreement addendums from map:", agreementAddendums);
             console.log("Addendums count:", agreementAddendums.length);
             console.log("Will render addendums:", agreementAddendums.length > 0);
+            
+            // Additional debugging for dynamic addendums
+            if (addendums?.addendums) {
+              const allAddendums = addendums.addendums;
+              console.log("All addendums in Redux:", allAddendums.map(a => ({
+                id: a.id,
+                title: a.title,
+                parentAgreementId: a.parentAgreementId,
+                isDemo: a.isDemo
+              })));
+              
+              const matchingAddendums = allAddendums.filter(add => add.parentAgreementId === agreement.id);
+              console.log(`Matching addendums for ${agreement.id}:`, matchingAddendums);
+            }
             
             return (
               <div key={agreement.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
@@ -623,7 +681,15 @@ const AgreementCards = ({
                         <div>
                           <span className="font-medium text-gray-600">Branches:</span>
                           <span className="ml-2 text-gray-900">
-                            {agreement.selectedBranches?.map(branch => branch.name).join(", ") || "N/A"}
+                            {(() => {
+                              if (!agreement.selectedBranches || agreement.selectedBranches.length === 0) {
+                                return "N/A";
+                              }
+                              // Handle both string arrays and object arrays
+                              return agreement.selectedBranches.map(branch => 
+                                typeof branch === 'string' ? branch : branch.name
+                              ).join(", ");
+                            })()}
                           </span>
                         </div>
                         <div>
@@ -662,9 +728,27 @@ const AgreementCards = ({
                           console.log("agreementAddendums:", agreementAddendums);
                           console.log("agreementAddendums.length:", agreementAddendums.length);
                           console.log("Will show addendums:", agreementAddendums.length > 0);
-                          return agreementAddendums.length > 0 ? (
-                            <div className="space-y-2">
-                              {agreementAddendums.slice(0, 3).map((addendum, idx) => (
+                          console.log("agreementAddendums type:", typeof agreementAddendums);
+                          console.log("agreementAddendums is array:", Array.isArray(agreementAddendums));
+                          
+                          // Force render test
+                          if (agreementAddendums.length > 0) {
+                            console.log("RENDERING ADDENDUMS - SHOULD BE VISIBLE!");
+                            console.log("First addendum:", agreementAddendums[0]);
+                          }
+                          
+                          // Test: Force render a test addendum for STATIC-006
+                          const testAddendum = agreement.id === "STATIC-006" ? {
+                            id: "TEST-FORCE-RENDER",
+                            title: "FORCE RENDER TEST",
+                            status: "Test"
+                          } : null;
+                          
+                          const addendumsToRender = agreementAddendums.length > 0 ? agreementAddendums : (testAddendum ? [testAddendum] : []);
+                          
+                          return addendumsToRender.length > 0 ? (
+                          <div className="space-y-2">
+                              {addendumsToRender.slice(0, 3).map((addendum, idx) => (
                               <div key={addendum.id} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm">📝</span>
@@ -686,9 +770,9 @@ const AgreementCards = ({
                                 </div>
                               </div>
                             ))}
-                            {agreementAddendums.length > 3 && (
+                            {addendumsToRender.length > 3 && (
                               <div className="text-xs text-gray-500 text-center">
-                                +{agreementAddendums.length - 3} more addendums
+                                +{addendumsToRender.length - 3} more addendums
                               </div>
                             )}
                           </div>

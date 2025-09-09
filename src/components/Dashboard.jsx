@@ -1,6 +1,7 @@
 import React from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { setViewModal, setEditingAgreement, setActiveTab } from "../slice/uiSlice";
+import { setEditingAgreement, setActiveTab, setViewModal } from "../slice/uiSlice";
+import ExpiringContractModal from "./ExpiringContractModal";
 
 export default function Dashboard({ onNavigateToAgreements }) {
   const dispatch = useDispatch();
@@ -14,9 +15,21 @@ export default function Dashboard({ onNavigateToAgreements }) {
   const addendumsList = addendums || [];
   const userRole = user.role;
 
+  // State for modals
+  const [viewingExpiringContract, setViewingExpiringContract] = React.useState(null);
+  const [isRenewing, setIsRenewing] = React.useState(false);
+
   // Handler functions for buttons
   const handleViewAgreement = (agreement) => {
     dispatch(setViewModal({ open: true, agreement }));
+  };
+
+  const handleViewExpiringContract = (agreement) => {
+    setViewingExpiringContract(agreement);
+  };
+
+  const handleCloseExpiringContract = () => {
+    setViewingExpiringContract(null);
   };
 
   const handleEditAgreement = (agreement) => {
@@ -94,23 +107,40 @@ export default function Dashboard({ onNavigateToAgreements }) {
   const handleRenewAgreement = (agreement) => {
     console.log("Renew button clicked for agreement:", agreement);
     
-    // Create a new agreement based on the expiring one with all required fields
+    // Calculate new end date (1 year from current end date or 1 year from now)
+    const currentEndDate = agreement.endDate ? new Date(agreement.endDate) : new Date();
+    const newEndDate = new Date(currentEndDate.getTime() + 365 * 24 * 60 * 60 * 1000);
+    const daysLeft = Math.ceil((currentEndDate - new Date()) / (1000 * 60 * 60 * 24));
+    
+    // Create renewed agreement data for editing (like live URL)
     const renewedAgreement = {
       ...agreement,
-      id: null, // New ID will be generated
-      status: "Draft",
-      submittedDate: null,
-      endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year from now
+      // Update dates for renewal
+      startDate: new Date().toISOString().split('T')[0], // Start from today
+      endDate: newEndDate.toISOString().split('T')[0], // 1 year from current end date
+      // Mark as renewal
       isRenewal: true,
       originalAgreementId: agreement.id,
+      renewalDate: new Date().toISOString(),
+      // Update remarks to indicate renewal
+      remarks: `Renewal of agreement ${agreement.id} - ${agreement.remarks || ''}`,
+      // Reset upload statuses for renewal
+      uploadStatuses: {
+        LOI: { uploaded: false, file: null },
+        WO: { uploaded: false, file: null },
+        PO: { uploaded: false, file: null },
+        EmailApproval: { uploaded: false, file: null }
+      },
       // Ensure all required fields exist
       selectedDepartment: agreement.selectedDepartment || '',
       agreementType: agreement.agreementType || 'Client Draft',
-      startDate: agreement.startDate || new Date().toISOString().split('T')[0],
       openAgreement: agreement.openAgreement || false,
-      remarks: agreement.remarks || '',
       entityType: agreement.entityType || 'single',
       groupCompanies: agreement.groupCompanies || [''],
+      // Ensure selectedBranches is an array of strings
+      selectedBranches: Array.isArray(agreement.selectedBranches) 
+        ? agreement.selectedBranches.map(branch => typeof branch === 'string' ? branch : branch.name)
+        : [],
       importantClauses: agreement.importantClauses || [
         { title: 'Term and termination (Duration)', content: '', file: null },
         { title: 'Payment Terms', content: '', file: null },
@@ -134,13 +164,22 @@ export default function Dashboard({ onNavigateToAgreements }) {
       }
     };
     
-    console.log("Created renewed agreement:", renewedAgreement);
-    console.log("Dispatching setEditingAgreement...");
+    console.log("Created renewed agreement for editing:", renewedAgreement);
+    
+    // Set loading state
+    setIsRenewing(true);
+    
+    // Set the agreement for editing (like live URL)
     dispatch(setEditingAgreement(renewedAgreement));
-    console.log("Dispatching setActiveTab('new')...");
-    dispatch(setActiveTab("new"));
-    console.log("Renew actions completed");
+    
+    // Navigate to the form for editing
+    requestAnimationFrame(() => {
+      dispatch(setActiveTab("new"));
+      setIsRenewing(false);
+      console.log("Renewal form opened for editing");
+    });
   };
+
 
   // Calculate dashboard metrics - EXACTLY like the old UI image
   const totalSubmissions = agreementsList.length;
@@ -689,10 +728,21 @@ export default function Dashboard({ onNavigateToAgreements }) {
                       <div className="flex items-center space-x-2">
                         <h3 className="font-medium text-gray-900">{agreement.selectedClient}</h3>
                         <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">Demo</span>
+                        {agreement.isRenewal && (
+                          <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded flex items-center space-x-1">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                            </svg>
+                            <span>Renewal</span>
+                          </span>
+                        )}
                       </div>
                       <p className="text-sm text-gray-600">{getAllBranches(agreement)}</p>
                       <p className="text-xs text-gray-500 mt-1">
                         Expires: {new Date(agreement.endDate).toLocaleDateString()} • {daysLeft} days left • Demo Data
+                        {agreement.originalAgreementId && (
+                          <span className="ml-2 text-blue-600">• Renewal of {agreement.originalAgreementId}</span>
+                        )}
                       </p>
                     </div>
                     
@@ -703,16 +753,26 @@ export default function Dashboard({ onNavigateToAgreements }) {
                       
                       <div className="flex space-x-2">
                         <button 
-                          onClick={() => handleViewAgreement(agreement)}
+                          onClick={() => handleViewExpiringContract(agreement)}
                           className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors"
                         >
                           View
                         </button>
                         <button 
                           onClick={() => handleRenewAgreement(agreement)}
-                          className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                          disabled={isRenewing}
+                          className={`px-3 py-1 rounded text-xs transition-colors ${
+                            isRenewing 
+                              ? "bg-gray-400 text-white cursor-not-allowed"
+                              : agreement.isRenewal 
+                                ? "bg-orange-600 text-white hover:bg-orange-700" 
+                                : "bg-green-600 text-white hover:bg-green-700"
+                          }`}
+                          title={`Renew agreement with ${agreement.selectedClient}. New end date will be 1 year from current expiry.${
+                            agreement.isRenewal ? ' (This is already a renewal)' : ''
+                          }`}
                         >
-                          Renew
+                          {isRenewing ? 'Renewing...' : (agreement.isRenewal ? 'Renew Again' : 'Renew')}
                         </button>
                         <button 
                           onClick={() => handleDownloadAgreement(agreement)}
@@ -729,6 +789,13 @@ export default function Dashboard({ onNavigateToAgreements }) {
           </div>
         </div>
       </div>
+
+      {/* Expiring Contract Modal */}
+      <ExpiringContractModal
+        open={!!viewingExpiringContract}
+        agreement={viewingExpiringContract}
+        onClose={handleCloseExpiringContract}
+      />
     </div>
   );
 }

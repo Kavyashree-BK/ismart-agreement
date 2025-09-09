@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useAppState } from "../hooks/useRedux";
 
 const priorityBadge = priority => {
   if (priority === "High") return <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-bold">High</span>;
@@ -55,7 +56,7 @@ const DocumentLinks = ({ uploadStatuses, documents }) => {
 // Component to render clause document links with addendum modification indicators
 const ClauseLinks = ({ clauses, uploadStatuses, addendums = [], agreementId, onShowClauseHistory }) => {
   // Get all addendums for this agreement
-  const agreementAddendums = addendums.filter(addendum => 
+  const agreementAddendums = (addendums || []).filter(addendum => 
     addendum.parentAgreementId === agreementId
   );
 
@@ -333,32 +334,46 @@ function StatusHistoryModal({ open, onClose, history, title }) {
   );
 }
 
-// Agreement Details Modal with Actions
-function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChange, onFinalAgreementUpload, addendums = [], userRole = "checker", onAddendumStatusUpdate }) {
-  const [localPriority, setLocalPriority] = useState(agreement?.priority || "Low");
-  const [localStatus, setLocalStatus] = useState(agreement?.status || "Execution Pending");
+// Agreement Details Modal with Actions - Matching Live Site UI
+function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChange, onFinalAgreementUpload, addendums = [], userRole = "checker", onAddendumStatusUpdate, pendingStatusChanges, setPendingStatusChanges }) {
+  const [localPriority, setLocalPriority] = useState(agreement?.originalAgreement?.priority || "Low");
+  const [localStatus, setLocalStatus] = useState(agreement?.originalStatus || agreement?.status || "Execution Pending");
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadError, setUploadError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-  const [currentPage, setCurrentPage] = useState("agreement"); // "agreement" or "addendums"
-  const [pendingStatusChanges, setPendingStatusChanges] = useState({}); // Track pending status changes for each addendum
+  const [currentTab, setCurrentTab] = useState("agreement"); // "agreement" or "addendums"
+  const [currentAddendumIndex, setCurrentAddendumIndex] = useState(0);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   React.useEffect(() => {
     if (agreement) {
-      setLocalPriority(agreement.priority || "Low");
-      setLocalStatus(agreement.status || "Execution Pending");
+      setLocalPriority(agreement.originalAgreement?.priority || "Low");
+      setLocalStatus(agreement.originalStatus || agreement.status || "Execution Pending");
       setSelectedFile(null);
       setUploadError("");
-      setCurrentPage("agreement"); // Reset to agreement page when opening
+      setCurrentTab("agreement"); // Reset to agreement tab when opening
+      setCurrentAddendumIndex(0); // Reset addendum index
+      setShowSuccessMessage(false); // Reset success message
     }
   }, [agreement]);
 
   if (!open || !agreement) return null;
 
+  // Debug: Log the agreement data structure
+  console.log("=== DETAILS MODAL DEBUG ===");
+  console.log("agreement:", agreement);
+  console.log("agreement.originalAgreement:", agreement.originalAgreement);
+  console.log("agreement.originalAgreement?.selectedBranches:", agreement.originalAgreement?.selectedBranches);
+  console.log("agreement.originalAgreement?.contactInfo:", agreement.originalAgreement?.contactInfo);
+  console.log("agreement.originalAgreement?.importantClauses:", agreement.originalAgreement?.importantClauses);
+
   // Get addendums for this agreement
-  const agreementAddendums = addendums.filter(addendum => 
+  const agreementAddendums = (addendums || []).filter(addendum => 
     addendum.parentAgreementId === agreement.id
   );
+
+  // Get current addendum for display
+  const currentAddendum = agreementAddendums[currentAddendumIndex];
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -424,90 +439,254 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
   };
 
   const handleSaveChanges = () => {
+    // Show immediate visual feedback
+    setShowSuccessMessage(true);
+    
+    // Save the changes
     onPriorityChange(agreement.id, localPriority);
     onStatusChange(agreement.id, localStatus);
-    onClose();
+    
+    // Show a quick alert as backup confirmation
+    setTimeout(() => {
+      alert("✅ Changes saved successfully!");
+    }, 100);
+    
+    // Keep message visible for 5 seconds
+    setTimeout(() => {
+      setShowSuccessMessage(false);
+    }, 5000);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-white rounded-lg shadow-lg p-6 min-w-[600px] max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold">Contract Details - {agreement.id}</h3>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={onClose}
+              className="flex items-center gap-2 px-3 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back to Agreements
+            </button>
+            <h3 className="text-xl font-bold">Contract Details - {agreement.id}</h3>
+          </div>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-xl">×</button>
         </div>
+
+        {/* Success Message - Very Prominent */}
+        {showSuccessMessage && (
+          <div className="mb-6 p-4 bg-green-500 text-white rounded-lg shadow-lg border-2 border-green-600 flex items-center justify-center gap-3 animate-pulse">
+            <span className="text-2xl">✅</span>
+            <span className="text-xl font-bold">CHANGES SAVED SUCCESSFULLY!</span>
+            <span className="text-2xl">✅</span>
+          </div>
+        )}
         
         {/* Page Navigation */}
         <div className="flex items-center justify-between border-b border-gray-200 mb-6">
           <div className="flex items-center gap-4">
-            <span className={`text-lg font-semibold ${currentPage === "agreement" ? "text-blue-600" : "text-gray-500"}`}>
-              📋 Agreement Details
-            </span>
-            {agreementAddendums.length > 0 && (
-              <span className={`text-lg font-semibold ${currentPage === "addendums" ? "text-blue-600" : "text-gray-500"}`}>
-                📄 Addendums ({agreementAddendums.length})
-              </span>
-            )}
+            <button
+              onClick={() => setCurrentTab("agreement")}
+              className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                currentTab === "agreement"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Agreement Details
+            </button>
+            <button
+              onClick={() => setCurrentTab("addendums")}
+              className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                currentTab === "addendums"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Addendums ({agreementAddendums.length})
+            </button>
           </div>
           
           {/* Navigation Buttons */}
-          {agreementAddendums.length > 0 && (
             <div className="flex gap-2">
               <button
-                onClick={() => setCurrentPage("agreement")}
-                disabled={currentPage === "agreement"}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  currentPage === "agreement"
-                    ? "bg-blue-100 text-blue-700 cursor-default"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              onClick={() => {
+                if (currentTab === "addendums") {
+                  // In addendums tab, go back to agreement details
+                  setCurrentTab("agreement");
+                } else {
+                  // In agreement details tab, go to previous addendum
+                  setCurrentAddendumIndex(Math.max(0, currentAddendumIndex - 1));
+                }
+              }}
+              disabled={agreementAddendums.length === 0 || (currentTab === "agreement" && currentAddendumIndex === 0)}
+              className={`px-3 py-1 text-sm rounded ${
+                agreementAddendums.length === 0 || (currentTab === "agreement" && currentAddendumIndex === 0)
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-blue-100 text-blue-600 hover:bg-blue-200"
                 }`}
               >
                 ← Previous
               </button>
               <button
-                onClick={() => setCurrentPage("addendums")}
-                disabled={currentPage === "addendums"}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                  currentPage === "addendums"
-                    ? "bg-blue-100 text-blue-700 cursor-default"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              onClick={() => {
+                if (currentTab === "agreement") {
+                  // In agreement details tab, go to addendums tab
+                  setCurrentTab("addendums");
+                } else {
+                  // In addendums tab, go to next addendum
+                  setCurrentAddendumIndex(Math.min(agreementAddendums.length - 1, currentAddendumIndex + 1));
+                }
+              }}
+              disabled={agreementAddendums.length === 0 || (currentTab === "addendums" && currentAddendumIndex === agreementAddendums.length - 1)}
+              className={`px-3 py-1 text-sm rounded ${
+                agreementAddendums.length === 0 || (currentTab === "addendums" && currentAddendumIndex === agreementAddendums.length - 1)
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  : "bg-blue-100 text-blue-600 hover:bg-blue-200"
                 }`}
               >
                 Next →
               </button>
             </div>
-          )}
         </div>
 
         {/* Page Content */}
-        {currentPage === "agreement" && (
+        {currentTab === "agreement" && (
           <>
             <p className="text-gray-600 text-sm mb-6">Review and approve the agreement</p>
 
             {/* Agreement Information */}
             <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
-              <div><b>Client:</b><br/>{agreement.client}</div>
-              <div><b>Site:</b><br/>{agreement.site}</div>
-              <div><b>City:</b><br/>{agreement.city}</div>
-              <div><b>State:</b><br/>Maharashtra</div>
-              <div><b>Checker:</b><br/>{agreement.checker}</div>
-              <div><b>Entity Type:</b><br/>{agreement.entityType}</div>
+              <div><b>Client:</b><br/>{agreement.originalAgreement?.selectedClient || agreement.selectedClient || "Not specified"}</div>
+              <div><b>Site:</b><br/>{(() => {
+                const branches = agreement.originalAgreement?.selectedBranches || agreement.selectedBranches;
+                if (branches && Array.isArray(branches)) {
+                  return branches.map(branch => branch.name || branch).join(", ");
+                }
+                return "Not specified";
+              })()}</div>
+              <div><b>Department:</b><br/>{agreement.originalAgreement?.selectedDepartment || agreement.selectedDepartment || "Not specified"}</div>
+              <div><b>Entity Type:</b><br/>{agreement.originalAgreement?.entityType || agreement.entityType || "Not specified"}</div>
+              <div><b>Checker:</b><br/>{agreement.originalAgreement?.submittedBy || agreement.submittedBy || "Not specified"}</div>
+              <div><b>Agreement Type:</b><br/>{agreement.originalAgreement?.agreementType || agreement.agreementType || "Not specified"}</div>
+              <div><b>Start Date:</b><br/>{agreement.originalAgreement?.startDate || agreement.startDate || "Not specified"}</div>
+              <div><b>End Date:</b><br/>{agreement.originalAgreement?.endDate || agreement.endDate || "Not specified"}</div>
+              <div><b>Total Value:</b><br/>{(() => {
+                const totalValue = agreement.originalAgreement?.totalValue || agreement.totalValue;
+                const currency = agreement.originalAgreement?.currency || agreement.currency || "USD";
+                return totalValue ? `${currency} ${totalValue.toLocaleString()}` : "Not specified";
+              })()}</div>
+              <div><b>Submitted Date:</b><br/>{(() => {
+                const submittedDate = agreement.originalAgreement?.submittedDate || agreement.submittedDate;
+                return submittedDate ? new Date(submittedDate).toLocaleDateString() : "Not specified";
+              })()}</div>
+              <div><b>Priority:</b><br/>{agreement.originalAgreement?.priority || agreement.priority || "Not set"}</div>
+              <div><b>Status:</b><br/>{agreement.originalStatus || agreement.status || "Not set"}</div>
+            </div>
+
+            {/* Contact Information Section */}
+            <div className="mb-6">
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">Contact Information</h4>
+              <div className="grid grid-cols-2 gap-6">
+                {/* I Smart Contact */}
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <h5 className="font-medium text-blue-800 mb-3">I Smart Contact</h5>
+                  <div className="space-y-2 text-sm">
+                    <div><b>Name:</b> {agreement.originalAgreement?.contactInfo?.name || agreement.contactInfo?.name || "Not specified"}</div>
+                    <div><b>Phone:</b> {agreement.originalAgreement?.contactInfo?.phone || agreement.contactInfo?.phone || "Not specified"}</div>
+                    <div><b>Email:</b> {agreement.originalAgreement?.contactInfo?.email || agreement.contactInfo?.email || "Not specified"}</div>
+                  </div>
+                </div>
+                {/* Client Contact */}
+                <div className="bg-green-50 rounded-lg p-4">
+                  <h5 className="font-medium text-green-800 mb-3">Client Contact</h5>
+                  <div className="space-y-2 text-sm">
+                    <div><b>Name:</b> {agreement.originalAgreement?.contactInfo?.clientName || agreement.contactInfo?.clientName || "Not specified"}</div>
+                    <div><b>Phone:</b> {agreement.originalAgreement?.contactInfo?.clientPhone || agreement.contactInfo?.clientPhone || "Not specified"}</div>
+                    <div><b>Email:</b> {agreement.originalAgreement?.contactInfo?.clientEmail || agreement.contactInfo?.clientEmail || "Not specified"}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Documents Section */}
+            <div className="mb-6">
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">Uploaded Documents</h4>
+              <div className="space-y-3">
+                {agreement.originalAgreement?.uploadStatuses ? (
+                  Object.entries(agreement.originalAgreement.uploadStatuses).map(([docType, status]) => (
+                    <div key={docType} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-gray-600">📄</span>
+                        <span className="font-medium text-gray-800">{docType}</span>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          status.uploaded ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                        }`}>
+                          {status.uploaded ? "✓ Uploaded" : "✗ Missing"}
+                        </span>
+                      </div>
+                      {status.uploaded && status.file && (
+                        <span className="text-sm text-gray-600">{status.file.name}</span>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <span className="text-gray-500 text-sm">No document information available</span>
+                )}
+              </div>
             </div>
 
             {/* Important Clauses Section */}
             <div className="mb-6">
               <h4 className="text-sm font-semibold text-gray-800 mb-3">Important Clauses</h4>
               <div className="space-y-2">
-                {agreement.originalAgreement?.importantClauses && agreement.originalAgreement.importantClauses.length > 0 ? (
-                  agreement.originalAgreement.importantClauses.map((clause, idx) => (
+                {(() => {
+                  // Check both importantClauses and clauses fields with fallbacks
+                  const importantClauses = agreement.originalAgreement?.importantClauses || agreement.importantClauses;
+                  const clauses = agreement.originalAgreement?.clauses || agreement.clauses;
+                  
+                  // Combine both clause types
+                  const allClauses = [];
+                  
+                  if (importantClauses && Array.isArray(importantClauses)) {
+                    importantClauses.forEach(clause => {
+                      if (typeof clause === 'string') {
+                        allClauses.push({ title: clause, type: 'important' });
+                      } else if (clause.title) {
+                        allClauses.push({ ...clause, type: 'important' });
+                      }
+                    });
+                  }
+                  
+                  if (clauses && Array.isArray(clauses)) {
+                    clauses.forEach(clause => {
+                      if (typeof clause === 'string') {
+                        allClauses.push({ title: clause, type: 'regular' });
+                      } else if (clause.title) {
+                        allClauses.push({ ...clause, type: 'regular' });
+                      }
+                    });
+                  }
+                  
+                  if (allClauses.length === 0) {
+                    return <span className="text-gray-500 text-sm">No important clauses specified</span>;
+                  }
+                  
+                  return allClauses.map((clause, idx) => (
                     <div key={idx} className="flex items-center gap-2 bg-blue-50 rounded-lg p-3">
                       <span className="text-blue-600">📋</span>
-                      <span className="text-gray-800 text-sm">{clause}</span>
+                      <div className="flex-1">
+                        <span className="text-gray-800 text-sm font-medium">{clause.title}</span>
+                        {clause.placeholder && (
+                          <div className="text-gray-600 text-xs mt-1">{clause.placeholder}</div>
+                        )}
+                      </div>
                     </div>
-                  ))
-                ) : (
-                  <span className="text-gray-500 text-sm">No important clauses specified</span>
-                )}
+                  ));
+                })()}
               </div>
             </div>
 
@@ -622,23 +801,23 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
               <div className="flex justify-end gap-3">
                 <button
                   onClick={handleSaveChanges}
-                  className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-lg shadow-lg border-2 border-green-700"
                 >
-                  Save Changes
+                  💾 Save Changes
                 </button>
-                <button
-                  onClick={handleReject}
-                  className="px-6 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-                >
-                  Reset to Pending
-                </button>
-                <button
-                  onClick={handleApprove}
-                  disabled={isUploading}
-                  className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                >
-                  {isUploading ? "Processing..." : "Move to Next Stage"}
-                </button>
+              </div>
+            )}
+            
+            {/* Debug info for button visibility */}
+            {userRole?.toLowerCase() === "approver" && (
+              <div className="mt-2 text-xs text-gray-500 text-center">
+                ✅ Save Changes button is visible for Approver role
+              </div>
+            )}
+            
+            {userRole?.toLowerCase() !== "approver" && (
+              <div className="mt-2 text-xs text-red-500 text-center">
+                ❌ Save Changes button is hidden for {userRole} role. Switch to Approver role to see it.
               </div>
             )}
 
@@ -651,8 +830,8 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
           </>
         )}
 
-        {currentPage === "addendums" && (
-          <div className="space-y-4">
+        {currentTab === "addendums" && (
+          <div className="space-y-6">
             <p className="text-gray-600 text-sm mb-6">View all addendums and modifications for this contract</p>
             
             {agreementAddendums.length === 0 ? (
@@ -662,20 +841,25 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
                 <p className="text-sm">This contract has no addendums or modifications yet.</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {agreementAddendums.map((addendum, index) => (
+              <div className="space-y-6">
+                {/* Current Addendum Display */}
+                {agreementAddendums[currentAddendumIndex] && (
+                  <div className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm">
+                    {(() => {
+                      const addendum = agreementAddendums[currentAddendumIndex];
+                      return (
                   <div key={addendum.id} className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm hover:shadow-md transition-shadow">
                     {/* Header Section */}
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
                         <span className="font-bold text-xl text-blue-600">#{addendum.id}</span>
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          addendum.status === "Approved" ? "bg-green-100 text-green-700" :
-                          addendum.status === "Rejected" ? "bg-red-100 text-red-700" :
-                          addendum.status === "Under Review" ? "bg-blue-100 text-blue-700" :
+                          (pendingStatusChanges[addendum.id] || addendum.status) === "Approved" ? "bg-green-100 text-green-700" :
+                          (pendingStatusChanges[addendum.id] || addendum.status) === "Rejected" ? "bg-red-100 text-red-700" :
+                          (pendingStatusChanges[addendum.id] || addendum.status) === "Under Review" ? "bg-blue-100 text-blue-700" :
                           "bg-yellow-100 text-yellow-700"
                         }`}>
-                          {addendum.status}
+                          {pendingStatusChanges[addendum.id] || addendum.status}
                         </span>
                       </div>
                       <div className="text-sm text-gray-500">
@@ -693,6 +877,22 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
                         <span className="font-semibold text-gray-700">Submitted By:</span>
                         <p className="text-gray-800 mt-1">👤 {addendum.submittedBy}</p>
                       </div>
+                      <div>
+                        <span className="font-semibold text-gray-700">Effective Date:</span>
+                        <p className="text-gray-800 mt-1">{addendum.effectiveDate ? new Date(addendum.effectiveDate).toLocaleDateString() : "Not specified"}</p>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-gray-700">Reason:</span>
+                        <p className="text-gray-800 mt-1">{addendum.reason || "Not specified"}</p>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-gray-700">Impact Assessment:</span>
+                        <p className="text-gray-800 mt-1">{addendum.impact || "Not specified"}</p>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-gray-700">Branches:</span>
+                        <p className="text-gray-800 mt-1">{addendum.branches && Array.isArray(addendum.branches) ? addendum.branches.join(", ") : "All Branches"}</p>
+                      </div>
                     </div>
                     
                     {/* Summary of Changes */}
@@ -702,7 +902,7 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
                     </div>
                     
                     {/* Clause Modifications */}
-                    {addendum.clauseModifications && addendum.clauseModifications.length > 0 && (
+                    {addendum.clauseModifications && Array.isArray(addendum.clauseModifications) && addendum.clauseModifications.length > 0 && (
                       <div className="mb-4">
                         <span className="font-semibold text-gray-700 text-sm">Clause Modifications:</span>
                         <div className="mt-2 space-y-2">
@@ -765,87 +965,85 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
                       </div>
                     )}
                     
-                    {/* Status Change Section - Only for Approvers */}
-                      {userRole?.toLowerCase() === "approver" && (
-                      <div className="border-t border-gray-200 pt-4 mb-4">
-                        <h5 className="font-semibold text-gray-800 mb-3 text-sm">Change Status</h5>
+                    {/* Change Status Section - Only for Approver Role */}
+                    {userRole?.toLowerCase() === "approver" && (
+                      <div className="mb-4">
+                        <h4 className="text-sm font-semibold text-gray-800 mb-3">Change Status</h4>
                         
-                        <div className="space-y-3 mb-3">
-                          <div className="flex items-center gap-3">
-                            <select
-                              className="border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-300 min-w-[140px]"
-                              value={pendingStatusChanges[addendum.id] || addendum.status}
-                              onChange={(e) => {
-                                // Just update the local state, don't submit yet
-                                setPendingStatusChanges(prev => ({
-                                  ...prev,
-                                  [addendum.id]: e.target.value
-                                }));
-                              }}
-                            >
-                              <option value="Pending">⏳ Pending</option>
-                              <option value="Approved">✅ Approved</option>
-                              <option value="Rejected">❌ Rejected</option>
-                            </select>
-                            
-                            {pendingStatusChanges[addendum.id] && pendingStatusChanges[addendum.id] !== addendum.status && (
-                          <button
-                                onClick={() => {
-                                  const addendumId = addendum.id;
-                                  const newStatus = pendingStatusChanges[addendum.id];
-                                  console.log('Status change confirmed:', addendumId, newStatus);
-                                  if (onAddendumStatusUpdate) {
-                                    onAddendumStatusUpdate(addendumId, newStatus);
-                                    // Clear pending change
-                                    setPendingStatusChanges(prev => {
-                                      const updated = { ...prev };
-                                      delete updated[addendum.id];
-                                      return updated;
-                                    });
-                                    // Modal stays open - user must manually close
-                                  }
-                                }}
-                                className="px-4 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
-                              >
-                                Save Status
-                          </button>
-                            )}
-                          
-                          <button
-                              onClick={onClose}
-                              className="px-4 py-2 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 transition-colors"
-                            >
-                              Close
-                          </button>
+                        {/* Status Dropdown */}
+                        <div className="mb-3">
+                          <select
+                            value={pendingStatusChanges[addendum.id] || addendum.status || "Pending Review"}
+                            onChange={(e) => {
+                              const newStatus = e.target.value;
+                              setPendingStatusChanges(prev => ({
+                                ...prev,
+                                [addendum.id]: newStatus
+                              }));
+                              
+                              // Automatically update the addendum status
+                              if (onAddendumStatusUpdate) {
+                                onAddendumStatusUpdate(addendum.id, newStatus);
+                              }
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          >
+                            <option value="Pending Review">⏳ Pending Review</option>
+                            <option value="Under Review">👀 Under Review</option>
+                            <option value="Approved">✅ Approved</option>
+                            <option value="Rejected">❌ Rejected</option>
+                          </select>
+                        </div>
+
+                        {/* Current Status Display */}
+                        <div className="mb-3">
+                          <span className="text-sm font-medium text-gray-700">Current Status: </span>
+                          <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                            (pendingStatusChanges[addendum.id] || addendum.status) === "Approved" ? "bg-green-100 text-green-700" :
+                            (pendingStatusChanges[addendum.id] || addendum.status) === "Rejected" ? "bg-red-100 text-red-700" :
+                            (pendingStatusChanges[addendum.id] || addendum.status) === "Under Review" ? "bg-blue-100 text-blue-700" :
+                            "bg-yellow-100 text-yellow-700"
+                          }`}>
+                            {pendingStatusChanges[addendum.id] || addendum.status || "Pending Review"}
+                          </span>
+                        </div>
+
+                        {/* Instruction Box */}
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                          <div className="flex items-start gap-2">
+                            <span className="text-yellow-500 text-sm">💡</span>
+                            <p className="text-xs text-blue-800">
+                              Select a new status from the dropdown above to change the addendum status.
+                            </p>
                           </div>
-                        </div>
-                        
-                        <div className="text-xs text-gray-600 mb-2">
-                          Current Status: <span className="font-semibold">{addendum.status}</span>
-                        </div>
-                        
-                        <div className="bg-blue-50 border border-blue-200 rounded p-2">
-                          <p className="text-blue-800 text-xs">
-                            💡 Select a new status from the dropdown above, then click "Save Status" to apply the change. Use "Close" to exit.
-                          </p>
                         </div>
                       </div>
                     )}
 
                     {/* Action Buttons */}
-                    <div className="flex justify-end pt-4 border-t border-gray-200">
-                          <button
-                        onClick={() => handleViewAddendum(addendum)}
-                        className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded hover:bg-blue-200 cursor-pointer transition-colors"
-                        title="Click to view full addendum details"
+                    <div className="flex justify-between pt-4 border-t border-gray-200">
+                      <button
+                        onClick={onClose}
+                        className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors text-sm"
                       >
-                        👁️ View Full Details
-                          </button>
+                        Close
+                      </button>
+                      <button
+                        onClick={() => handleViewAddendum(addendum)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm"
+                      >
+                        <span>👁️</span>
+                        View Full Details
+                      </button>
                     </div>
                   </div>
-                ))}
-                        </div>
-                      )}
+                      );
+                    })()}
+                  </div>
+                )}
+
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -853,7 +1051,14 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
   );
 }
 
-export default function AgreementTable({ agreements = [], addendums = [], onStatusUpdate, onAddendumStatusUpdate, userRole = "checker", onCreateAddendum }) {
+export default function AgreementTable({ agreements = [], onStatusUpdate, onAddendumStatusUpdate, userRole = "checker", onCreateAddendum, onEditAgreement, onAddendumSubmit }) {
+  const { addendums } = useAppState();
+  
+  // Debug addendums from Redux
+  console.log("=== AGREEMENT TABLE - REDUX ADDENDUMS ===");
+  console.log("addendums from useAppState:", addendums);
+  console.log("addendums.addendums:", addendums?.addendums);
+  console.log("addendums length:", addendums?.addendums?.length);
   const [filters, setFilters] = useState({ 
     client: "", 
     city: "", 
@@ -868,6 +1073,7 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
   const [clauseHistoryModal, setClauseHistoryModal] = useState({ open: false, clause: null, modifications: [] }); // State for clause history modal
   const [editingAddendum, setEditingAddendum] = useState(null); // State for editing addendum
   const [isEditing, setIsEditing] = useState(false); // State to track if we're in edit mode
+  const [pendingStatusChanges, setPendingStatusChanges] = useState({}); // Track pending status changes for each addendum
   
   // Ref for dropdown container
   const dropdownRef = useRef(null);
@@ -930,9 +1136,11 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
     if (agreement.uploadStatuses?.EmailApproval?.uploaded) woPoLoiInfo.push("Email Approval");
     const woPoLoiText = woPoLoiInfo.length > 0 ? woPoLoiInfo.join(" / ") : "None uploaded";
     
-    // Extract important clauses (first 3 clauses as summary)
-    const importantClauses = agreement.importantClauses && agreement.importantClauses.length > 0
-      ? agreement.importantClauses.slice(0, 3).join(", ")
+    // Extract important clauses (first 3 clauses as summary for table display)
+    const importantClausesSummary = agreement.importantClauses && agreement.importantClauses.length > 0
+      ? agreement.importantClauses.slice(0, 3).map(clause => 
+          typeof clause === 'string' ? clause : clause.title
+        ).join(", ")
       : "No clauses";
     
     // Join all selected branches with commas to display all branches
@@ -948,17 +1156,9 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
     else if (daysDiff >= 3) priority = "Medium";
 
     // Calculate addendums count for this agreement
-    console.log("=== AGREEMENT TABLE - CALCULATING ADDENDUMS ===");
-    console.log("Agreement ID:", agreement.id);
-    console.log("All addendums:", addendums);
-    console.log("Addendums length:", addendums?.length);
-    
-    const addendumsCount = addendums.filter(addendum => {
-      console.log(`Checking addendum ${addendum.id}: parentAgreementId=${addendum.parentAgreementId}, agreement.id=${agreement.id}, matches=${addendum.parentAgreementId === agreement.id}`);
+    const addendumsCount = (addendums?.addendums || []).filter(addendum => {
       return addendum.parentAgreementId === agreement.id;
     }).length;
-    
-    console.log(`Addendums count for agreement ${agreement.id}:`, addendumsCount);
 
     return {
       id: agreement.id || `AGR${String(index + 1).padStart(3, '0')}`,
@@ -973,7 +1173,8 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
       entityType: agreement.entityType || "single",
       date: agreement.submittedDate || new Date().toISOString().split('T')[0],
       status: getCurrentStatus(agreement),
-      importantClauses: importantClauses,
+      originalStatus: agreement.status, // Preserve original status for modal display
+      importantClauses: importantClausesSummary,
       finalAgreement: agreement.finalAgreement || null,
       originalAgreement: agreement, // Keep reference to original data
       addendumsCount, // Add addendums count
@@ -1183,7 +1384,7 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
   const handleSaveAddendumChanges = () => {
     if (editingAddendum) {
       // Update the addendum in the addendums array
-      const updatedAddendums = addendums.map(addendum => 
+      const updatedAddendums = (addendums?.addendums || []).map(addendum => 
         addendum.id === editingAddendum.id ? editingAddendum : addendum
       );
       
@@ -1541,15 +1742,15 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr>
+                                  <tr>
                     <td colSpan="11" className="px-4 py-8 text-center text-gray-500">
-                    {userRole?.toLowerCase() === "checker" 
-                      ? "No agreements submitted yet. Use the 'New Agreement' tab to create your first agreement."
-                      : "No agreements submitted yet. Agreements submitted by checkers will appear here."
-                    }
-                  </td>
-                </tr>
-              ) : (
+                      {userRole?.toLowerCase() === "checker" 
+                        ? "No agreements submitted yet. Use the 'New Agreement' tab to create your first agreement."
+                        : "No agreements submitted yet. Agreements submitted by checkers will appear here."
+                      }
+                    </td>
+                  </tr>
+               ) : (
                  filtered.map((row, i) => (
                    <tr key={row.id} className={`${i % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-blue-50 border-b border-gray-100 transition-colors`}>
                      <td className="px-6 py-4 text-center">{i + 1}</td>
@@ -1569,19 +1770,13 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                      <td className="px-6 py-4 text-gray-700">{row.entityType}</td>
                      <td className="px-6 py-4 text-gray-700">{row.date}</td>
                      <td className="px-6 py-4 min-w-[150px]">
-                       <ClauseLinks 
-                         clauses={row.originalAgreement.clauses || []}
-                         uploadStatuses={row.originalAgreement.uploadStatuses || {}}
-                         addendums={addendums}
-                         agreementId={row.id}
-                         onShowClauseHistory={handleViewClauseHistory}
-                       />
+                       {getImportantClauses(row.originalAgreement)}
                      </td>
                      <td className="px-6 py-4">
-                         {priorityBadge(row.priority)}
-                       </td>
+                       {priorityBadge(row.priority)}
+                     </td>
                      <td className="px-6 py-4 min-w-[200px]">
-                         {/* Status Badge */}
+                       {/* Status Badge */}
                        <div className="mb-3">
                          <span className={`px-3 py-2 rounded-full text-sm font-medium ${
                            row.status === "Execution Pending" ? "bg-yellow-100 text-yellow-700" :
@@ -1592,54 +1787,54 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                          }`}>
                            {row.status}
                          </span>
-                         </div>
-                         
-                         {/* Status Progress Input - Only show for non-final statuses */}
-                         {row.status !== "Approved" && (
+                       </div>
+                       
+                       {/* Status Progress Input - Only show for non-final statuses */}
+                       {row.status !== "Approved" && (
                          <div className="space-y-3">
-                             <textarea
+                           <textarea
                              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
-                               placeholder="Enter progress notes..."
-                               rows="2"
-                               value={row.statusProgress?.notes || ""}
-                               onChange={(e) => handleStatusProgressUpdate(row.id, "notes", e.target.value)}
-                             />
-                             
-                             <div className="flex items-center gap-2">
-                               <input
-                                 type="date"
+                             placeholder="Enter progress notes..."
+                             rows="2"
+                             value={row.statusProgress?.notes || ""}
+                             onChange={(e) => handleStatusProgressUpdate(row.id, "notes", e.target.value)}
+                           />
+                           
+                           <div className="flex items-center gap-2">
+                             <input
+                               type="date"
                                className="border border-gray-300 rounded-md px-3 py-2 text-sm flex-1 focus:ring-2 focus:ring-blue-300 focus:border-blue-500"
-                                 value={row.statusProgress?.date || ""}
-                                 onChange={(e) => handleStatusProgressUpdate(row.id, "date", e.target.value)}
-                               />
-                               <button
-                               className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors"
-                                 onClick={() => handleSaveStatusProgress(row.id)}
-                                 title="Save progress"
-                               >
-                                 Save
-                               </button>
-                             </div>
-                             
+                               value={row.statusProgress?.date || ""}
+                               onChange={(e) => handleStatusProgressUpdate(row.id, "date", e.target.value)}
+                             />
                              <button
-                             className="w-full text-blue-600 underline text-sm hover:text-blue-800 transition-colors"
-                               onClick={() => handleViewStatusHistory(row.id, row.client)}
-                               title="View status history"
+                               className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors"
+                               onClick={() => handleSaveStatusProgress(row.id)}
+                               title="Save progress"
                              >
-                               ▶ View History ({row.statusHistory?.length || 0})
+                               Save
                              </button>
                            </div>
-                         )}
-                         
-                         {/* Final Status Message for Approved */}
-                         {row.status === "Approved" && (
-                         <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700">
-                             ✓ Approved - No further action required
-                           </div>
-                         )}
-                       </td>
+                           
+                           <button
+                             className="w-full text-blue-600 underline text-sm hover:text-blue-800 transition-colors"
+                             onClick={() => handleViewStatusHistory(row.id, row.client)}
+                             title="View status history"
+                           >
+                             ▶ View History ({row.statusHistory?.length || 0})
+                           </button>
+                         </div>
+                       )}
                        
-                       {/* Addendums Count Column */}
+                       {/* Final Status Message for Approved */}
+                       {row.status === "Approved" && (
+                         <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700">
+                           ✓ Approved - No further action required
+                         </div>
+                       )}
+                     </td>
+                       
+                     {/* Addendums Count Column */}
                      <td className="px-6 py-4 text-center">
                          {row.addendumsCount > 0 ? (
                            <div className="flex flex-col gap-2">
@@ -1650,21 +1845,21 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                                </span>
 
                                
-                               {/* View Button - Shows dropdown for multiple addendums */}
-                               {row.addendumsCount > 1 ? (
-                                 <div className="relative" ref={dropdownRef}>
-                                   <button
-                                     onClick={() => {
-                                       // Toggle dropdown for this row
-                                       const newDropdownOpen = { ...dropdownOpen };
-                                       newDropdownOpen[row.id] = !newDropdownOpen[row.id];
-                                       setDropdownOpen(newDropdownOpen);
-                                     }}
+                                                               {/* View Button - Shows dropdown for multiple addendums */}
+                                {row.addendumsCount > 1 ? (
+                                  <div className="relative" ref={dropdownRef}>
+                                    <button
+                                      onClick={() => {
+                                        // Toggle dropdown for this row
+                                        const newDropdownOpen = { ...dropdownOpen };
+                                        newDropdownOpen[row.id] = !newDropdownOpen[row.id];
+                                        setDropdownOpen(newDropdownOpen);
+                                      }}
                                       className="p-1 text-gray-600 hover:text-gray-900 rounded-full transition-colors"
-                                     title="Select addendum to view"
-                                   >
+                                      title="Select addendum to view"
+                                    >
                                       <span className="text-lg">👁️</span>
-                                   </button>
+                                    </button>
                                    
                                    {/* Dropdown Menu */}
                                    {dropdownOpen[row.id] && (
@@ -1714,21 +1909,21 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                                    )}
                                  </div>
                                ) : (
-                                 /* Single addendum - direct view button */
-                                 <button
-                                   onClick={() => {
-                                      const singleAddendum = addendums.find(addendum => 
-                                       addendum.parentAgreementId === row.originalAgreement.id
-                                     );
-                                     if (singleAddendum) {
-                                       handleViewAddendum(singleAddendum);
-                                     }
-                                   }}
+                                                                   /* Single addendum - direct view button */
+                                  <button
+                                    onClick={() => {
+                                      const singleAddendum = (addendums?.addendums || []).find(addendum => 
+                                        addendum.parentAgreementId === row.originalAgreement.id
+                                      );
+                                      if (singleAddendum) {
+                                        handleViewAddendum(singleAddendum);
+                                      }
+                                    }}
                                     className="p-1 text-gray-600 hover:text-gray-900 rounded-full transition-colors"
-                                   title="View addendum"
-                                 >
+                                    title="View addendum"
+                                  >
                                     <span className="text-lg">👁️</span>
-                                 </button>
+                                  </button>
                                )}
                              </div>
                            </div>
@@ -1740,38 +1935,38 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                      {/* Actions Column */}
                      <td className="px-6 py-4 text-center">
                        <div className="flex flex-col gap-3">
-                            {/* Review Button - For both roles */}
-                            <button 
+                         {/* Review Button - For both roles */}
+                         <button 
                            className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 transition-colors font-medium" 
-                              title="Review & Take Action" 
-                              onClick={() => setDetails({ open: true, agreement: row })}
-                            >
-                              Review
-                            </button>
-                            
-                            {/* Edit Agreement Button - Only for Checker role */}
-                            {userRole === "checker" && (
-                              <button 
+                           title="Review & Take Action" 
+                           onClick={() => setDetails({ open: true, agreement: row })}
+                         >
+                           Review
+                         </button>
+                         
+                         {/* Edit Agreement Button - Only for Checker role */}
+                         {userRole === "checker" && (
+                           <button 
                              className="bg-orange-600 text-white px-4 py-2 rounded-md text-sm hover:bg-orange-700 transition-colors font-medium" 
-                                title="Edit Agreement" 
-                                onClick={() => handleEditAgreement(row.originalAgreement)}
-                              >
+                             title="Edit Agreement" 
+                             onClick={() => handleEditAgreement(row.originalAgreement)}
+                           >
                              Edit
-                              </button>
-                            )}
-                            
-                            {/* Add Addendum Button - Only for Checker role */}
-                            {userRole === "checker" && (
-                              <button 
+                           </button>
+                         )}
+                         
+                         {/* Add Addendum Button - Only for Checker role */}
+                         {userRole === "checker" && (
+                           <button 
                              className="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700 transition-colors font-medium" 
-                                title="Create New Addendum" 
-                                onClick={() => handleCreateAddendum(row.originalAgreement)}
-                              >
+                             title="Create New Addendum" 
+                             onClick={() => handleCreateAddendum(row.originalAgreement)}
+                           >
                              Add Addendum
-                              </button>
-                            )}
-                          </div>
-                        </td>
+                           </button>
+                         )}
+                       </div>
+                     </td>
                    </tr>
                  ))
                )}
@@ -1797,9 +1992,11 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
          onPriorityChange={handlePriorityChange}
          onStatusChange={handleStatusChange}
          onFinalAgreementUpload={handleFinalAgreementUploadFromModal}
-         addendums={addendums}
+         addendums={addendums?.addendums || []}
          userRole={userRole}
          onAddendumStatusUpdate={onAddendumStatusUpdate}
+         pendingStatusChanges={pendingStatusChanges}
+         setPendingStatusChanges={setPendingStatusChanges}
        />
        
        <StatusHistoryModal
@@ -1810,15 +2007,12 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
        />
 
         {/* Addendum Details Modal */}
-        {addendumDetailsModal.open && (
+        {addendumDetailsModal.open && addendumDetailsModal.addendum && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
             <div className="bg-white rounded-lg shadow-lg p-6 min-w-[600px] max-w-4xl max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-xl font-bold">📄 Addendum Details - #{addendumDetailsModal.addendum?.id || 'Unknown'}</h3>
-                  <div className="text-sm text-gray-500 mt-1">
-                    Debug: Modal opened with addendum data: {JSON.stringify(addendumDetailsModal.addendum, null, 2)}
-                  </div>
                   
                   {!addendumDetailsModal.addendum && (
                     <div className="bg-red-50 border border-red-200 rounded p-3 mt-2">
@@ -1858,9 +2052,9 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                     addendumDetailsModal.addendum.title
                   )}
                 </div>
-                <div><b>Parent Agreement:</b><br/>{addendumDetailsModal.addendum.parentAgreementTitle || addendumDetailsModal.addendum.parentAgreementId}</div>
-                <div><b>Submitted By:</b><br/>👤 {addendumDetailsModal.addendum.submittedBy}</div>
-                <div><b>Submitted Date:</b><br/>📅 {new Date(addendumDetailsModal.addendum.submittedDate).toLocaleDateString()}</div>
+                <div><b>Parent Agreement:</b><br/>{addendumDetailsModal.addendum.parentAgreementTitle || addendumDetailsModal.addendum.parentAgreementId || 'Unknown'}</div>
+                <div><b>Submitted By:</b><br/>👤 {addendumDetailsModal.addendum.submittedBy || 'Unknown'}</div>
+                <div><b>Submitted Date:</b><br/>📅 {addendumDetailsModal.addendum.submittedDate ? new Date(addendumDetailsModal.addendum.submittedDate).toLocaleDateString() : 'Unknown'}</div>
                 <div>
                   <b>Effective Date:</b><br/>
                   {isEditing ? (
@@ -1898,7 +2092,7 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                   />
                 ) : (
                   <div className="bg-gray-50 p-3 rounded border text-sm">
-                    {addendumDetailsModal.addendum.description}
+                    {addendumDetailsModal.addendum.description || 'No description provided'}
                   </div>
                 )}
               </div>
@@ -1916,7 +2110,7 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                     />
                   ) : (
                     <div className="bg-gray-50 p-3 rounded border text-sm">
-                      {addendumDetailsModal.addendum.reason}
+                      {addendumDetailsModal.addendum.reason || 'No reason provided'}
                     </div>
                   )}
                 </div>
@@ -1931,7 +2125,7 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                     />
                   ) : (
                     <div className="bg-gray-50 p-3 rounded border text-sm">
-                      {addendumDetailsModal.addendum.impact}
+                      {addendumDetailsModal.addendum.impact || 'No impact assessment provided'}
                     </div>
                   )}
                 </div>
@@ -2130,11 +2324,11 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
                     >
                       Close
                     </button>
-                          </div>
+                  </div>
                   
                   <div className="text-sm text-gray-600 mb-2">
                     Current Status: <span className="font-semibold">{addendumDetailsModal.addendum.status}</span>
-                        </div>
+                  </div>
                   
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                     <p className="text-blue-800 text-sm">
@@ -2238,3 +2432,4 @@ export default function AgreementTable({ agreements = [], addendums = [], onStat
      </div>
    );
  }
+ 

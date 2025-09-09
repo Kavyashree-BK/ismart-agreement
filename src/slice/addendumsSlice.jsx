@@ -256,14 +256,39 @@ const addendumsSlice = createSlice({
   name: 'addendums',
   initialState,
   reducers: {
-    addAddendum: (state, action) => {
-      console.log("=== ADDENDUM SLICE - ADD ADDENDUM ===");
-      console.log("addAddendum action called with payload:", action.payload);
-      console.log("Current addendums array before adding:", state.addendums);
-      state.addendums.push(action.payload);
-      console.log("Updated addendums array after adding:", state.addendums);
-      console.log("Total addendums count:", state.addendums.length);
-    },
+              addAddendum: (state, action) => {
+              console.log("=== ADDENDUM SLICE - ADD ADDENDUM ===");
+              console.log("addAddendum action called with payload:", action.payload);
+              console.log("Current addendums array before adding:", state.addendums);
+              console.log("Payload parentAgreementId:", action.payload.parentAgreementId);
+              console.log("Payload parentAgreementId type:", typeof action.payload.parentAgreementId);
+              console.log("Payload title:", action.payload.title);
+              console.log("Payload isDemo:", action.payload.isDemo);
+
+              // Generate unique ID if not provided
+              if (!action.payload.id) {
+                action.payload.id = `ADD${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                console.log("Generated new ID:", action.payload.id);
+              }
+
+              state.addendums.push(action.payload);
+
+              console.log("Updated addendums array after adding:", state.addendums);
+              console.log("Total addendums count:", state.addendums.length);
+              console.log("Last addendum in array:", state.addendums[state.addendums.length - 1]);
+
+              // Verify the addendum was added correctly
+              const addedAddendum = state.addendums.find(add => add.id === action.payload.id);
+              console.log("Verification - added addendum found:", addedAddendum);
+              
+              // Check if addendum is in the array
+              const isInArray = state.addendums.includes(action.payload);
+              console.log("Is addendum in array:", isInArray);
+              
+              // Check by ID
+              const foundById = state.addendums.find(add => add.id === action.payload.id);
+              console.log("Found by ID:", foundById);
+            },
     updateAddendum: (state, action) => {
       const { id, updates } = action.payload;
       const addendum = state.addendums.find(add => add.id === id);
