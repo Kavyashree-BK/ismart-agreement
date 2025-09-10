@@ -27,6 +27,40 @@ const demoAgreements = [
     status: "Execution Pending",
     submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)),
     submittedBy: "checker",
+    approvalWorkflow: {
+      steps: [
+        {
+          step: "Submitted",
+          status: "completed",
+          timestamp: formatDateWithoutTimezone(new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)),
+          user: "checker",
+          userRole: "Checker",
+          comments: "Agreement submitted for review"
+        },
+        {
+          step: "Under Review",
+          status: "completed",
+          timestamp: formatDateWithoutTimezone(new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)),
+          user: "approver",
+          userRole: "Approver",
+          comments: "Review completed, pending execution"
+        },
+        {
+          step: "Execution Pending",
+          status: "current",
+          timestamp: formatDateWithoutTimezone(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)),
+          user: "approver",
+          userRole: "Approver",
+          comments: "Awaiting execution by client"
+        }
+      ],
+      finalApproval: {
+        approved: false,
+        approvedBy: null,
+        approvedDate: null,
+        finalComments: null
+      }
+    },
     entityType: "single",
     priority: "Medium",
     clauses: [
@@ -107,6 +141,40 @@ const demoAgreements = [
     status: "Executed",
     submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)),
     submittedBy: "checker",
+    approvalWorkflow: {
+      steps: [
+        {
+          step: "Submitted",
+          status: "completed",
+          timestamp: formatDateWithoutTimezone(new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)),
+          user: "checker",
+          userRole: "Checker",
+          comments: "Agreement submitted for review"
+        },
+        {
+          step: "Under Review",
+          status: "completed",
+          timestamp: formatDateWithoutTimezone(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000)),
+          user: "approver",
+          userRole: "Approver",
+          comments: "Review completed, approved for execution"
+        },
+        {
+          step: "Executed",
+          status: "completed",
+          timestamp: formatDateWithoutTimezone(new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)),
+          user: "approver",
+          userRole: "Approver",
+          comments: "Agreement executed by client"
+        }
+      ],
+      finalApproval: {
+        approved: true,
+        approvedBy: "approver",
+        approvedDate: formatDateWithoutTimezone(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000)),
+        finalComments: "All terms reviewed and approved. Client has executed the agreement."
+      }
+    },
     entityType: "single",
     priority: "Low",
     clauses: [
@@ -170,6 +238,48 @@ const demoAgreements = [
     status: "Under Process with Client",
     submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)),
     submittedBy: "checker",
+    approvalWorkflow: {
+      steps: [
+        {
+          step: "Submitted",
+          status: "completed",
+          timestamp: formatDateWithoutTimezone(new Date(Date.now() - 15 * 24 * 60 * 60 * 1000)),
+          user: "checker",
+          userRole: "Checker",
+          comments: "Agreement submitted for review"
+        },
+        {
+          step: "Under Review",
+          status: "completed",
+          timestamp: formatDateWithoutTimezone(new Date(Date.now() - 12 * 24 * 60 * 60 * 1000)),
+          user: "approver",
+          userRole: "Approver",
+          comments: "Review completed, approved for execution"
+        },
+        {
+          step: "Executed",
+          status: "completed",
+          timestamp: formatDateWithoutTimezone(new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)),
+          user: "approver",
+          userRole: "Approver",
+          comments: "Agreement executed by client"
+        },
+        {
+          step: "Under Process with Client",
+          status: "current",
+          timestamp: formatDateWithoutTimezone(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)),
+          user: "approver",
+          userRole: "Approver",
+          comments: "Agreement is now being processed with client"
+        }
+      ],
+      finalApproval: {
+        approved: true,
+        approvedBy: "approver",
+        approvedDate: formatDateWithoutTimezone(new Date(Date.now() - 12 * 24 * 60 * 60 * 1000)),
+        finalComments: "Agreement approved and executed. Currently under process with client."
+      }
+    },
     entityType: "single",
     priority: "High",
     clauses: [

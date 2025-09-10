@@ -6,9 +6,9 @@ export default function History() {
   const { agreements: agreementsList } = agreements;
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Filter approved agreements
+  // Filter agreements with approval workflow (all statuses that have gone through approval)
   const approvedAgreements = agreementsList.filter(agreement => 
-    agreement.status === "Approved"
+    agreement.approvalWorkflow && agreement.approvalWorkflow.finalApproval && agreement.approvalWorkflow.finalApproval.approved
   );
 
   // Filter by search term
@@ -78,6 +78,12 @@ export default function History() {
                   Approved Date
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Approved By
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Final Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -117,10 +123,63 @@ export default function History() {
                     {formatDate(agreement.submittedDate)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatDate(agreement.approvedDate || agreement.lastModified)}
+                    {formatDate(agreement.approvalWorkflow?.finalApproval?.approvedDate || agreement.approvedDate || agreement.lastModified)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                        <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {agreement.approvalWorkflow?.finalApproval?.approvedBy === 'approver' ? 'Approver' : 'Unknown'}
+                        </div>
+                        <div className="text-xs text-gray-500">Final Approval</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      agreement.status === "Executed" ? "bg-green-100 text-green-800" :
+                      agreement.status === "Under Process with Client" ? "bg-blue-100 text-blue-800" :
+                      agreement.status === "Execution Pending" ? "bg-yellow-100 text-yellow-800" :
+                      "bg-gray-100 text-gray-800"
+                    }`}>
+                      <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      {agreement.status}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
+                      <button 
+                        onClick={() => {
+                          // Show approval workflow details
+                          const workflow = agreement.approvalWorkflow;
+                          if (workflow) {
+                            alert(`Approval Workflow Details:\n\n` +
+                              `Final Approval: ${workflow.finalApproval.approved ? 'Yes' : 'No'}\n` +
+                              `Approved By: ${workflow.finalApproval.approvedBy}\n` +
+                              `Approved Date: ${formatDate(workflow.finalApproval.approvedDate)}\n` +
+                              `Comments: ${workflow.finalApproval.finalComments}\n\n` +
+                              `Workflow Steps:\n` +
+                              workflow.steps.map(step => 
+                                `• ${step.step} (${step.status}) - ${step.userRole} - ${formatDate(step.timestamp)}\n` +
+                                `  Comments: ${step.comments}`
+                              ).join('\n\n')
+                            );
+                          }
+                        }}
+                        className="bg-purple-600 text-white px-3 py-1 rounded text-xs hover:bg-purple-700 transition-colors flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                        </svg>
+                        Workflow
+                      </button>
                       <button className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors flex items-center">
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />

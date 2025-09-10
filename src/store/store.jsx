@@ -3,6 +3,7 @@ import userReducer from '../slice/userSlice';
 import agreementsReducer from '../slice/agreementsSlice';
 import addendumsReducer from '../slice/addendumsSlice';
 import uiReducer from '../slice/uiSlice';
+import notificationsReducer from '../slice/notificationsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     agreements: agreementsReducer,
     addendums: addendumsReducer,
     ui: uiReducer,
+    notifications: notificationsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

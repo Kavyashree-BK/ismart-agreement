@@ -256,7 +256,7 @@ const addendumsSlice = createSlice({
   name: 'addendums',
   initialState,
   reducers: {
-              addAddendum: (state, action) => {
+               addAddendum: (state, action) => {
               console.log("=== ADDENDUM SLICE - ADD ADDENDUM ===");
               console.log("addAddendum action called with payload:", action.payload);
               console.log("Current addendums array before adding:", state.addendums);

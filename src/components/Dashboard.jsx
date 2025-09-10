@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { setEditingAgreement, setActiveTab, setViewModal } from "../slice/uiSlice";
+import { generateNotifications } from "../slice/notificationsSlice";
 import ExpiringContractModal from "./ExpiringContractModal";
 
 export default function Dashboard({ onNavigateToAgreements }) {
@@ -10,14 +11,22 @@ export default function Dashboard({ onNavigateToAgreements }) {
   const agreements = useSelector(state => state.agreements.agreements);
   const addendums = useSelector(state => state.addendums.addendums);
   const user = useSelector(state => state.user);
+  const notifications = useSelector(state => state.notifications);
   
   const agreementsList = agreements || [];
   const addendumsList = addendums || [];
   const userRole = user.role;
 
   // State for modals
-  const [viewingExpiringContract, setViewingExpiringContract] = React.useState(null);
-  const [isRenewing, setIsRenewing] = React.useState(false);
+  const [viewingExpiringContract, setViewingExpiringContract] = useState(null);
+  const [isRenewing, setIsRenewing] = useState(false);
+
+  // Generate notifications when agreements change
+  useEffect(() => {
+    if (agreementsList.length > 0) {
+      dispatch(generateNotifications({ agreements: agreementsList }));
+    }
+  }, [agreementsList, dispatch]);
 
   // Handler functions for buttons
   const handleViewAgreement = (agreement) => {
@@ -582,6 +591,7 @@ export default function Dashboard({ onNavigateToAgreements }) {
   // CHECKER ROLE DASHBOARD - Keep existing implementation unchanged
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
+
       {/* Alert Banner - EXACTLY like the old UI image */}
       <div className="bg-gradient-to-r from-orange-50 to-red-50 border-l-4 border-orange-400 p-4 mb-6">
         <div className="flex items-center justify-between">
@@ -593,19 +603,13 @@ export default function Dashboard({ onNavigateToAgreements }) {
             </div>
             <div className="ml-3">
               <p className="text-sm text-orange-700">
-                <span className="font-medium">Contract Expiry Alert:</span> 2 contracts expiring soon
+                <span className="font-medium">Contract Expiry Alert:</span> {notifications.notifications.filter(n => n.type === 'expiry_warning').length} contracts expiring soon
               </p>
               <p className="text-sm text-orange-600">
-                1 contract expiring within 7 days
+                {notifications.notifications.filter(n => n.type === 'expiry_warning' && n.priority === 'high').length} contract(s) expiring within 7 days
               </p>
             </div>
           </div>
-          <button 
-            onClick={handleViewAllContracts}
-            className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors text-sm font-medium"
-          >
-            View All Contracts
-          </button>
         </div>
       </div>
 
@@ -796,6 +800,7 @@ export default function Dashboard({ onNavigateToAgreements }) {
         agreement={viewingExpiringContract}
         onClose={handleCloseExpiringContract}
       />
+      
     </div>
   );
 }
