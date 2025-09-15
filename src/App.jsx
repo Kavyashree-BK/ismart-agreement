@@ -11,7 +11,7 @@ import Dashboard from "./components/Dashboard";
 import History from "./components/History";
 import ViewModal from "./components/ViewModal";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { setEditingAgreement, setActiveTab, setViewModal } from "./slice/uiSlice";
+import { setEditingAgreement, setActiveTab, setViewModal, setShowAddendumForm, setEditingAddendum } from "./slice/uiSlice";
 import { createAddendum, updateAddendumStatus } from "./slice/addendumsSlice";
 import { updateAgreementStatus } from "./slice/agreementsSlice";
 
@@ -107,6 +107,43 @@ export default function App() {
               onEditAgreement={(agreement) => {
                 dispatch(setEditingAgreement(agreement));
                 dispatch(setActiveTab("new"));
+              }}
+              onCreateAddendum={(agreement, type) => {
+                console.log("Creating addendum for agreement:", agreement, "type:", type);
+                
+                if (type === 'addendum') {
+                  // Create a new addendum object for the form
+                  const newAddendum = {
+                    id: null, // No ID for new addendum
+                    parentAgreementId: agreement.id,
+                    parentAgreementTitle: agreement.client || agreement.selectedClient || "Unknown Client",
+                    title: "",
+                    description: "",
+                    effectiveDate: new Date().toISOString().split('T')[0],
+                    reason: "",
+                    impact: "",
+                    additionalDocuments: [],
+                    branches: agreement.selectedBranches || [],
+                    status: "Draft",
+                    submittedBy: "checker",
+                    submittedDate: null,
+                    uploadedFiles: {},
+                    clauseModifications: [],
+                    isNew: true
+                  };
+                  
+                  // Set the editing addendum for the form
+                  dispatch(setEditingAddendum(newAddendum));
+                } else if (type === 'edit') {
+                  // For editing existing addendum, set the addendum data directly
+                  dispatch(setEditingAddendum(agreement));
+                } else {
+                  // For other cases, set the agreement
+                  dispatch(setEditingAgreement(agreement));
+                }
+                
+                // Open the addendum form
+                dispatch(setShowAddendumForm(true));
               }}
               onAddendumSubmit={(addendumData) => {
                 dispatch(createAddendum(addendumData));

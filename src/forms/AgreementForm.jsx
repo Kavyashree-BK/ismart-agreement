@@ -5,7 +5,17 @@ import { createAgreement, updateAgreement } from '../slice/agreementsSlice';
 
 const AgreementForm = () => {
   const dispatch = useDispatch();
-  const editingAgreement = useSelector(state => state.ui.editingAgreement);
+  
+  // Safe selector with fallback
+  const editingAgreement = useSelector(state => {
+    try {
+      return state?.ui?.editingAgreement || null;
+    } catch (error) {
+      console.error("Error accessing Redux state:", error);
+      return null;
+    }
+  });
+  
   const isEditing = !!editingAgreement;
 
   console.log("AgreementForm rendering - isEditing:", isEditing, "editingAgreement:", editingAgreement);
@@ -43,6 +53,8 @@ const AgreementForm = () => {
     remarks: '',
     entityType: 'single',
     groupCompanies: [''],
+    isRenewal: false,
+    originalAgreementId: '',
     importantClauses: [
       { title: 'Term and termination (Duration)', content: '', file: null },
       { title: 'Payment Terms', content: '', file: null },
@@ -69,6 +81,12 @@ const AgreementForm = () => {
     },
     draftFiles: []
   });
+
+  // Safety check - don't render if formData is not properly initialized
+  if (!formData) {
+    console.log("formData is not initialized, returning null");
+    return null;
+  }
 
   // Demo data
   const clientOptions = [
@@ -394,7 +412,7 @@ const AgreementForm = () => {
       const draftData = {
         ...agreementData,
         id: draftId,
-        draftName: `${formData.selectedClient || 'Untitled'} - ${new Date().toLocaleDateString()}`
+        draftName: `${formData?.selectedClient || 'Untitled'} - ${new Date().toLocaleDateString()}`
       };
       
       localStorage.setItem(draftId, JSON.stringify(draftData));
@@ -478,17 +496,17 @@ const AgreementForm = () => {
     <div className="max-w-4xl mx-auto p-6 bg-gray-100 min-h-screen">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">
-          {isEditing && formData.isRenewal ? 'Editing Agreement' : (isEditing ? 'Edit Agreement' : 'New Agreement')}
+          {isEditing && formData?.isRenewal ? 'Editing Agreement' : (isEditing ? 'Edit Agreement' : 'New Agreement')}
         </h1>
         <p className="text-gray-600 mt-1">
-          {isEditing && formData.isRenewal 
-            ? `Agreement ID: ${formData.originalAgreementId || 'N/A'} • Client: ${formData.selectedClient}`
+          {isEditing && formData?.isRenewal 
+            ? `Agreement ID: ${formData?.originalAgreementId || 'N/A'} • Client: ${formData?.selectedClient}`
             : (isEditing ? 'Update agreement details' : 'Create a new agreement')
           }
         </p>
         
         {/* Renewal Banner - like live URL */}
-        {isEditing && formData.isRenewal && (
+        {isEditing && formData?.isRenewal && (
           <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -501,9 +519,9 @@ const AgreementForm = () => {
                   Renewing Agreement
                 </h3>
                 <div className="mt-2 text-sm text-blue-700">
-                  <p>Agreement ID: {formData.originalAgreementId || 'N/A'}</p>
-                  <p>Client: {formData.selectedClient}</p>
-                  <p>Original Agreement: {formData.originalAgreementId}</p>
+                  <p>Agreement ID: {formData?.originalAgreementId || 'N/A'}</p>
+                  <p>Client: {formData?.selectedClient}</p>
+                  <p>Original Agreement: {formData?.originalAgreementId}</p>
                 </div>
               </div>
             </div>
@@ -511,7 +529,7 @@ const AgreementForm = () => {
         )}
         
         {/* Expiry Alert - like live URL */}
-        {isEditing && formData.isRenewal && (
+        {isEditing && formData?.isRenewal && (
           <div className="mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4">
             <div className="flex">
               <div className="flex-shrink-0">
@@ -756,14 +774,14 @@ const AgreementForm = () => {
             <label className="flex items-center mb-4">
               <input
                 type="checkbox"
-                checked={formData.openAgreement}
+                checked={formData?.openAgreement || false}
                 onChange={(e) => handleInputChange('openAgreement', e.target.checked)}
                 className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
               <span className="text-sm font-medium text-gray-700">Open Agreement (No End Date)</span>
             </label>
             <p className="text-xs text-gray-500 mb-4">
-              {formData.openAgreement ? "Only 'From Date' is required" : "Both 'From Date' and 'To Date' are required"}
+              {formData?.openAgreement ? "Only 'From Date' is required" : "Both 'From Date' and 'To Date' are required"}
             </p>
 
             {/* Date Fields */}
@@ -774,20 +792,20 @@ const AgreementForm = () => {
                 </label>
                 <input
                   type="date"
-                  value={formData.startDate}
+                  value={formData?.startDate || new Date().toISOString().split('T')[0]}
                   onChange={(e) => handleInputChange('startDate', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
               </div>
-              {!formData.openAgreement && (
+              {!formData?.openAgreement && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     To Date *
                   </label>
                   <input
                     type="date"
-                    value={formData.endDate}
+                    value={formData?.endDate || new Date().toISOString().split('T')[0]}
                     onChange={(e) => handleInputChange('endDate', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -1300,9 +1318,9 @@ const AgreementForm = () => {
             onClick={() => handleSubmit('submit')}
             className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            {isEditing && formData.isRenewal ? 'Update Agreement' : 'Submit for Review'}
+            {isEditing && formData?.isRenewal ? 'Update Agreement' : 'Submit for Review'}
           </button>
-          {isEditing && formData.isRenewal && (
+          {isEditing && formData?.isRenewal && (
             <button
               type="button"
               onClick={() => {

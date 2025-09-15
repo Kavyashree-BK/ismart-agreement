@@ -108,7 +108,7 @@ export default function ReportFilterForm() {
             </label>
             <input
               type="date"
-              value={filters.fromDate}
+              value={filters.fromDate || new Date().toISOString().split('T')[0]}
               onChange={(e) => handleFilterChange("fromDate", e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -121,7 +121,7 @@ export default function ReportFilterForm() {
             </label>
             <input
               type="date"
-              value={filters.toDate}
+              value={filters.toDate || new Date().toISOString().split('T')[0]}
               onChange={(e) => handleFilterChange("toDate", e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />

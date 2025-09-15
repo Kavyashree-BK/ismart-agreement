@@ -219,7 +219,7 @@ const AddendumTable = ({ addendums = [], onStatusUpdate, onEditAddendum, userRol
             <input
               type="date"
               className="border rounded px-3 py-2 text-sm"
-              value={filters.fromDate}
+              value={filters.fromDate || new Date().toISOString().split('T')[0]}
               onChange={e => setFilters(f => ({ ...f, fromDate: e.target.value }))}
             />
           </div>
@@ -229,7 +229,7 @@ const AddendumTable = ({ addendums = [], onStatusUpdate, onEditAddendum, userRol
             <input
               type="date"
               className="border rounded px-3 py-2 text-sm"
-              value={filters.toDate}
+              value={filters.toDate || new Date().toISOString().split('T')[0]}
               onChange={e => setFilters(f => ({ ...f, toDate: e.target.value }))}
             />
           </div>

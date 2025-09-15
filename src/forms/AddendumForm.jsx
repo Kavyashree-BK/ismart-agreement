@@ -68,8 +68,28 @@ const AddendumForm = () => {
 
   // Handle editing mode - pre-fill form when editingAddendum is provided
   useEffect(() => {
+    console.log("=== ADDENDUM FORM useEffect ===");
+    console.log("editingAddendum:", editingAddendum);
+    console.log("editingAddendum.id:", editingAddendum?.id);
+    console.log("editingAddendum.isNew:", editingAddendum?.isNew);
+    
+    // Reset form state first
+    setForm({
+      title: "",
+      description: "",
+      effectiveDate: new Date(),
+      reason: "",
+      impact: "",
+      additionalDocuments: [],
+      branches: []
+    });
+    setUploadedFiles({});
+    setClauseModifications([]);
+    setErrors({});
+    
     if (editingAddendum && editingAddendum.id) {
       // This is an existing addendum being edited
+      console.log("Setting edit mode to TRUE - existing addendum");
       setIsEditMode(true);
       setForm({
         title: editingAddendum.title || "",
@@ -84,8 +104,24 @@ const AddendumForm = () => {
       setClauseModifications(editingAddendum.clauseModifications || []);
     } else {
       // This is a new addendum or no addendum data
+      console.log("Setting edit mode to FALSE - new addendum");
       setIsEditMode(false);
       setClauseModifications([]);
+      
+      // Pre-fill form with parent agreement data if available
+      if (editingAddendum && editingAddendum.parentAgreementId) {
+        console.log("Pre-filling form with parent agreement data");
+        setForm({
+          title: editingAddendum.title || "",
+          description: editingAddendum.description || "",
+          effectiveDate: editingAddendum.effectiveDate ? new Date(editingAddendum.effectiveDate) : new Date(),
+          reason: editingAddendum.reason || "",
+          impact: editingAddendum.impact || "",
+          additionalDocuments: editingAddendum.additionalDocuments || [],
+          branches: editingAddendum.branches || []
+        });
+        setUploadedFiles(editingAddendum.uploadedFiles || {});
+      }
     }
   }, [editingAddendum]);
 
@@ -433,7 +469,7 @@ const AddendumForm = () => {
         <div className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-900">
-              {editingAddendum ? "Edit Addendum" : "Create Addendum"}
+              {isEditMode ? "Edit Addendum" : "Create Addendum"}
             </h2>
             <button 
               onClick={handleCancel}

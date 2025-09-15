@@ -344,6 +344,7 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
   const [currentTab, setCurrentTab] = useState("agreement"); // "agreement" or "addendums"
   const [currentAddendumIndex, setCurrentAddendumIndex] = useState(0);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [showAddendumList, setShowAddendumList] = useState(false);
 
   React.useEffect(() => {
     if (agreement) {
@@ -506,7 +507,7 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
                   : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
             >
-              Addendums ({agreementAddendums.length})
+              📄 Addendums ({agreementAddendums.length})
             </button>
           </div>
           
@@ -832,7 +833,25 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
 
         {currentTab === "addendums" && (
           <div className="space-y-6">
-            <p className="text-gray-600 text-sm mb-6">View all addendums and modifications for this contract</p>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <p className="text-gray-600 text-sm">View all addendums and modifications for this contract</p>
+                <p className="text-xs text-green-600 mt-1">
+                  ✅ Addendums are separate modifications that do not affect the original contract
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">
+                  {agreementAddendums.length} addendum{agreementAddendums.length !== 1 ? 's' : ''} total
+                </span>
+                <button
+                  onClick={() => setShowAddendumList(!showAddendumList)}
+                  className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-sm hover:bg-blue-200 transition-colors"
+                >
+                  {showAddendumList ? 'Hide List' : 'Show All'}
+                </button>
+              </div>
+            </div>
             
             {agreementAddendums.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
@@ -842,6 +861,109 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
               </div>
             ) : (
               <div className="space-y-6">
+                {/* Addendum List View */}
+                {showAddendumList && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">📄 Contract Modifications</h3>
+                    <div className="space-y-3">
+                      {agreementAddendums.map((addendum, index) => (
+                        <div
+                          key={addendum.id}
+                          className={`p-4 rounded-lg border cursor-pointer transition-colors ${
+                            currentAddendumIndex === index
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 bg-white hover:border-gray-300'
+                          }`}
+                          onClick={() => setCurrentAddendumIndex(index)}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-3">
+                              <span className="font-bold text-blue-600">#{addendum.id}</span>
+                              <span className="text-sm font-medium text-gray-800">{addendum.title}</span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                addendum.status === "Approved" ? "bg-green-100 text-green-700" :
+                                addendum.status === "Rejected" ? "bg-red-100 text-red-700" :
+                                addendum.status === "Under Review" ? "bg-blue-100 text-blue-700" :
+                                "bg-yellow-100 text-yellow-700"
+                              }`}>
+                                {addendum.status}
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              📅 {new Date(addendum.submittedDate).toLocaleDateString()}
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="font-medium text-gray-600">Created by:</span>
+                              <span className="ml-2 text-gray-800">👤 {addendum.submittedBy}</span>
+                            </div>
+                            <div>
+                              <span className="font-medium text-gray-600">Effective Date:</span>
+                              <span className="ml-2 text-gray-800">
+                                {addendum.effectiveDate ? new Date(addendum.effectiveDate).toLocaleDateString() : "Not specified"}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-2 text-sm text-gray-600">
+                            <span className="font-medium text-gray-600">Summary:</span>
+                            <span className="ml-2">{addendum.description?.substring(0, 120)}...</span>
+                          </div>
+                          
+                          <div className="mt-2 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500">
+                                {addendum.clauseModifications?.length || 0} clause modifications
+                              </span>
+                              <span className="text-xs text-gray-500">•</span>
+                              <span className="text-xs text-gray-500">
+                                {Object.keys(addendum.uploadedFiles || {}).length} documents
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Quick download
+                                  const addendumDoc = `Addendum ${addendum.id}: ${addendum.title}\nStatus: ${addendum.status}\nDate: ${new Date(addendum.submittedDate).toLocaleDateString()}\nSummary: ${addendum.description}`;
+                                  const blob = new Blob([addendumDoc], { type: 'text/plain' });
+                                  const url = URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = `Addendum_${addendum.id}.txt`;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  document.body.removeChild(a);
+                                  URL.revokeObjectURL(url);
+                                }}
+                                className="text-xs text-blue-600 hover:text-blue-800 underline"
+                              >
+                                📥 Quick Download
+                              </button>
+                              
+                              {/* Edit Addendum Button - Only for Checker role */}
+                              {userRole === "checker" && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditAddendum(addendum);
+                                  }}
+                                  className="text-xs text-orange-600 hover:text-orange-800 underline"
+                                  title="Edit this addendum"
+                                >
+                                  ✏️ Edit
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Current Addendum Display */}
                 {agreementAddendums[currentAddendumIndex] && (
                   <div className="border border-gray-200 rounded-lg p-6 bg-white shadow-sm">
@@ -1028,13 +1150,72 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
                       >
                         Close
                       </button>
-                      <button
-                        onClick={() => handleViewAddendum(addendum)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm"
-                      >
-                        <span>👁️</span>
-                        View Full Details
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            // Generate and download addendum document
+                            const addendumDoc = `
+ADDENDUM DOCUMENT
+================
+
+Addendum ID: ${addendum.id}
+Title: ${addendum.title}
+Status: ${addendum.status}
+Submitted By: ${addendum.submittedBy}
+Submitted Date: ${new Date(addendum.submittedDate).toLocaleDateString()}
+Effective Date: ${addendum.effectiveDate ? new Date(addendum.effectiveDate).toLocaleDateString() : 'Not specified'}
+
+SUMMARY OF CHANGES:
+${addendum.description}
+
+REASON:
+${addendum.reason || 'Not specified'}
+
+IMPACT ASSESSMENT:
+${addendum.impact || 'Not specified'}
+
+BRANCHES AFFECTED:
+${addendum.branches && Array.isArray(addendum.branches) ? addendum.branches.join(", ") : "All Branches"}
+
+CLAUSE MODIFICATIONS:
+${addendum.clauseModifications && Array.isArray(addendum.clauseModifications) ? 
+  addendum.clauseModifications.map(mod => 
+    `- Clause ${mod.clauseNumber}: ${mod.details} (${mod.modificationType})`
+  ).join('\n') : 'No clause modifications'}
+
+DOCUMENTS:
+${addendum.uploadedFiles && Object.keys(addendum.uploadedFiles).length > 0 ? 
+  Object.entries(addendum.uploadedFiles).map(([key, file]) => 
+    `- ${key}: ${file.name}`
+  ).join('\n') : 'No documents uploaded'}
+
+---
+Generated on: ${new Date().toLocaleString()}
+                            `;
+                            
+                            const blob = new Blob([addendumDoc], { type: 'text/plain' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `Addendum_${addendum.id}_${addendum.title.replace(/[^a-zA-Z0-9]/g, '_')}.txt`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                          }}
+                          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                        >
+                          <span>📥</span>
+                          Download Document
+                        </button>
+                        <button
+                          onClick={() => handleViewAddendum(addendum)}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm"
+                        >
+                          <span>👁️</span>
+                          View Full Details
+                        </button>
+                      </div>
                     </div>
                   </div>
                       );
@@ -1295,6 +1476,9 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
 
   // Handle creating new addendum
   const handleCreateAddendum = (agreement) => {
+    console.log("Creating new addendum for agreement:", agreement);
+    
+    // Call the parent component to open the addendum form
     if (onCreateAddendum) {
       onCreateAddendum(agreement, 'addendum');
     }
@@ -1376,8 +1560,12 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
 
   // Handler for editing addendum
   const handleEditAddendum = (addendum) => {
-    setEditingAddendum({ ...addendum });
-    setIsEditing(true);
+    console.log("Editing addendum:", addendum);
+    
+    // Call the parent component to open the addendum form in edit mode
+    if (onCreateAddendum) {
+      onCreateAddendum(addendum, 'edit');
+    }
   };
 
   // Handler for saving addendum changes
@@ -1549,21 +1737,128 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
     
     return (
       <div className="space-y-1">
-        {agreement.importantClauses.slice(0, 3).map((clause, index) => (
-          <div key={index} className="flex items-center gap-2">
-            <span className="text-blue-600 hover:text-blue-800 underline text-xs font-medium cursor-pointer transition-colors">
-              {clause.title || clause}
-            </span>
-            {/* Addendum modification indicator */}
-            {clause.modified && (
-              <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700 border border-orange-200">
-                🔄 Modified
+        {agreement.importantClauses.slice(0, 3).map((clause, index) => {
+          // Get clause modifications for this clause
+          const clauseIndex = clauses.indexOf(clause);
+          const clauseModifications = [];
+          
+          // Check all addendums for modifications to this clause
+          (addendums || []).forEach(addendum => {
+            if (addendum.parentAgreementId === agreement.id && addendum.clauseModifications) {
+              addendum.clauseModifications.forEach(mod => {
+                if (parseInt(mod.clauseNumber) - 1 === clauseIndex) {
+                  clauseModifications.push({
+                    ...mod,
+                    addendumId: addendum.id,
+                    addendumTitle: addendum.title,
+                    addendumStatus: addendum.status,
+                    addendumDate: addendum.submittedDate
+                  });
+                }
+              });
+            }
+          });
+          
+          const hasModifications = clauseModifications.length > 0;
+          
+          return (
+            <div key={index} className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${
+              hasModifications ? 'bg-yellow-50 border border-yellow-200' : ''
+            }`}>
+              <span className={`text-blue-600 hover:text-blue-800 underline text-xs font-medium cursor-pointer transition-colors ${
+                hasModifications ? 'text-orange-700 font-semibold' : ''
+              }`}>
+                {clause.title || clause}
+                {hasModifications && <span className="ml-1">✨</span>}
               </span>
-            )}
-            {/* Document icon */}
-            <span className="text-gray-500 text-xs">📋</span>
-          </div>
-        ))}
+              
+              {/* Addendum modification indicators */}
+              {hasModifications && (
+                <div className="flex items-center gap-1">
+                  {clauseModifications.map((mod, modIndex) => (
+                    <div key={modIndex} className="relative group">
+                      <span 
+                        className={`px-2 py-1 rounded-full text-xs font-medium cursor-help ${
+                          mod.modificationType === "Modified" ? "bg-orange-100 text-orange-700 border border-orange-200" :
+                          mod.modificationType === "Added" ? "bg-green-100 text-green-700 border border-green-200" :
+                          mod.modificationType === "Removed" ? "bg-red-100 text-red-700 border border-red-200" :
+                          "bg-blue-100 text-blue-700 border border-blue-200"
+                        }`}
+                        title={`${mod.modificationType} by Addendum #${mod.addendumId}`}
+                      >
+                        {mod.modificationType === "Modified" ? "🔄 Modified" :
+                         mod.modificationType === "Added" ? "➕ New" :
+                         mod.modificationType === "Removed" ? "❌ Removed" :
+                         "📝 Changed"}
+                      </span>
+                      
+                      {/* Hover Tooltip with Previous Version Information */}
+                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 min-w-[250px]">
+                        <div className="text-center mb-2 font-medium">
+                          {mod.modificationType} Clause - Previous Version
+                        </div>
+                        <div className="space-y-1 text-left">
+                          <div><strong>Addendum:</strong> #{mod.addendumId}</div>
+                          <div><strong>Title:</strong> {mod.addendumTitle}</div>
+                          <div><strong>Status:</strong> {mod.addendumStatus}</div>
+                          <div><strong>Date:</strong> {new Date(mod.addendumDate).toLocaleDateString()}</div>
+                          <div className="border-t border-gray-600 pt-1 mt-2">
+                            <strong>Previous Version:</strong>
+                            <div className="text-gray-300 text-xs mt-1 p-2 bg-gray-800 rounded">
+                              {mod.previousVersion || "Original clause content before modification"}
+                            </div>
+                          </div>
+                          <div className="border-t border-gray-600 pt-1 mt-2">
+                            <strong>Current Changes:</strong>
+                            <div className="text-gray-300 text-xs mt-1 p-2 bg-gray-800 rounded">
+                              {mod.details}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* View History Button */}
+                  <button
+                    className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded hover:bg-blue-200 cursor-pointer transition-colors"
+                    title="View complete clause history and previous versions"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewClauseHistory(clauseIndex, clause.title || clause, clauseModifications);
+                    }}
+                  >
+                    📋 View History
+                  </button>
+                  
+                  {/* Edit Addendum Button - Only for Checker role */}
+                  {userRole === "checker" && (
+                    <button
+                      className="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded hover:bg-orange-200 cursor-pointer transition-colors"
+                      title="Edit this addendum"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const addendum = clauseModifications[0]; // Get the addendum from modifications
+                        if (addendum) {
+                          const fullAddendum = (addendums || []).find(add => add.id === addendum.addendumId);
+                          if (fullAddendum) {
+                            handleEditAddendum(fullAddendum);
+                          }
+                        }
+                      }}
+                    >
+                      ✏️ Edit
+                    </button>
+                  )}
+                </div>
+              )}
+              
+              {/* Document icon */}
+              <span className="text-gray-500 text-xs">📋</span>
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -1837,95 +2132,77 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
                      {/* Addendums Count Column */}
                      <td className="px-6 py-4 text-center">
                          {row.addendumsCount > 0 ? (
-                           <div className="flex flex-col gap-2">
-                             {/* Addendum Count Badge - NOT Clickable, Just Display */}
-                             <div className="flex items-center justify-center gap-2">
-                               <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                                 {row.addendumsCount}
-                               </span>
-
-                               
-                                                               {/* View Button - Shows dropdown for multiple addendums */}
-                                {row.addendumsCount > 1 ? (
-                                  <div className="relative" ref={dropdownRef}>
-                                    <button
-                                      onClick={() => {
-                                        // Toggle dropdown for this row
-                                        const newDropdownOpen = { ...dropdownOpen };
-                                        newDropdownOpen[row.id] = !newDropdownOpen[row.id];
-                                        setDropdownOpen(newDropdownOpen);
-                                      }}
-                                      className="p-1 text-gray-600 hover:text-gray-900 rounded-full transition-colors"
-                                      title="Select addendum to view"
-                                    >
-                                      <span className="text-lg">👁️</span>
-                                    </button>
-                                   
-                                   {/* Dropdown Menu */}
-                                   {dropdownOpen[row.id] && (
-                                     <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-48">
-                                       <div className="p-2 border-b border-gray-200 bg-gray-50">
-                                         <div className="text-xs font-medium text-gray-700">Select Addendum to View:</div>
-                                       </div>
-                                       <div className="max-h-48 overflow-y-auto">
-                                         {addendums
-                                           .filter(addendum => addendum.parentAgreementId === row.originalAgreement.id)
-                                           .map((addendum, idx) => (
-                                             <button
-                                               key={addendum.id}
-                                               onClick={() => {
-                                                 // Handle addendum view action
-                                                 handleViewAddendum(addendum);
-                                                 // Close dropdown
-                                                 const newDropdownOpen = { ...dropdownOpen };
-                                                 newDropdownOpen[row.id] = false;
-                                                 setDropdownOpen(newDropdownOpen);
-                                               }}
-                                               className="w-full text-left p-2 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-                                             >
-                                               <div className="flex items-center justify-between mb-1">
-                                                 <span className="font-medium text-gray-800 text-xs">
-                                                   #{addendum.id}
-                                                 </span>
-                                                 <span className={`px-1 py-0.5 rounded text-xs ${
-                                                   addendum.status === "Approved" ? "bg-green-100 text-green-700" :
-                                                   addendum.status === "Rejected" ? "bg-red-100 text-red-700" :
-                                                   addendum.status === "Under Review" ? "bg-blue-100 text-blue-700" :
-                                                   "bg-yellow-100 text-yellow-700"
-                                                 }`}>
-                                                   {addendum.status}
-                                                 </span>
-                                               </div>
-                                               <div className="text-xs text-gray-600 truncate" title={addendum.title}>
-                                                 {addendum.title}
-                                               </div>
-                                               <div className="text-xs text-gray-500">
-                                                 📅 {new Date(addendum.submittedDate).toLocaleDateString()}
-                                               </div>
-                                             </button>
-                                           ))}
-                                       </div>
-                                     </div>
-                                   )}
-                                 </div>
-                               ) : (
-                                                                   /* Single addendum - direct view button */
-                                  <button
-                                    onClick={() => {
-                                      const singleAddendum = (addendums?.addendums || []).find(addendum => 
-                                        addendum.parentAgreementId === row.originalAgreement.id
-                                      );
-                                      if (singleAddendum) {
-                                        handleViewAddendum(singleAddendum);
-                                      }
-                                    }}
-                                    className="p-1 text-gray-600 hover:text-gray-900 rounded-full transition-colors"
-                                    title="View addendum"
-                                  >
-                                    <span className="text-lg">👁️</span>
-                                  </button>
-                               )}
+                           <div className="flex items-center justify-center gap-2">
+                             {/* Very light blue circle with count - matching live URL design */}
+                             <div className="w-6 h-6 bg-blue-100 text-blue-700 text-xs font-medium rounded-full flex items-center justify-center">
+                               {row.addendumsCount}
                              </div>
+                             {/* Brown eye icon for viewing - matching live URL design */}
+                             <button
+                               onClick={() => {
+                                 const agreementAddendums = (addendums?.addendums || []).filter(addendum => 
+                                   addendum.parentAgreementId === row.originalAgreement.id
+                                 );
+                                 if (agreementAddendums.length === 1) {
+                                   // Single addendum - direct view
+                                   handleViewAddendum(agreementAddendums[0]);
+                                 } else if (agreementAddendums.length > 1) {
+                                   // Multiple addendums - show dropdown
+                                   const newDropdownOpen = { ...dropdownOpen };
+                                   newDropdownOpen[row.id] = !newDropdownOpen[row.id];
+                                   setDropdownOpen(newDropdownOpen);
+                                 }
+                               }}
+                               className="text-amber-600 hover:text-amber-700 transition-colors"
+                               title="View addendums"
+                             >
+                               <span className="text-lg">👁️</span>
+                             </button>
+                             
+                             {/* Dropdown for multiple addendums */}
+                             {row.addendumsCount > 1 && dropdownOpen[row.id] && (
+                               <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-48">
+                                 <div className="p-2 border-b border-gray-200 bg-gray-50">
+                                   <div className="text-xs font-medium text-gray-700">Select Addendum to View:</div>
+                                 </div>
+                                 <div className="max-h-48 overflow-y-auto">
+                                   {addendums
+                                     .filter(addendum => addendum.parentAgreementId === row.originalAgreement.id)
+                                     .map((addendum, idx) => (
+                                       <button
+                                         key={addendum.id}
+                                         onClick={() => {
+                                           handleViewAddendum(addendum);
+                                           const newDropdownOpen = { ...dropdownOpen };
+                                           newDropdownOpen[row.id] = false;
+                                           setDropdownOpen(newDropdownOpen);
+                                         }}
+                                         className="w-full text-left p-2 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                                       >
+                                         <div className="flex items-center justify-between mb-1">
+                                           <span className="font-medium text-gray-800 text-xs">
+                                             #{addendum.id}
+                                           </span>
+                                           <span className={`px-1 py-0.5 rounded text-xs ${
+                                             addendum.status === "Approved" ? "bg-green-100 text-green-700" :
+                                             addendum.status === "Rejected" ? "bg-red-100 text-red-700" :
+                                             addendum.status === "Under Review" ? "bg-blue-100 text-blue-700" :
+                                             "bg-yellow-100 text-yellow-700"
+                                           }`}>
+                                             {addendum.status}
+                                           </span>
+                                         </div>
+                                         <div className="text-xs text-gray-600 truncate" title={addendum.title}>
+                                           {addendum.title}
+                                         </div>
+                                         <div className="text-xs text-gray-500">
+                                           📅 {new Date(addendum.submittedDate).toLocaleDateString()}
+                                         </div>
+                                       </button>
+                                     ))}
+                                 </div>
+                               </div>
+                             )}
                            </div>
                          ) : (
                            <span className="text-gray-400 text-xs">0</span>
@@ -1964,6 +2241,24 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
                            >
                              Add Addendum
                            </button>
+                         )}
+                         
+                         {/* Edit Addendum Buttons - Only for Checker role and if addendums exist */}
+                         {userRole === "checker" && row.addendumsCount > 0 && (
+                           <div className="flex flex-col gap-2">
+                             {(addendums?.addendums || []).filter(addendum => 
+                               addendum.parentAgreementId === row.originalAgreement.id
+                             ).map((addendum, index) => (
+                               <button
+                                 key={addendum.id}
+                                 className="bg-orange-600 text-white px-3 py-1 rounded-md text-xs hover:bg-orange-700 transition-colors font-medium"
+                                 title={`Edit Addendum: ${addendum.title}`}
+                                 onClick={() => handleEditAddendum(addendum)}
+                               >
+                                 ✏️ Edit #{addendum.id}
+                               </button>
+                             ))}
+                           </div>
                          )}
                        </div>
                      </td>
@@ -2399,19 +2694,58 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
                 </div>
               ) : (
                 <div className="space-y-4">
+                  {/* Original Clause Version */}
+                  <div className="border border-gray-300 rounded-lg p-4 bg-blue-50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-blue-600 font-medium">📋 Original Version</span>
+                      <span className="text-xs text-gray-500">(Before any modifications)</span>
+                    </div>
+                    <div className="text-sm text-gray-700 p-3 bg-white rounded border">
+                      {clauseHistoryModal.clause.title || "Original clause content"}
+                    </div>
+                  </div>
+                  
+                  {/* Modification History */}
                   {clauseHistoryModal.modifications.map((mod, index) => (
                     <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-gray-800">Addendum #{mod.addendumId}</span>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-gray-800">Addendum #{mod.addendumId}</span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            mod.modificationType === "Modified" ? "bg-orange-100 text-orange-700" :
+                            mod.modificationType === "Added" ? "bg-green-100 text-green-700" :
+                            mod.modificationType === "Removed" ? "bg-red-100 text-red-700" :
+                            "bg-blue-100 text-blue-700"
+                          }`}>
+                            {mod.modificationType}
+                          </span>
+                        </div>
                         <span className="text-sm text-gray-500">
                           {new Date(mod.addendumDate).toLocaleDateString()}
                         </span>
                       </div>
-                      <div className="text-sm text-gray-600 mb-2">
-                        <strong>Type:</strong> {mod.modificationType}
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Previous Version */}
+                        <div>
+                          <div className="text-sm font-medium text-gray-700 mb-2">Previous Version:</div>
+                          <div className="text-sm text-gray-600 p-3 bg-white rounded border border-gray-200">
+                            {mod.previousVersion || "Original clause content before this modification"}
+                          </div>
+                        </div>
+                        
+                        {/* Current Changes */}
+                        <div>
+                          <div className="text-sm font-medium text-gray-700 mb-2">Changes Made:</div>
+                          <div className="text-sm text-gray-600 p-3 bg-white rounded border border-gray-200">
+                            {mod.details}
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-600">
-                        <strong>Details:</strong> {mod.details}
+                      
+                      <div className="mt-3 text-xs text-gray-500">
+                        <strong>Addendum Title:</strong> {mod.addendumTitle} | 
+                        <strong> Status:</strong> {mod.addendumStatus}
                       </div>
                     </div>
                   ))}
