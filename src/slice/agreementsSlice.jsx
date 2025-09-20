@@ -13,7 +13,7 @@ const formatDateWithoutTimezone = (date) => {
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}`;
 };
 
-// Demo agreements data - EXACTLY 9 agreements like the old UI
+// Demo agreements data - 3 sample agreements for testing
 const demoAgreements = [
   {
     id: "STATIC-001",
@@ -63,6 +63,17 @@ const demoAgreements = [
     },
     entityType: "single",
     priority: "Medium",
+    contactInfo: {
+      name: "John Smith",
+      email: "john.smith@ismart.com",
+      phone: "9876543210",
+      clientName: "Sarah Johnson",
+      clientEmail: "sarah.johnson@techcorp.com",
+      clientPhone: "8765432109",
+      ismartName: "John Smith",
+      ismartEmail: "john.smith@ismart.com",
+      ismartPhone: "9876543210"
+    },
     clauses: [
       { title: "Term and termination (Duration)", placeholder: "12 months", isInitial: true },
       { title: "Payment Terms", placeholder: "15 days", isInitial: true },
@@ -177,6 +188,17 @@ const demoAgreements = [
     },
     entityType: "single",
     priority: "Low",
+    contactInfo: {
+      name: "Mike Wilson",
+      email: "mike.wilson@ismart.com",
+      phone: "9876543211",
+      clientName: "David Brown",
+      clientEmail: "david.brown@globalindustries.com",
+      clientPhone: "8765432108",
+      ismartName: "Mike Wilson",
+      ismartEmail: "mike.wilson@ismart.com",
+      ismartPhone: "9876543211"
+    },
     clauses: [
       { title: "Quality Standards", placeholder: "ISO 9001", isInitial: true },
       { title: "Delivery Schedule", placeholder: "30 days", isInitial: true },
@@ -302,216 +324,6 @@ const demoAgreements = [
     createdAt: "2024-02-15T11:00:00",
     lastModified: "2024-02-20T15:30:00",
     version: "1.0.0"
-  },
-  {
-    id: "STATIC-004",
-    selectedClient: "EduTech Solutions",
-    selectedDepartment: "Education Technology",
-    agreementType: "LOI",
-    startDate: "2024-03-01",
-    endDate: "2025-02-28",
-    totalValue: 85000,
-    currency: "USD",
-    status: "Approved",
-    submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 20 * 24 * 60 * 60 * 1000)),
-    submittedBy: "checker",
-    entityType: "single",
-    priority: "Medium",
-    clauses: [
-      { title: "Educational Standards", placeholder: "International", isInitial: true },
-      { title: "Technology Support", placeholder: "Business hours", isInitial: true },
-      { title: "Training Requirements", placeholder: "Monthly sessions", isInitial: true }
-    ],
-    uploadStatuses: {
-      LOI: { uploaded: true, file: { name: "EduTech_LOI.pdf", size: "3.1 MB" } },
-      WO: { uploaded: true, file: { name: "EduTech_WO.pdf", size: "2.9 MB" } }
-    },
-    importantClauses: [
-      "Educational Standards",
-      "Technology Support",
-      "Training Requirements"
-    ],
-    selectedBranches: [
-      { name: "Hyderabad Tech", id: "branch-006" }
-    ],
-    createdAt: "2024-03-01T10:00:00",
-    lastModified: "2024-03-05T14:20:00",
-    version: "1.0.0"
-  },
-  {
-    id: "STATIC-005",
-    selectedClient: "Green Energy Corp",
-    selectedDepartment: "Renewable Energy",
-    agreementType: "WO",
-    startDate: "2024-03-15",
-    endDate: "2025-03-14",
-    totalValue: 150000,
-    currency: "USD",
-    status: "Execution Pending",
-    submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)),
-    submittedBy: "checker",
-    entityType: "single",
-    priority: "High",
-    clauses: [
-      { title: "Environmental Standards", placeholder: "ISO 14001", isInitial: true },
-      { title: "Energy Efficiency", placeholder: "90%+", isInitial: true },
-      { title: "Maintenance Schedule", placeholder: "Quarterly", isInitial: true }
-    ],
-    uploadStatuses: {
-      WO: { uploaded: true, file: { name: "GreenEnergy_WO.pdf", size: "3.8 MB" } },
-      PO: { uploaded: true, file: { name: "GreenEnergy_PO.pdf", size: "4.5 MB" } }
-    },
-    importantClauses: [
-      "Environmental Standards",
-      "Energy Efficiency",
-      "Maintenance Schedule"
-    ],
-    selectedBranches: [
-      { name: "Chennai Energy", id: "branch-007" },
-      { name: "Kolkata Power", id: "branch-008" }
-    ],
-    createdAt: "2024-03-15T09:00:00",
-    lastModified: "2024-03-18T16:45:00",
-    version: "1.0.0"
-  },
-  {
-    id: "STATIC-006",
-    selectedClient: "Innovation Systems",
-    selectedDepartment: "Research & Development",
-    agreementType: "PO",
-    startDate: "2024-04-01",
-    endDate: "2025-03-31",
-    totalValue: 95000,
-    currency: "USD",
-    status: "Rejected",
-    submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 25 * 24 * 60 * 60 * 1000)),
-    submittedBy: "checker",
-    entityType: "single",
-    priority: "Medium",
-    clauses: [
-      { title: "Research Standards", placeholder: "International", isInitial: true },
-      { title: "Intellectual Property", placeholder: "Shared ownership", isInitial: true },
-      { title: "Publication Rights", placeholder: "Joint publications", isInitial: true }
-    ],
-    uploadStatuses: {
-      PO: { uploaded: true, file: { name: "InnovationSystems_PO.pdf", size: "2.7 MB" } }
-    },
-    importantClauses: [
-      "Research Standards",
-      "Intellectual Property",
-      "Publication Rights"
-    ],
-    selectedBranches: [
-      { name: "Bangalore", id: "branch-009" }
-    ],
-    createdAt: "2024-04-01T08:00:00",
-    lastModified: "2024-04-05T12:15:00",
-    version: "1.0.0"
-  },
-  {
-    id: "STATIC-007",
-    selectedClient: "Digital Solutions Pvt Ltd",
-    selectedDepartment: "Digital Marketing",
-    agreementType: "LOI",
-    startDate: "2024-04-15",
-    endDate: "2025-04-14",
-    totalValue: 65000,
-    currency: "USD",
-    status: "Execution Pending",
-    submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 12 * 24 * 60 * 60 * 1000)),
-    submittedBy: "checker",
-    entityType: "single",
-    priority: "Low",
-    clauses: [
-      { title: "Digital Standards", placeholder: "Industry best practices", isInitial: true },
-      { title: "Performance Metrics", placeholder: "Monthly reports", isInitial: true },
-      { title: "Content Guidelines", placeholder: "Brand compliance", isInitial: true }
-    ],
-    uploadStatuses: {
-      LOI: { uploaded: true, file: { name: "DigitalSolutions_LOI.pdf", size: "2.3 MB" } }
-    },
-    importantClauses: [
-      "Digital Standards",
-      "Performance Metrics",
-      "Content Guidelines"
-    ],
-    selectedBranches: [
-      { name: "Chennai", id: "branch-010" },
-      { name: "Coimbatore", id: "branch-011" }
-    ],
-    createdAt: "2024-04-15T10:30:00",
-    lastModified: "2024-04-18T15:20:00",
-    version: "1.0.0"
-  },
-  {
-    id: "STATIC-008",
-    selectedClient: "Future Technologies",
-    selectedDepartment: "Artificial Intelligence",
-    agreementType: "WO",
-    startDate: "2024-05-01",
-    endDate: "2025-04-30",
-    totalValue: 180000,
-    currency: "USD",
-    status: "Execution Pending",
-    submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 18 * 24 * 60 * 60 * 1000)),
-    submittedBy: "checker",
-    entityType: "single",
-    priority: "High",
-    clauses: [
-      { title: "AI Ethics", placeholder: "Responsible AI guidelines", isInitial: true },
-      { title: "Data Privacy", placeholder: "GDPR compliant", isInitial: true },
-      { title: "Algorithm Transparency", placeholder: "Explainable AI", isInitial: true }
-    ],
-    uploadStatuses: {
-      WO: { uploaded: true, file: { name: "FutureTechnologies_WO.pdf", size: "3.9 MB" } },
-      PO: { uploaded: true, file: { name: "FutureTechnologies_PO.pdf", size: "4.1 MB" } }
-    },
-    importantClauses: [
-      "AI Ethics",
-      "Data Privacy",
-      "Algorithm Transparency"
-    ],
-    selectedBranches: [
-      { name: "Hyderabad", id: "branch-012" }
-    ],
-    createdAt: "2024-05-01T09:15:00",
-    lastModified: "2024-05-05T13:40:00",
-    version: "1.0.0"
-  },
-  {
-    id: "STATIC-009",
-    selectedClient: "Smart Logistics",
-    selectedDepartment: "Supply Chain",
-    agreementType: "PO",
-    startDate: "2024-05-15",
-    endDate: "2025-05-14",
-    totalValue: 110000,
-    currency: "USD",
-    status: "Execution Pending",
-    submittedDate: formatDateWithoutTimezone(new Date(Date.now() - 22 * 24 * 60 * 60 * 1000)),
-    submittedBy: "checker",
-    entityType: "single",
-    priority: "Medium",
-    clauses: [
-      { title: "Delivery Standards", placeholder: "Next day delivery", isInitial: true },
-      { title: "Inventory Management", placeholder: "Real-time tracking", isInitial: true },
-      { title: "Quality Control", placeholder: "Random sampling", isInitial: true }
-    ],
-    uploadStatuses: {
-      PO: { uploaded: true, file: { name: "SmartLogistics_PO.pdf", size: "3.4 MB" } }
-    },
-    importantClauses: [
-      "Delivery Standards",
-      "Inventory Management",
-      "Quality Control"
-    ],
-    selectedBranches: [
-      { name: "Mumbai Port", id: "branch-013" },
-      { name: "Delhi Hub", id: "branch-014" }
-    ],
-    createdAt: "2024-05-15T11:45:00",
-    lastModified: "2024-05-20T14:10:00",
-    version: "1.0.0"
   }
 ];
 
@@ -610,7 +422,13 @@ const agreementsSlice = createSlice({
         state.error = action.error.message;
       })
       .addCase(createAgreement.fulfilled, (state, action) => {
+        console.log("Redux: Adding new agreement to store:", action.payload);
+        console.log("Redux: Upload statuses in payload:", action.payload.uploadStatuses);
+        console.log("Redux: Contact info in payload:", action.payload.contactInfo);
         state.agreements.push(action.payload);
+        console.log("Redux: Total agreements now:", state.agreements.length);
+        console.log("Redux: Last agreement upload statuses:", state.agreements[state.agreements.length - 1].uploadStatuses);
+        console.log("Redux: Last agreement contact info:", state.agreements[state.agreements.length - 1].contactInfo);
       })
       .addCase(updateAgreement.fulfilled, (state, action) => {
         const { id, updates } = action.payload;

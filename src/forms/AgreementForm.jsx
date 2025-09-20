@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { setEditingAgreement, setActiveTab } from '../slice/uiSlice';
 import { createAgreement, updateAgreement } from '../slice/agreementsSlice';
+import { useAppState } from '../hooks/useRedux';
 
 const AgreementForm = () => {
   const dispatch = useDispatch();
+  const { user } = useAppState();
   
   // Safe selector with fallback
   const editingAgreement = useSelector(state => {
@@ -18,15 +20,7 @@ const AgreementForm = () => {
   
   const isEditing = !!editingAgreement;
 
-  console.log("AgreementForm rendering - isEditing:", isEditing, "editingAgreement:", editingAgreement);
-  
-  // Add safety check for editingAgreement
-  if (isEditing && editingAgreement) {
-    console.log("Editing agreement type:", typeof editingAgreement);
-    console.log("Editing agreement constructor:", editingAgreement.constructor?.name);
-    console.log("Editing agreement isArray:", Array.isArray(editingAgreement));
-    console.log("Editing agreement isObject:", typeof editingAgreement === 'object' && editingAgreement !== null);
-  }
+  // console.log("AgreementForm rendering - isEditing:", isEditing, "editingAgreement:", editingAgreement);
   
 
   // Helper function to safely access nested properties
@@ -42,6 +36,8 @@ const AgreementForm = () => {
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
   const [isFormReady, setIsFormReady] = useState(false);
+  
+  // Initialize formData with safe defaults
   const [formData, setFormData] = useState({
     selectedClient: '',
     selectedDepartment: '',
@@ -71,7 +67,10 @@ const AgreementForm = () => {
       phone: '',
       clientName: '',
       clientEmail: '',
-      clientPhone: ''
+      clientPhone: '',
+      ismartName: '',
+      ismartEmail: '',
+      ismartPhone: ''
     },
     uploadStatuses: {
       LOI: { uploaded: false, file: null },
@@ -112,43 +111,56 @@ const AgreementForm = () => {
 
   // Load editing data
   useEffect(() => {
-    console.log("AgreementForm useEffect - isEditing:", isEditing, "editingAgreement:", editingAgreement);
     if (isEditing && editingAgreement) {
       try {
-        console.log("Pre-filling form with editingAgreement data:", editingAgreement);
+        // Safety check: ensure editingAgreement is a valid object
+        if (typeof editingAgreement !== 'object' || editingAgreement === null) {
+          console.error("Invalid editingAgreement:", editingAgreement);
+          return;
+        }
         
-        // Ensure all required objects exist with default values
-        const safeEditingData = {
-          ...editingAgreement,
-          contactInfo: editingAgreement.contactInfo || {
-            name: '',
-            email: '',
-            phone: '',
-            clientName: '',
-            clientEmail: '',
-            clientPhone: '',
-            ismartName: '',
-            ismartEmail: '',
-            ismartPhone: ''
-          },
-          importantClauses: editingAgreement.importantClauses || [
-            { title: 'Term and termination (Duration)', content: '', file: null },
-            { title: 'Payment Terms', content: '', file: null },
-            { title: 'Penalty', content: '', file: null },
-            { title: 'Minimum Wages', content: '', file: null },
-            { title: 'Costing - Salary Breakup', content: '', file: null },
-            { title: 'SLA', content: '', file: null },
-            { title: 'Indemnity', content: '', file: null },
-            { title: 'Insurance', content: '', file: null }
-          ],
-          selectedBranches: editingAgreement.selectedBranches || [],
-          groupCompanies: editingAgreement.groupCompanies || ['']
-        };
-        
-        console.log("Safe editing data created:", safeEditingData);
-        setFormData(safeEditingData);
+        // Check if we already have the same data to prevent infinite loops
+        if (formData.selectedClient === editingAgreement.selectedClient && 
+            formData.agreementType === editingAgreement.agreementType) {
+          return;
+        }
+      
+      // Ensure all required objects exist with default values
+      const safeEditingData = {
+        ...editingAgreement,
+        contactInfo: editingAgreement.contactInfo || {
+          name: '',
+          email: '',
+          phone: '',
+          clientName: '',
+          clientEmail: '',
+          clientPhone: '',
+          ismartName: '',
+          ismartEmail: '',
+          ismartPhone: ''
+        },
+        importantClauses: editingAgreement.importantClauses || [
+          { title: 'Term and termination (Duration)', content: '', file: null },
+          { title: 'Payment Terms', content: '', file: null },
+          { title: 'Penalty', content: '', file: null },
+          { title: 'Minimum Wages', content: '', file: null },
+          { title: 'Costing - Salary Breakup', content: '', file: null },
+          { title: 'SLA', content: '', file: null },
+          { title: 'Indemnity', content: '', file: null },
+          { title: 'Insurance', content: '', file: null }
+        ],
+        selectedBranches: editingAgreement.selectedBranches || [],
+          groupCompanies: editingAgreement.groupCompanies || [''],
+          uploadStatuses: editingAgreement.uploadStatuses || {
+            LOI: { uploaded: false, file: null },
+            WO: { uploaded: false, file: null },
+            PO: { uploaded: false, file: null },
+            EmailApproval: { uploaded: false, file: null }
+          }
+      };
+      
+      setFormData(safeEditingData);
         setIsFormReady(true);
-        console.log("Form data set successfully");
       } catch (error) {
         console.error("Error in AgreementForm useEffect:", error);
         console.error("Error details:", error.message, error.stack);
@@ -184,6 +196,12 @@ const AgreementForm = () => {
             ismartName: '',
             ismartEmail: '',
             ismartPhone: ''
+          },
+          uploadStatuses: {
+            LOI: { uploaded: false, file: null },
+            WO: { uploaded: false, file: null },
+            PO: { uploaded: false, file: null },
+            EmailApproval: { uploaded: false, file: null }
           }
         });
         setIsFormReady(true);
@@ -192,9 +210,9 @@ const AgreementForm = () => {
       // If not editing, set form ready immediately
       setIsFormReady(true);
     }
-  }, [isEditing, editingAgreement]);
+  }, [isEditing, editingAgreement?.id]); // Only depend on the ID, not the entire object
 
-  // Load draft files from localStorage
+  // Load draft files from localStorage - always load them
   useEffect(() => {
     const loadDraftFiles = () => {
       const draftFiles = [];
@@ -203,21 +221,53 @@ const AgreementForm = () => {
         if (key && key.startsWith('draft_')) {
           try {
             const draftData = JSON.parse(localStorage.getItem(key));
+            // Only include drafts that are truly drafts (not submitted agreements)
+            // Check if it's actually a draft and not a submitted agreement
+            if (draftData.status === 'draft' || (!draftData.status && !draftData.submittedDate)) {
             draftFiles.push({
               id: key,
               name: draftData.draftName || 'Untitled Draft',
               date: draftData.submittedDate || new Date().toISOString()
             });
+            }
           } catch (error) {
             console.error('Error loading draft:', error);
           }
         }
       }
+      console.log("Loaded draft files:", draftFiles);
       setFormData(prev => ({ ...prev, draftFiles }));
     };
 
     loadDraftFiles();
-  }, []);
+  }, []); // Only run once on mount, not when isEditing changes
+
+  // Clear any demo or invalid draft files on component mount
+  useEffect(() => {
+    // Clean up any invalid or demo draft files
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('draft_')) {
+        try {
+          const draftData = JSON.parse(localStorage.getItem(key));
+          // Remove drafts that are actually submitted agreements or have invalid data
+          if (draftData.status && draftData.status !== 'draft' && draftData.submittedDate) {
+            keysToRemove.push(key);
+          }
+        } catch (error) {
+          // Remove invalid draft files
+          keysToRemove.push(key);
+        }
+      }
+    }
+    
+    // Remove invalid draft files
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+      console.log("Removed invalid draft file:", key);
+    });
+  }, []); // Only run once on mount
 
   // Handle input changes
   const handleInputChange = (field, value) => {
@@ -403,8 +453,17 @@ const AgreementForm = () => {
       ...formData,
       status: action === 'submit' ? 'Under Review' : 'Draft',
       submittedDate: new Date().toISOString(),
-      submittedBy: 'checker'
+      submittedBy: user?.role || 'checker'
     };
+
+    // Debug: Log the agreement data being submitted
+    console.log("=== FORM SUBMISSION DEBUG ===");
+    console.log("action:", action);
+    console.log("formData.uploadStatuses:", formData.uploadStatuses);
+    console.log("agreementData.uploadStatuses:", agreementData.uploadStatuses);
+    console.log("formData.contactInfo:", formData.contactInfo);
+    console.log("agreementData.contactInfo:", agreementData.contactInfo);
+    console.log("Full agreementData:", agreementData);
 
     if (action === 'draft') {
       // Save as draft to localStorage
@@ -431,8 +490,10 @@ const AgreementForm = () => {
     }
 
     if (isEditing) {
+      console.log("Updating agreement:", editingAgreement.id, agreementData);
       dispatch(updateAgreement({ id: editingAgreement.id, updates: agreementData }));
     } else {
+      console.log("Creating new agreement:", agreementData);
       dispatch(createAgreement(agreementData));
     }
 
@@ -528,29 +589,7 @@ const AgreementForm = () => {
           </div>
         )}
         
-        {/* Expiry Alert - like live URL */}
-        {isEditing && formData?.isRenewal && (
-          <div className="mt-4 bg-yellow-50 border-l-4 border-yellow-400 p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-yellow-800">
-                  <strong>Alert:</strong> This agreement is expiring in 3 days. Please ensure at least one required document (LOI, WO, PO, or Email Approval) is uploaded for renewal/escalation.
-                </p>
-                <div className="mt-2">
-                  <p className="text-sm text-yellow-700">
-                    <strong>Escalation:</strong> At least one document is required (LOI, WO, PO, or Email Approval)
-                  </p>
-                </div>
-              </div>
             </div>
-          </div>
-        )}
-      </div>
 
       <form className="space-y-6">
         {/* User Information */}
@@ -720,10 +759,46 @@ const AgreementForm = () => {
           </div>
         </div>
 
-        {/* Document Uploads */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
-                    {/* Alert Message */}
+
+        {/* Alert Message - Moved to be more prominent */}
           {(() => {
+          // Show alert if endDate is selected and not open agreement
+          if (formData.endDate && !formData.openAgreement) {
+            
+            const today = new Date();
+            const toDate = new Date(formData.endDate + 'T00:00:00');
+            const daysUntilExpiry = Math.ceil((toDate - today) / (1000 * 60 * 60 * 24));
+            
+            let alertMessage = '';
+            let alertColor = 'yellow';
+            
+            if (daysUntilExpiry <= 0) {
+              alertMessage = `This agreement has expired ${Math.abs(daysUntilExpiry)} day${Math.abs(daysUntilExpiry) !== 1 ? 's' : ''} ago. Please ensure at least one required document (LOI, WO, PO, or Email Approval) is uploaded for renewal/escalation.`;
+              alertColor = 'red';
+            } else if (daysUntilExpiry <= 30) {
+              alertMessage = `This agreement is expiring in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}. Please ensure at least one required document (LOI, WO, PO, or Email Approval) is uploaded for renewal/escalation.`;
+              alertColor = 'yellow';
+            } else {
+              alertMessage = `Please ensure at least one required document (LOI, WO, PO, or Email Approval) is uploaded for this agreement.`;
+              alertColor = 'yellow';
+            }
+            
+            return (
+              <div className={`mb-6 p-4 ${alertColor === 'red' ? 'bg-red-50 border-l-4 border-red-400' : 'bg-yellow-50 border-l-4 border-yellow-400'} rounded-md`}>
+                <div className="flex">
+                  <div className="ml-3">
+                    <p className={`text-sm ${alertColor === 'red' ? 'text-red-800' : 'text-yellow-800'}`}>
+                      <strong>Alert:</strong> {alertMessage}
+                    </p>
+                    <p className="text-sm text-red-600 mt-1">
+                      <strong>Escalation:</strong> At least one document is required (LOI, WO, PO, or Email Approval)
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          
             // Only show alerts if BOTH dates are selected (not on fresh page) and not open agreement
             if (!formData.startDate || !formData.endDate || formData.openAgreement) {
               return null;
@@ -734,8 +809,11 @@ const AgreementForm = () => {
             const daysUntilExpiry = Math.ceil((toDate - today) / (1000 * 60 * 60 * 24));
             const noDocumentsUploaded = Object.values(formData.uploadStatuses).every(status => !status.uploaded);
             
-            // Show alert if within 30 days or expired, AND no documents uploaded
-            if (((daysUntilExpiry <= 30 && daysUntilExpiry > 0) || daysUntilExpiry <= 0) && noDocumentsUploaded) {
+          console.log("Alert Debug - daysUntilExpiry:", daysUntilExpiry);
+          console.log("Alert Debug - noDocumentsUploaded:", noDocumentsUploaded);
+          
+          // SIMPLIFIED: Always show alert when dates are selected and not open agreement
+          if (formData.startDate && formData.endDate && !formData.openAgreement) {
               let alertMessage = '';
               let alertColor = 'yellow';
               
@@ -745,7 +823,13 @@ const AgreementForm = () => {
               } else if (daysUntilExpiry <= 30) {
                 alertMessage = `This agreement is expiring in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}. Please ensure at least one required document (LOI, WO, PO, or Email Approval) is uploaded for renewal/escalation.`;
                 alertColor = 'yellow';
+            } else {
+              // For dates more than 30 days away, show a general alert
+              alertMessage = `Please ensure at least one required document (LOI, WO, PO, or Email Approval) is uploaded for this agreement.`;
+              alertColor = 'yellow';
               }
+            
+            console.log("Alert Debug - Showing alert with message:", alertMessage);
               
               return (
                 <div className={`mb-6 p-4 ${alertColor === 'red' ? 'bg-red-50 border-l-4 border-red-400' : 'bg-yellow-50 border-l-4 border-yellow-400'} rounded-md`}>
@@ -762,8 +846,12 @@ const AgreementForm = () => {
                 </div>
               );
             }
+          
             return null;
           })()}
+
+        {/* Document Uploads */}
+        <div className="bg-white p-6 rounded-lg border border-gray-200">
           
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Document Uploads</h2>
           <p className="text-sm text-gray-600 mb-4">Upload at least one of the following documents: LOI, WO, PO, or Email Approval</p>
@@ -1064,21 +1152,21 @@ const AgreementForm = () => {
                                   window.open(clause.file.dataUrl, '_blank');
                                 } else if (clause.file instanceof File) {
                                   // For File objects, create object URL
-                                  const url = URL.createObjectURL(clause.file);
-                                  window.open(url, '_blank');
+                                const url = URL.createObjectURL(clause.file);
+                              window.open(url, '_blank');
                                 }
-                              }}
+                            }}
                               className="text-xs text-blue-600 hover:text-blue-800"
-                            >
-                              View
-                            </button>
-                            <button
-                              type="button"
+                          >
+                            View
+                          </button>
+                          <button
+                            type="button"
                               onClick={() => updateClause(index, 'file', null)}
                               className="text-xs text-red-600 hover:text-red-800"
-                            >
-                              Delete
-                            </button>
+                          >
+                            Delete
+                          </button>
                           </div>
                         </div>
                       </div>
@@ -1272,10 +1360,51 @@ const AgreementForm = () => {
                     <button
                       type="button"
                       onClick={() => {
+                        console.log("Draft file clicked:", file.name, "ID:", file.id);
+                        
                         // Open draft file for editing
-                        const draftAgreement = JSON.parse(localStorage.getItem(`draft_${file.id}`) || '{}');
-                        setFormData(draftAgreement);
-                        dispatch(setEditingAgreement(draftAgreement));
+                        const draftAgreement = JSON.parse(localStorage.getItem(file.id) || '{}');
+                        console.log("Loading draft file:", file.id, "Data:", draftAgreement);
+                        
+                        // Ensure the draft data has all required fields
+                        const safeDraftData = {
+                          ...draftAgreement,
+                          contactInfo: draftAgreement.contactInfo || {
+                            name: '',
+                            email: '',
+                            phone: '',
+                            clientName: '',
+                            clientEmail: '',
+                            clientPhone: '',
+                            ismartName: '',
+                            ismartEmail: '',
+                            ismartPhone: ''
+                          },
+                          importantClauses: draftAgreement.importantClauses || [
+                            { title: 'Term and termination (Duration)', content: '', file: null },
+                            { title: 'Payment Terms', content: '', file: null },
+                            { title: 'Penalty', content: '', file: null },
+                            { title: 'Minimum Wages', content: '', file: null },
+                            { title: 'Costing - Salary Breakup', content: '', file: null },
+                            { title: 'SLA', content: '', file: null },
+                            { title: 'Indemnity', content: '', file: null },
+                            { title: 'Insurance', content: '', file: null }
+                          ],
+                          selectedBranches: draftAgreement.selectedBranches || [],
+                          groupCompanies: draftAgreement.groupCompanies || [''],
+                          uploadStatuses: draftAgreement.uploadStatuses || {
+                            LOI: { uploaded: false, file: null },
+                            WO: { uploaded: false, file: null },
+                            PO: { uploaded: false, file: null },
+                            EmailApproval: { uploaded: false, file: null }
+                          }
+                        };
+                        
+                        console.log("Setting form data with safe draft data:", safeDraftData);
+                        setFormData(safeDraftData);
+                        console.log("Dispatching setEditingAgreement...");
+                        dispatch(setEditingAgreement(safeDraftData));
+                        console.log("Draft loading completed");
                       }}
                       className="flex items-center space-x-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm"
                     >
@@ -1320,7 +1449,7 @@ const AgreementForm = () => {
           >
             {isEditing && formData?.isRenewal ? 'Update Agreement' : 'Submit for Review'}
           </button>
-          {isEditing && formData?.isRenewal && (
+          {isEditing && (
             <button
               type="button"
               onClick={() => {

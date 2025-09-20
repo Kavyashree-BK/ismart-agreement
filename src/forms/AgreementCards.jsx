@@ -451,7 +451,9 @@ const AgreementCards = ({
                       viewingAgreement.importantClauses.map((clause, idx) => (
                         <div key={idx} className="flex items-center gap-2 bg-blue-50 rounded-lg p-3">
                           <span className="text-blue-600">📋</span>
-                          <span className="text-gray-800">{clause}</span>
+                          <span className="text-gray-800">
+                            {typeof clause === 'string' ? clause : (clause.title || 'Untitled Clause')}
+                          </span>
                         </div>
                       ))
                     ) : (

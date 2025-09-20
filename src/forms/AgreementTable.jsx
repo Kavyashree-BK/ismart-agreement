@@ -4,6 +4,49 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useAppState } from "../hooks/useRedux";
 
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <h3 className="text-red-800 font-semibold mb-2">Something went wrong</h3>
+          <p className="text-red-600 text-sm mb-2">
+            An error occurred while rendering this component.
+          </p>
+          <details className="text-xs text-red-500">
+            <summary>Error details</summary>
+            <pre className="mt-2 whitespace-pre-wrap">
+              {this.state.error?.toString()}
+            </pre>
+          </details>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="mt-2 px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700"
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 const priorityBadge = priority => {
   if (priority === "High") return <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-bold">High</span>;
   if (priority === "Medium") return <span className="bg-black text-white px-2 py-1 rounded-full text-xs font-bold">Medium</span>;
@@ -336,6 +379,18 @@ function StatusHistoryModal({ open, onClose, history, title }) {
 
 // Agreement Details Modal with Actions - Matching Live Site UI
 function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChange, onFinalAgreementUpload, addendums = [], userRole = "checker", onAddendumStatusUpdate, pendingStatusChanges, setPendingStatusChanges }) {
+  // Debug modal state
+  console.log("=== DETAILS MODAL FUNCTION CALLED ===");
+  console.log("open:", open);
+  console.log("agreement:", agreement);
+  
+  // Debug agreement data
+  console.log("=== DETAILS MODAL DEBUG ===");
+  console.log("agreement:", agreement);
+  console.log("agreement.originalAgreement:", agreement?.originalAgreement);
+  console.log("agreement.originalAgreement?.contactInfo:", agreement?.originalAgreement?.contactInfo);
+  console.log("agreement.contactInfo:", agreement?.contactInfo);
+  
   const [localPriority, setLocalPriority] = useState(agreement?.originalAgreement?.priority || "Low");
   const [localStatus, setLocalStatus] = useState(agreement?.originalStatus || agreement?.status || "Execution Pending");
   const [selectedFile, setSelectedFile] = useState(null);
@@ -358,15 +413,65 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
     }
   }, [agreement]);
 
-  if (!open || !agreement) return null;
+  if (!open) return null;
 
   // Debug: Log the agreement data structure
   console.log("=== DETAILS MODAL DEBUG ===");
+  console.log("open:", open);
   console.log("agreement:", agreement);
-  console.log("agreement.originalAgreement:", agreement.originalAgreement);
-  console.log("agreement.originalAgreement?.selectedBranches:", agreement.originalAgreement?.selectedBranches);
-  console.log("agreement.originalAgreement?.contactInfo:", agreement.originalAgreement?.contactInfo);
-  console.log("agreement.originalAgreement?.importantClauses:", agreement.originalAgreement?.importantClauses);
+  console.log("agreement?.originalAgreement:", agreement?.originalAgreement);
+  console.log("agreement?.originalAgreement?.selectedBranches:", agreement?.originalAgreement?.selectedBranches);
+  console.log("agreement?.originalAgreement?.contactInfo:", agreement?.originalAgreement?.contactInfo);
+  console.log("agreement?.originalAgreement?.importantClauses:", agreement?.originalAgreement?.importantClauses);
+  console.log("agreement?.originalAgreement?.importantClauses type:", typeof agreement?.originalAgreement?.importantClauses);
+  console.log("agreement?.originalAgreement?.importantClauses isArray:", Array.isArray(agreement?.originalAgreement?.importantClauses));
+  if (agreement?.originalAgreement?.importantClauses) {
+    agreement.originalAgreement.importantClauses.forEach((clause, idx) => {
+      console.log(`Clause ${idx}:`, clause, "type:", typeof clause);
+    });
+  }
+
+  // Handle case where agreement is null or undefined
+  if (!agreement) {
+    console.error("DetailsModal: agreement is null or undefined");
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="bg-white rounded-lg shadow-lg p-6 min-w-[400px] max-w-lg">
+          <div className="text-center">
+            <h3 className="text-xl font-bold text-red-600 mb-4">Error</h3>
+            <p className="text-gray-600 mb-4">Unable to load agreement details. The agreement data is missing.</p>
+            <button 
+              onClick={onClose}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle case where originalAgreement is missing
+  if (!agreement.originalAgreement) {
+    console.error("DetailsModal: agreement.originalAgreement is missing");
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="bg-white rounded-lg shadow-lg p-6 min-w-[400px] max-w-lg">
+          <div className="text-center">
+            <h3 className="text-xl font-bold text-red-600 mb-4">Error</h3>
+            <p className="text-gray-600 mb-4">Unable to load agreement details. The original agreement data is missing.</p>
+            <button 
+              onClick={onClose}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Get addendums for this agreement
   const agreementAddendums = (addendums || []).filter(addendum => 
@@ -458,6 +563,8 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
     }, 5000);
   };
 
+  try {
+    console.log("DetailsModal: Starting to render modal content");
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-white rounded-lg shadow-lg p-6 min-w-[600px] max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -472,9 +579,8 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
               </svg>
               Back to Agreements
             </button>
-            <h3 className="text-xl font-bold">Contract Details - {agreement.id}</h3>
+          <h3 className="text-xl font-bold">Contract Details - {agreement.id}</h3>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-xl">×</button>
         </div>
 
         {/* Success Message - Very Prominent */}
@@ -565,7 +671,7 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
               <div><b>Site:</b><br/>{(() => {
                 const branches = agreement.originalAgreement?.selectedBranches || agreement.selectedBranches;
                 if (branches && Array.isArray(branches)) {
-                  return branches.map(branch => branch.name || branch).join(", ");
+                  return branches.map(branch => typeof branch === 'string' ? branch : (branch.name || branch)).join(", ");
                 }
                 return "Not specified";
               })()}</div>
@@ -590,10 +696,10 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
 
             {/* Contact Information Section */}
             <div className="mb-6">
-              <h4 className="text-sm font-semibold text-gray-800 mb-3">Contact Information</h4>
+              <h4 className="text-lg font-semibold text-gray-800 mb-3">📞 Contact Information</h4>
               <div className="grid grid-cols-2 gap-6">
                 {/* I Smart Contact */}
-                <div className="bg-blue-50 rounded-lg p-4">
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                   <h5 className="font-medium text-blue-800 mb-3">I Smart Contact</h5>
                   <div className="space-y-2 text-sm">
                     <div><b>Name:</b> {agreement.originalAgreement?.contactInfo?.name || agreement.contactInfo?.name || "Not specified"}</div>
@@ -602,7 +708,7 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
                   </div>
                 </div>
                 {/* Client Contact */}
-                <div className="bg-green-50 rounded-lg p-4">
+                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                   <h5 className="font-medium text-green-800 mb-3">Client Contact</h5>
                   <div className="space-y-2 text-sm">
                     <div><b>Name:</b> {agreement.originalAgreement?.contactInfo?.clientName || agreement.contactInfo?.clientName || "Not specified"}</div>
@@ -653,21 +759,29 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
                   const allClauses = [];
                   
                   if (importantClauses && Array.isArray(importantClauses)) {
-                    importantClauses.forEach(clause => {
+                    console.log("Processing importantClauses:", importantClauses);
+                    importantClauses.forEach((clause, idx) => {
+                      console.log(`Processing clause ${idx}:`, clause, "type:", typeof clause);
                       if (typeof clause === 'string') {
                         allClauses.push({ title: clause, type: 'important' });
-                      } else if (clause.title) {
+                      } else if (clause && clause.title) {
                         allClauses.push({ ...clause, type: 'important' });
+                      } else {
+                        console.warn(`Skipping invalid clause at index ${idx}:`, clause);
                       }
                     });
                   }
                   
                   if (clauses && Array.isArray(clauses)) {
-                    clauses.forEach(clause => {
+                    console.log("Processing clauses:", clauses);
+                    clauses.forEach((clause, idx) => {
+                      console.log(`Processing regular clause ${idx}:`, clause, "type:", typeof clause);
                       if (typeof clause === 'string') {
                         allClauses.push({ title: clause, type: 'regular' });
-                      } else if (clause.title) {
+                      } else if (clause && clause.title) {
                         allClauses.push({ ...clause, type: 'regular' });
+                      } else {
+                        console.warn(`Skipping invalid regular clause at index ${idx}:`, clause);
                       }
                     });
                   }
@@ -677,8 +791,8 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
                   }
                   
                   return allClauses.map((clause, idx) => (
-                    <div key={idx} className="flex items-center gap-2 bg-blue-50 rounded-lg p-3">
-                      <span className="text-blue-600">📋</span>
+                      <div key={idx} className="flex items-center gap-2 bg-blue-50 rounded-lg p-3">
+                        <span className="text-blue-600">📋</span>
                       <div className="flex-1">
                         <span className="text-gray-800 text-sm font-medium">{clause.title}</span>
                         {clause.placeholder && (
@@ -879,7 +993,9 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-3">
                               <span className="font-bold text-blue-600">#{addendum.id}</span>
-                              <span className="text-sm font-medium text-gray-800">{addendum.title}</span>
+                              <span className="text-sm font-medium text-gray-800">
+                                {typeof addendum.title === 'string' ? addendum.title : 'Untitled Addendum'}
+                              </span>
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                 addendum.status === "Approved" ? "bg-green-100 text-green-700" :
                                 addendum.status === "Rejected" ? "bg-red-100 text-red-700" :
@@ -909,7 +1025,11 @@ function DetailsModal({ open, onClose, agreement, onPriorityChange, onStatusChan
                           
                           <div className="mt-2 text-sm text-gray-600">
                             <span className="font-medium text-gray-600">Summary:</span>
-                            <span className="ml-2">{addendum.description?.substring(0, 120)}...</span>
+                            <span className="ml-2">
+                              {typeof addendum.description === 'string' 
+                                ? addendum.description.substring(0, 120) + '...'
+                                : 'No description available'}
+                            </span>
                           </div>
                           
                           <div className="mt-2 flex items-center justify-between">
@@ -1207,14 +1327,14 @@ Generated on: ${new Date().toLocaleString()}
                         >
                           <span>📥</span>
                           Download Document
-                        </button>
-                        <button
-                          onClick={() => handleViewAddendum(addendum)}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm"
-                        >
-                          <span>👁️</span>
-                          View Full Details
-                        </button>
+                      </button>
+                      <button
+                        onClick={() => handleViewAddendum(addendum)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm"
+                      >
+                        <span>👁️</span>
+                        View Full Details
+                      </button>
                       </div>
                     </div>
                   </div>
@@ -1230,6 +1350,26 @@ Generated on: ${new Date().toLocaleString()}
       </div>
     </div>
   );
+  } catch (error) {
+    console.error("DetailsModal rendering error:", error);
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="bg-white rounded-lg shadow-lg p-6 min-w-[400px] max-w-lg">
+          <div className="text-center">
+            <h3 className="text-xl font-bold text-red-600 mb-4">Error</h3>
+            <p className="text-gray-600 mb-4">An error occurred while loading the agreement details.</p>
+            <p className="text-sm text-gray-500 mb-4">Error: {error.message}</p>
+            <button 
+              onClick={onClose}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Close
+            </button>
+          </div>
+      </div>
+    </div>
+  );
+  }
 }
 
 export default function AgreementTable({ agreements = [], onStatusUpdate, onAddendumStatusUpdate, userRole = "checker", onCreateAddendum, onEditAgreement, onAddendumSubmit }) {
@@ -1255,6 +1395,8 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
   const [editingAddendum, setEditingAddendum] = useState(null); // State for editing addendum
   const [isEditing, setIsEditing] = useState(false); // State to track if we're in edit mode
   const [pendingStatusChanges, setPendingStatusChanges] = useState({}); // Track pending status changes for each addendum
+  const [topScrollRef, setTopScrollRef] = useState(null);
+  const [bottomScrollRef, setBottomScrollRef] = useState(null);
   
   // Ref for dropdown container
   const dropdownRef = useRef(null);
@@ -1273,6 +1415,27 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  // Synchronize top and bottom scrollbars
+  useEffect(() => {
+    if (topScrollRef && bottomScrollRef) {
+      const handleTopScroll = () => {
+        bottomScrollRef.scrollLeft = topScrollRef.scrollLeft;
+      };
+      
+      const handleBottomScroll = () => {
+        topScrollRef.scrollLeft = bottomScrollRef.scrollLeft;
+      };
+
+      topScrollRef.addEventListener('scroll', handleTopScroll);
+      bottomScrollRef.addEventListener('scroll', handleBottomScroll);
+
+      return () => {
+        topScrollRef.removeEventListener('scroll', handleTopScroll);
+        bottomScrollRef.removeEventListener('scroll', handleBottomScroll);
+      };
+    }
+  }, [topScrollRef, bottomScrollRef]);
   
   // Function to determine which status should be shown based on progression
   const getCurrentStatus = (agreement) => {
@@ -1307,8 +1470,22 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
   
 
 
+  // Debug agreements data
+  console.log("=== AGREEMENT TABLE DEBUG ===");
+  console.log("Total agreements from Redux:", agreements.length);
+  console.log("Agreements data:", agreements);
+  console.log("User role:", userRole);
+
   // Transform agreement data from form structure to table structure
   const transformedData = agreements.map((agreement, index) => {
+    // Debug upload statuses
+    console.log(`=== UPLOAD STATUS DEBUG for Agreement ${agreement.id} ===`);
+    console.log("agreement.uploadStatuses:", agreement.uploadStatuses);
+    console.log("WO uploaded:", agreement.uploadStatuses?.WO?.uploaded);
+    console.log("PO uploaded:", agreement.uploadStatuses?.PO?.uploaded);
+    console.log("LOI uploaded:", agreement.uploadStatuses?.LOI?.uploaded);
+    console.log("EmailApproval uploaded:", agreement.uploadStatuses?.EmailApproval?.uploaded);
+    
     // Extract WO/PO/LOI information from uploadStatuses
     const woPoLoiInfo = [];
     if (agreement.uploadStatuses?.WO?.uploaded) woPoLoiInfo.push("WO");
@@ -1316,6 +1493,9 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
     if (agreement.uploadStatuses?.LOI?.uploaded) woPoLoiInfo.push("LOI");
     if (agreement.uploadStatuses?.EmailApproval?.uploaded) woPoLoiInfo.push("Email Approval");
     const woPoLoiText = woPoLoiInfo.length > 0 ? woPoLoiInfo.join(" / ") : "None uploaded";
+    
+    console.log("woPoLoiInfo array:", woPoLoiInfo);
+    console.log("woPoLoiText result:", woPoLoiText);
     
     // Extract important clauses (first 3 clauses as summary for table display)
     const importantClausesSummary = agreement.importantClauses && agreement.importantClauses.length > 0
@@ -1325,9 +1505,11 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
       : "No clauses";
     
     // Join all selected branches with commas to display all branches
+    console.log("Selected branches for agreement:", agreement.selectedBranches);
     const allBranches = (agreement.selectedBranches && agreement.selectedBranches.length > 0) 
-      ? agreement.selectedBranches.map(branch => branch.name).join(", ") 
+      ? agreement.selectedBranches.map(branch => typeof branch === 'string' ? branch : branch.name).join(", ") 
       : "Not specified";
+    console.log("allBranches result:", allBranches);
     
     // Calculate priority based on days since submission (like in dashboard)
     const submittedDate = new Date(agreement.submittedDate);
@@ -1361,6 +1543,12 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
       addendumsCount, // Add addendums count
     };
   });
+
+  // Debug transformed data
+  console.log("=== TRANSFORMED DATA DEBUG ===");
+  console.log("Transformed data length:", transformedData.length);
+  console.log("Transformed data:", transformedData);
+  console.log("Sample row checker field:", transformedData[0]?.checker);
 
   const [data, setData] = useState(transformedData);
   const [details, setDetails] = useState({ open: false, agreement: null });
@@ -1603,7 +1791,8 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
     // Role-based filtering - Show agreements for checker role (only their own)
     if (userRole?.toLowerCase() === "checker") {
       // For checker role, only show agreements they submitted
-      return row.submittedBy === "checker";
+      console.log("Filtering for checker - userRole:", userRole, "row.checker:", row.checker, "row.client:", row.client, "match:", row.checker === "checker");
+      return row.checker === "checker";
     }
     
     // Client, city, state filters
@@ -1638,13 +1827,20 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
     return clientMatch && cityMatch && stateMatch && dateMatch && addendumsMatch;
   });
 
+  // Sort by submission date (most recent first)
+  const sortedAndFiltered = filtered.sort((a, b) => {
+    const dateA = new Date(a.date);
+    const dateB = new Date(b.date);
+    return dateB - dateA; // Most recent first
+  });
+
      // Export Excel
    const handleExportExcel = () => {
-     const exportData = filtered.map((row, i) => ({
+     const exportData = sortedAndFiltered.map((row, i) => ({
        "Sr. No": i + 1,
        "Client Name": row.client,
        "Client Site": row.site,
-       "WO / PO / LOI": row.wo,
+       "WO / PO / LOI / Email": row.wo,
        "Entity Type": row.entityType,
        "Submitted Date": row.date,
        "Important Clauses": row.importantClauses,
@@ -1672,10 +1868,10 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
    const handleExportPDF = () => {
      const doc = new jsPDF();
      const columns = [
-       "Sr. No", "Client Name", "Client Site", "WO / PO / LOI", "Entity Type",
+       "Sr. No", "Client Name", "Client Site", "WO / PO / LOI / Email", "Entity Type",
        "Submitted Date", "Important Clauses", "Priority", "Status", "Addendums Count"
      ];
-     const rows = filtered.map((row, i) => [
+     const rows = sortedAndFiltered.map((row, i) => [
        i + 1,
        row.client,
        row.site,
@@ -1715,7 +1911,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
     if (!agreement.selectedBranches || agreement.selectedBranches.length === 0) {
       return "Not specified";
     }
-    return agreement.selectedBranches.map(branch => branch.name).join(", ");
+    return agreement.selectedBranches.map(branch => typeof branch === 'string' ? branch : branch.name).join(", ");
   };
 
   const getDocumentStatus = (agreement, docType) => {
@@ -1730,17 +1926,33 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
     );
   };
 
-  const getImportantClauses = (agreement) => {
+  const getImportantClauses = (agreement, addendums = []) => {
+    try {
     if (!agreement.importantClauses || agreement.importantClauses.length === 0) {
       return <span className="text-gray-400 text-xs">No clauses specified</span>;
     }
     
     return (
       <div className="space-y-1">
-        {agreement.importantClauses.slice(0, 3).map((clause, index) => {
-          // Get clause modifications for this clause
-          const clauseIndex = clauses.indexOf(clause);
-          const clauseModifications = [];
+          {agreement.importantClauses.slice(0, 3).filter(clause => clause != null).map((clause, index) => {
+            // Ensure clause is properly handled
+            if (!clause) {
+              console.warn("Empty clause found at index:", index);
+              return null;
+            }
+            
+            // Additional safety check for clause object structure
+            if (typeof clause === 'object' && clause !== null) {
+              console.log(`Clause ${index} is object:`, clause);
+              // Ensure we only render string properties
+              if (typeof clause.title !== 'string' && typeof clause.content !== 'string') {
+                console.warn(`Clause ${index} has no valid string properties:`, clause);
+                return null;
+              }
+            }
+            // Get clause modifications for this clause
+            const clauseIndex = agreement.importantClauses.indexOf(clause);
+            const clauseModifications = [];
           
           // Check all addendums for modifications to this clause
           (addendums || []).forEach(addendum => {
@@ -1768,9 +1980,26 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
               <span className={`text-blue-600 hover:text-blue-800 underline text-xs font-medium cursor-pointer transition-colors ${
                 hasModifications ? 'text-orange-700 font-semibold' : ''
               }`}>
-                {clause.title || clause}
+                {(() => {
+                  // Comprehensive safety check to prevent object rendering
+                  if (typeof clause === 'string') {
+                    return clause;
+                  } else if (typeof clause === 'object' && clause !== null) {
+                    if (typeof clause.title === 'string') {
+                      return clause.title;
+                    } else if (typeof clause.content === 'string') {
+                      return clause.content;
+                    } else {
+                      console.warn('Clause object has no valid string properties:', clause);
+                      return 'Untitled Clause';
+                    }
+                  } else {
+                    console.warn('Invalid clause type:', typeof clause, clause);
+                    return 'Untitled Clause';
+                  }
+                })()}
                 {hasModifications && <span className="ml-1">✨</span>}
-              </span>
+            </span>
               
               {/* Addendum modification indicators */}
               {hasModifications && (
@@ -1790,7 +2019,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
                          mod.modificationType === "Added" ? "➕ New" :
                          mod.modificationType === "Removed" ? "❌ Removed" :
                          "📝 Changed"}
-                      </span>
+              </span>
                       
                       {/* Hover Tooltip with Previous Version Information */}
                       <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 min-w-[250px]">
@@ -1854,13 +2083,17 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
                 </div>
               )}
               
-              {/* Document icon */}
-              <span className="text-gray-500 text-xs">📋</span>
-            </div>
+            {/* Document icon */}
+            <span className="text-gray-500 text-xs">📋</span>
+          </div>
           );
         })}
       </div>
     );
+    } catch (error) {
+      console.error("Error in getImportantClauses:", error);
+      return <span className="text-red-400 text-xs">Error loading clauses</span>;
+    }
   };
 
   // Handlers for progress notes and status dates
@@ -1998,8 +2231,8 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
         
         <h2 className="text-2xl font-bold mb-6 text-gray-800">
           {userRole?.toLowerCase() === "checker"
-            ? `Agreements (${filtered.length} - Your Submissions)`
-            : `Agreements (${filtered.length})`
+            ? `Agreements (${sortedAndFiltered.length} - Your Submissions)`
+            : `Agreements (${sortedAndFiltered.length})`
           }
         </h2>
         
@@ -2018,25 +2251,35 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
             </div>
           </div>
         )}
-        <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm bg-white">
-          <table className="min-w-full text-sm">
+        <div className="rounded-lg border border-gray-200 shadow-sm bg-white" style={{ maxWidth: '100%' }}>
+          {/* Top Scrollbar */}
+          <div 
+            ref={setTopScrollRef}
+            className="overflow-x-auto border-b border-gray-200" 
+            style={{ height: '17px' }}
+          >
+            <div style={{ width: '1200px', height: '1px' }}></div>
+          </div>
+          {/* Main Table with Bottom Scrollbar */}
+          <div ref={setBottomScrollRef} className="overflow-x-auto">
+            <table className="min-w-[1200px] text-sm">
             <thead>
               <tr className="bg-gray-50 text-gray-700 border-b border-gray-200">
-                <th className="px-6 py-4 font-semibold text-left text-gray-800">Sr. No</th>
-                <th className="px-6 py-4 font-semibold text-left text-gray-800">Client Name</th>
-                <th className="px-6 py-4 font-semibold text-left text-gray-800">Client Site</th>
-                <th className="px-6 py-4 font-semibold text-left text-gray-800">WO / PO / LOI</th>
-                <th className="px-6 py-4 font-semibold text-left text-gray-800">Entity Type</th>
-                <th className="px-6 py-4 font-semibold text-left text-gray-800">Submitted Date</th>
-                <th className="px-6 py-4 font-semibold text-left text-gray-800">Important Clauses</th>
-                <th className="px-6 py-4 font-semibold text-left text-gray-800">Priority</th>
-                <th className="px-6 py-4 font-semibold text-left text-gray-800">Status</th>
-                <th className="px-6 py-4 font-semibold text-left text-gray-800">Addendums</th>
-                <th className="px-6 py-4 font-semibold text-left text-gray-800">Actions</th>
+                <th className="px-6 py-4 font-semibold text-left text-gray-800 min-w-[80px]">Sr. No</th>
+                <th className="px-6 py-4 font-semibold text-left text-gray-800 min-w-[150px]">Client Name</th>
+                <th className="px-6 py-4 font-semibold text-left text-gray-800 min-w-[120px]">Client Site</th>
+                <th className="px-6 py-4 font-semibold text-left text-gray-800 min-w-[180px]">WO / PO / LOI / Email</th>
+                <th className="px-6 py-4 font-semibold text-left text-gray-800 min-w-[100px]">Entity Type</th>
+                <th className="px-6 py-4 font-semibold text-left text-gray-800 min-w-[120px]">Submitted Date</th>
+                <th className="px-6 py-4 font-semibold text-left text-gray-800 min-w-[200px]">Important Clauses</th>
+                <th className="px-6 py-4 font-semibold text-left text-gray-800 min-w-[80px]">Priority</th>
+                <th className="px-6 py-4 font-semibold text-left text-gray-800 min-w-[120px]">Status</th>
+                <th className="px-6 py-4 font-semibold text-left text-gray-800 min-w-[100px]">Addendums</th>
+                <th className="px-6 py-4 font-semibold text-left text-gray-800 min-w-[150px]">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {sortedAndFiltered.length === 0 ? (
                                   <tr>
                     <td colSpan="11" className="px-4 py-8 text-center text-gray-500">
                       {userRole?.toLowerCase() === "checker" 
@@ -2046,7 +2289,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
                     </td>
                   </tr>
                ) : (
-                 filtered.map((row, i) => (
+                 sortedAndFiltered.map((row, i) => (
                    <tr key={row.id} className={`${i % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-blue-50 border-b border-gray-100 transition-colors`}>
                      <td className="px-6 py-4 text-center">{i + 1}</td>
                      <td className="px-6 py-4 font-semibold text-gray-800">{row.client}</td>
@@ -2058,14 +2301,16 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
                            { type: 'WO', label: 'WO' },
                            { type: 'PO', label: 'PO' },
                            { type: 'LOI', label: 'LOI' },
-                 
+                           { type: 'EmailApproval', label: 'Email' }
                          ]}
                        />
                      </td>
                      <td className="px-6 py-4 text-gray-700">{row.entityType}</td>
                      <td className="px-6 py-4 text-gray-700">{row.date}</td>
                      <td className="px-6 py-4 min-w-[150px]">
-                       {getImportantClauses(row.originalAgreement)}
+                       <ErrorBoundary>
+                         {getImportantClauses(row.originalAgreement, addendums?.addendums || [])}
+                       </ErrorBoundary>
                      </td>
                      <td className="px-6 py-4">
                        {priorityBadge(row.priority)}
@@ -2132,14 +2377,14 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
                      {/* Addendums Count Column */}
                      <td className="px-6 py-4 text-center">
                          {row.addendumsCount > 0 ? (
-                           <div className="flex items-center justify-center gap-2">
+                             <div className="flex items-center justify-center gap-2">
                              {/* Very light blue circle with count - matching live URL design */}
                              <div className="w-6 h-6 bg-blue-100 text-blue-700 text-xs font-medium rounded-full flex items-center justify-center">
-                               {row.addendumsCount}
+                                 {row.addendumsCount}
                              </div>
                              {/* Brown eye icon for viewing - matching live URL design */}
-                             <button
-                               onClick={() => {
+                                    <button
+                                      onClick={() => {
                                  const agreementAddendums = (addendums?.addendums || []).filter(addendum => 
                                    addendum.parentAgreementId === row.originalAgreement.id
                                  );
@@ -2148,61 +2393,61 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
                                    handleViewAddendum(agreementAddendums[0]);
                                  } else if (agreementAddendums.length > 1) {
                                    // Multiple addendums - show dropdown
-                                   const newDropdownOpen = { ...dropdownOpen };
-                                   newDropdownOpen[row.id] = !newDropdownOpen[row.id];
-                                   setDropdownOpen(newDropdownOpen);
+                                        const newDropdownOpen = { ...dropdownOpen };
+                                        newDropdownOpen[row.id] = !newDropdownOpen[row.id];
+                                        setDropdownOpen(newDropdownOpen);
                                  }
-                               }}
+                                      }}
                                className="text-amber-600 hover:text-amber-700 transition-colors"
                                title="View addendums"
-                             >
-                               <span className="text-lg">👁️</span>
-                             </button>
-                             
+                                    >
+                                      <span className="text-lg">👁️</span>
+                                    </button>
+                                   
                              {/* Dropdown for multiple addendums */}
                              {row.addendumsCount > 1 && dropdownOpen[row.id] && (
-                               <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-48">
-                                 <div className="p-2 border-b border-gray-200 bg-gray-50">
-                                   <div className="text-xs font-medium text-gray-700">Select Addendum to View:</div>
-                                 </div>
-                                 <div className="max-h-48 overflow-y-auto">
-                                   {addendums
-                                     .filter(addendum => addendum.parentAgreementId === row.originalAgreement.id)
-                                     .map((addendum, idx) => (
-                                       <button
-                                         key={addendum.id}
-                                         onClick={() => {
-                                           handleViewAddendum(addendum);
-                                           const newDropdownOpen = { ...dropdownOpen };
-                                           newDropdownOpen[row.id] = false;
-                                           setDropdownOpen(newDropdownOpen);
-                                         }}
-                                         className="w-full text-left p-2 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
-                                       >
-                                         <div className="flex items-center justify-between mb-1">
-                                           <span className="font-medium text-gray-800 text-xs">
-                                             #{addendum.id}
-                                           </span>
-                                           <span className={`px-1 py-0.5 rounded text-xs ${
-                                             addendum.status === "Approved" ? "bg-green-100 text-green-700" :
-                                             addendum.status === "Rejected" ? "bg-red-100 text-red-700" :
-                                             addendum.status === "Under Review" ? "bg-blue-100 text-blue-700" :
-                                             "bg-yellow-100 text-yellow-700"
-                                           }`}>
-                                             {addendum.status}
-                                           </span>
-                                         </div>
-                                         <div className="text-xs text-gray-600 truncate" title={addendum.title}>
-                                           {addendum.title}
-                                         </div>
-                                         <div className="text-xs text-gray-500">
-                                           📅 {new Date(addendum.submittedDate).toLocaleDateString()}
-                                         </div>
-                                       </button>
-                                     ))}
-                                 </div>
-                               </div>
-                             )}
+                                     <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-48">
+                                       <div className="p-2 border-b border-gray-200 bg-gray-50">
+                                         <div className="text-xs font-medium text-gray-700">Select Addendum to View:</div>
+                                       </div>
+                                       <div className="max-h-48 overflow-y-auto">
+                                         {addendums
+                                           .filter(addendum => addendum.parentAgreementId === row.originalAgreement.id)
+                                           .map((addendum, idx) => (
+                                             <button
+                                               key={addendum.id}
+                                               onClick={() => {
+                                                 handleViewAddendum(addendum);
+                                                 const newDropdownOpen = { ...dropdownOpen };
+                                                 newDropdownOpen[row.id] = false;
+                                                 setDropdownOpen(newDropdownOpen);
+                                               }}
+                                               className="w-full text-left p-2 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                                             >
+                                               <div className="flex items-center justify-between mb-1">
+                                                 <span className="font-medium text-gray-800 text-xs">
+                                                   #{addendum.id}
+                                                 </span>
+                                                 <span className={`px-1 py-0.5 rounded text-xs ${
+                                                   addendum.status === "Approved" ? "bg-green-100 text-green-700" :
+                                                   addendum.status === "Rejected" ? "bg-red-100 text-red-700" :
+                                                   addendum.status === "Under Review" ? "bg-blue-100 text-blue-700" :
+                                                   "bg-yellow-100 text-yellow-700"
+                                                 }`}>
+                                                   {addendum.status}
+                                                 </span>
+                                               </div>
+                                               <div className="text-xs text-gray-600 truncate" title={addendum.title}>
+                                                 {addendum.title}
+                                               </div>
+                                               <div className="text-xs text-gray-500">
+                                                 📅 {new Date(addendum.submittedDate).toLocaleDateString()}
+                                               </div>
+                                             </button>
+                                           ))}
+                                       </div>
+                                     </div>
+                                   )}
                            </div>
                          ) : (
                            <span className="text-gray-400 text-xs">0</span>
@@ -2216,7 +2461,13 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
                          <button 
                            className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700 transition-colors font-medium" 
                            title="Review & Take Action" 
-                           onClick={() => setDetails({ open: true, agreement: row })}
+                           onClick={() => {
+                             console.log("=== OPENING DETAILS MODAL ===");
+                             console.log("Row data:", row);
+                             console.log("Row originalAgreement:", row.originalAgreement);
+                             console.log("Row originalAgreement contactInfo:", row.originalAgreement?.contactInfo);
+                             setDetails({ open: true, agreement: row });
+                           }}
                          >
                            Review
                          </button>
@@ -2266,7 +2517,8 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
                  ))
                )}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -2344,11 +2596,13 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
                       className="w-full border rounded px-2 py-1 text-sm mt-1"
                     />
                   ) : (
-                    addendumDetailsModal.addendum.title
+                    typeof addendumDetailsModal.addendum.title === 'string' 
+                      ? addendumDetailsModal.addendum.title 
+                      : 'Untitled Addendum'
                   )}
                 </div>
-                <div><b>Parent Agreement:</b><br/>{addendumDetailsModal.addendum.parentAgreementTitle || addendumDetailsModal.addendum.parentAgreementId || 'Unknown'}</div>
-                <div><b>Submitted By:</b><br/>👤 {addendumDetailsModal.addendum.submittedBy || 'Unknown'}</div>
+                <div><b>Parent Agreement:</b><br/>{typeof addendumDetailsModal.addendum.parentAgreementTitle === 'string' ? addendumDetailsModal.addendum.parentAgreementTitle : (addendumDetailsModal.addendum.parentAgreementId || 'Unknown')}</div>
+                <div><b>Submitted By:</b><br/>👤 {typeof addendumDetailsModal.addendum.submittedBy === 'string' ? addendumDetailsModal.addendum.submittedBy : 'Unknown'}</div>
                 <div><b>Submitted Date:</b><br/>📅 {addendumDetailsModal.addendum.submittedDate ? new Date(addendumDetailsModal.addendum.submittedDate).toLocaleDateString() : 'Unknown'}</div>
                 <div>
                   <b>Effective Date:</b><br/>
@@ -2387,7 +2641,9 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
                   />
                 ) : (
                   <div className="bg-gray-50 p-3 rounded border text-sm">
-                    {addendumDetailsModal.addendum.description || 'No description provided'}
+                    {typeof addendumDetailsModal.addendum.description === 'string' 
+                      ? addendumDetailsModal.addendum.description 
+                      : 'No description provided'}
                   </div>
                 )}
               </div>
@@ -2405,7 +2661,9 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
                     />
                   ) : (
                     <div className="bg-gray-50 p-3 rounded border text-sm">
-                      {addendumDetailsModal.addendum.reason || 'No reason provided'}
+                      {typeof addendumDetailsModal.addendum.reason === 'string' 
+                        ? addendumDetailsModal.addendum.reason 
+                        : 'No reason provided'}
                     </div>
                   )}
                 </div>
@@ -2420,7 +2678,9 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
                     />
                   ) : (
                     <div className="bg-gray-50 p-3 rounded border text-sm">
-                      {addendumDetailsModal.addendum.impact || 'No impact assessment provided'}
+                      {typeof addendumDetailsModal.addendum.impact === 'string' 
+                        ? addendumDetailsModal.addendum.impact 
+                        : 'No impact assessment provided'}
                     </div>
                   )}
                 </div>
@@ -2710,7 +2970,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
                     <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-gray-800">Addendum #{mod.addendumId}</span>
+                        <span className="font-medium text-gray-800">Addendum #{mod.addendumId}</span>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             mod.modificationType === "Modified" ? "bg-orange-100 text-orange-700" :
                             mod.modificationType === "Added" ? "bg-green-100 text-green-700" :
@@ -2731,7 +2991,7 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
                           <div className="text-sm font-medium text-gray-700 mb-2">Previous Version:</div>
                           <div className="text-sm text-gray-600 p-3 bg-white rounded border border-gray-200">
                             {mod.previousVersion || "Original clause content before this modification"}
-                          </div>
+                      </div>
                         </div>
                         
                         {/* Current Changes */}
