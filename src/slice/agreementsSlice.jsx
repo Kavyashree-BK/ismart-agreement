@@ -128,14 +128,6 @@ const demoAgreements = [
       { name: "Mumbai Central", id: "branch-001" },
       { name: "Andheri West", id: "branch-002" }
     ],
-    contactInfo: {
-      name: "John Smith",
-      email: "john.smith@ismart.com",
-      phone: "9876543210",
-      clientName: "Sarah Johnson",
-      clientEmail: "sarah.johnson@techcorp.com",
-      clientPhone: "9123456789"
-    },
     createdAt: "2024-01-10T10:00:00",
     lastModified: "2024-01-15T14:30:00",
     version: "1.0.0"
@@ -236,14 +228,6 @@ const demoAgreements = [
     selectedBranches: [
       { name: "Pune Industrial", id: "branch-003" }
     ],
-    contactInfo: {
-      name: "Mike Wilson",
-      email: "mike.wilson@ismart.com",
-      phone: "9876543211",
-      clientName: "David Brown",
-      clientEmail: "david.brown@globalindustries.com",
-      clientPhone: "9123456790"
-    },
     createdAt: "2024-02-01T09:00:00",
     lastModified: "2024-02-05T16:45:00",
     version: "1.0.0"
