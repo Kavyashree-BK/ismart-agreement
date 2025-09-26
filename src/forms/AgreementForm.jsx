@@ -449,6 +449,9 @@ const AgreementForm = () => {
       return;
     }
 
+    // Note: Document upload validation is handled by the visual escalation message
+    // No popup alert needed - the yellow alert box already shows the requirement
+
     const agreementData = {
       ...formData,
       status: action === 'submit' ? 'Under Review' : 'Draft',

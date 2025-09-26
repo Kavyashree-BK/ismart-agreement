@@ -60,8 +60,17 @@ const FileLink = ({ file, label, type }) => {
    
   const handleFileClick = () => {
     try {
-      const url = URL.createObjectURL(file);
-      window.open(url, '_blank');
+      // Check if it's a real File object or demo data
+      if (file instanceof File) {
+        // Real file - create object URL
+        const url = URL.createObjectURL(file);
+        window.open(url, '_blank');
+      } else if (file.name && file.size) {
+        // Demo data - show file info
+        alert(`Demo File: ${file.name}\nSize: ${file.size}\nType: ${type}\n\nThis is demo data. In a real application, this would open the actual file.`);
+      } else {
+        alert('File information not available');
+      }
     } catch (error) {
       console.error('Error opening file:', error);
       alert('Unable to open file');
@@ -72,7 +81,7 @@ const FileLink = ({ file, label, type }) => {
     <span
       onClick={handleFileClick}
       className="text-blue-600 hover:text-blue-800 underline text-xs font-medium cursor-pointer transition-colors"
-      title={`Click to view ${file.name} in new tab`}
+      title={`Click to view ${file.name || label} in new tab`}
     >
       {label}
     </span>
@@ -83,15 +92,26 @@ const FileLink = ({ file, label, type }) => {
 const DocumentLinks = ({ uploadStatuses, documents }) => {
   return (
     <div className="flex flex-col gap-1">
-      {documents.map(doc => (
-        <div key={doc.type}>
-          <FileLink 
-            file={uploadStatuses[doc.type]?.file} 
-            label={doc.label} 
-            type={doc.type}
-          />
-        </div>
-      ))}
+      {documents.map(doc => {
+        const isUploaded = uploadStatuses[doc.type]?.uploaded;
+        const file = uploadStatuses[doc.type]?.file;
+        
+        return (
+          <div key={doc.type}>
+            {isUploaded && file ? (
+              <FileLink 
+                file={file} 
+                label={doc.label} 
+                type={doc.type}
+              />
+            ) : (
+              <span className="text-gray-400 text-xs">
+                {doc.label}: Not uploaded
+              </span>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -1977,9 +1997,16 @@ export default function AgreementTable({ agreements = [], onStatusUpdate, onAdde
             <div key={index} className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${
               hasModifications ? 'bg-yellow-50 border border-yellow-200' : ''
             }`}>
-              <span className={`text-blue-600 hover:text-blue-800 underline text-xs font-medium cursor-pointer transition-colors ${
-                hasModifications ? 'text-orange-700 font-semibold' : ''
-              }`}>
+              <span 
+                className={`text-blue-600 hover:text-blue-800 underline text-xs font-medium cursor-pointer transition-colors ${
+                  hasModifications ? 'text-orange-700 font-semibold' : ''
+                }`}
+                onClick={() => {
+                  const clauseTitle = typeof clause === 'string' ? clause : (clause.title || 'Untitled Clause');
+                  alert(`Clause: ${clauseTitle}\n\nThis is a demo clause. In a real application, this would open the clause document or show detailed information.`);
+                }}
+                title={`Click to view details for: ${typeof clause === 'string' ? clause : (clause.title || 'Untitled Clause')}`}
+              >
                 {(() => {
                   // Comprehensive safety check to prevent object rendering
                   if (typeof clause === 'string') {
